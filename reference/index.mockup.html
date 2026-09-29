@@ -1,0 +1,417 @@
+<!DOCTYPE html><html lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><title>FeedAnAnimalMap</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-secondary-container":"#007233","on-secondary-fixed-variant":"#005323","on-surface-variant":"#57423b","on-secondary":"#ffffff","on-error-container":"#93000a","surface-bright":"#fff8f6","on-surface":"#1e1b1a","surface-dim":"#e1d8d6","primary-container":"#c15326","error-container":"#ffdad6","on-background":"#1e1b1a","error":"#ba1a1a","on-primary-fixed":"#380d00","surface":"#fff8f6","surface-container-high":"#efe6e4","surface-variant":"#e9e1df","secondary-container":"#92f5a4","surface-container-highest":"#e9e1df","on-error":"#ffffff","on-primary-fixed-variant":"#812900","on-tertiary-fixed":"#001d31","on-primary-container":"#fffbff","inverse-primary":"#ffb59a","primary":"#a03b0e","outline":"#8b7269","surface-container-low":"#fbf2f0","secondary":"#006d30","secondary-fixed-dim":"#79db8d","surface-tint":"#a33e11","primary-fixed":"#ffdbcf","tertiary":"#006194","surface-container":"#f5ecea","inverse-on-surface":"#f8efed","surface-container-lowest":"#ffffff","on-primary":"#ffffff","secondary-fixed":"#95f8a7","background":"#fff8f6","tertiary-fixed-dim":"#93ccff","tertiary-container":"#007bb9","outline-variant":"#dec0b6","inverse-surface":"#342f2e","on-tertiary-container":"#fdfcff","on-tertiary":"#ffffff","on-tertiary-fixed-variant":"#004b73","on-secondary-fixed":"#00210a","primary-fixed-dim":"#ffb59a","tertiary-fixed":"#cce5ff"},"borderRadius":{"DEFAULT":"1rem","lg":"2rem","xl":"3rem","full":"9999px"},"spacing":{"gutter":"1rem","space-sm":"0.5rem","margin":"1rem","space-md":"1rem","space-xs":"0.25rem","space-lg":"1.5rem","gutter-desktop":"1.5rem","margin-desktop":"2rem","space-xl":"2rem"},"fontFamily":{"headline-sm":["Plus Jakarta Sans"],"label-sm":["Inter"],"headline-md":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"label-md":["Inter"],"stat-counter":["Inter"],"body-md":["Plus Jakarta Sans"],"headline-lg-mobile":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],"label-lg":["Inter"],"headline-lg":["Plus Jakarta Sans"]},"fontSize":{"headline-sm":["18px",{"lineHeight":"24px","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-md":["22px",{"lineHeight":"28px","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"stat-counter":["15px",{"lineHeight":"18px","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-lg-mobile":["26px",{"lineHeight":"32px","fontWeight":"700"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"headline-lg":["32px",{"lineHeight":"40px","fontWeight":"700"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-surface-container-highest shadow-sm"><div class="h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4"><div class="flex items-center gap-3 shrink-0"><a class="flex items-center gap-2.5 group" data-path="map" href="#"><img alt="FeedAnAnimalMap Logo" class="h-9 w-9 object-contain rounded-full shadow-sm" src="https://lh3.googleusercontent.com/aida/AEtjO1UilTehtdqRn2AzXnLqlUtKK_iS4f6PB6t6816grXUQ9F75IgZ1exC87rgKV7aHRKU5mBFx_kliKAchG-6Lz7O1bxHJ3Z18b8et0twe9bBIDBOJkv_-vLdjynjqGKzHS0z7kFcQKhn0Rk4wqSUI-B3r5Y53INjMzDJ69VThJBliYRphdg5w3NsxTGd1nWZ6a47Aw1A6jlqpCklQTOBDKt7E-dvYmnlEGuU_VCtmVr0DD80BUwD_BK4PTFY"><span class="text-xl sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none font-headline-lg-mobile">FeedAnAnimalMap</span></a></div><nav class="hidden md:flex items-center gap-1.5" data-active-classes="bg-primary-fixed/40 text-primary border-primary/20"><a aria-current="page" class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-semibold bg-primary-fixed/50 text-primary border border-primary/30 transition-all shadow-sm" data-path="map" href="#"><span class="material-symbols-outlined text-[18px] text-primary">location_on</span><span class="">Map</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="city-directory" href="#"><span class="material-symbols-outlined text-[18px] text-outline">public</span><span class="">Cities</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="community-feed" href="#"><span class="material-symbols-outlined text-[18px] text-outline">chat_bubble</span><span class="">Community</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="leaderboard" href="#"><span class="material-symbols-outlined text-[18px] text-outline">emoji_events</span><span class="">Leaderboard</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="about" href="#"><span class="material-symbols-outlined text-[18px] text-outline">info</span><span class="">About</span></a></nav><div class="flex items-center gap-2.5 shrink-0"><button class="h-10 px-5 rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm flex items-center gap-1.5 shadow-sm active:scale-95 transition-all" title="Support Animal Relief"><span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="">Support</span></button><a class="h-10 px-4 rounded-full border border-surface-container-highest bg-white text-on-surface hover:bg-surface-container font-medium text-sm flex items-center justify-center transition-colors shadow-sm" data-path="profile" href="#"><span class="">Sign in</span></a></div></div></header><main class="w-full pt-16 bg-surface min-h-[calc(100vh-80px)]"><div class="flex flex-col w-full">
+<div class="relative w-full h-[calc(100vh-64px)] flex overflow-hidden bg-surface">
+<!-- LEFT SIDEBAR PANEL (CheapFoodMap inspired layout, tactical pet welfare) -->
+<aside class="w-full md:w-[420px] lg:w-[450px] shrink-0 h-full flex flex-col bg-surface z-20 shadow-xl overflow-hidden">
+<!-- Search & Geolocation Bar -->
+<div class="p-space-md pb-2 bg-surface flex flex-col gap-2.5 border-b border-surface-container-high">
+  <div class="relative flex items-center">
+    <span class="material-symbols-outlined absolute left-3 text-outline text-[20px] pointer-events-none">search</span>
+    <input class="w-full h-11 pl-10 pr-24 rounded-full bg-surface-container text-on-surface font-body-md text-sm placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary/40 transition-all" id="sidebar-search" placeholder="Search park, area, stray..." type="text" value="Oakwood Park &amp; West End">
+    <button class="absolute right-1.5 h-8 px-3 rounded-full bg-surface-bright hover:bg-surface-container-high text-primary flex items-center gap-1 font-label-sm text-xs shadow-sm transition-all" title="Locate me">
+      <span class="material-symbols-outlined text-[15px]">near_me</span>
+      <span class="">Near Me</span>
+    </button>
+  </div>
+  <div class="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none no-scrollbar text-nowrap">
+    <button class="px-3.5 py-1 rounded-full bg-primary text-on-primary font-label-sm text-xs shadow-sm flex items-center gap-1.5 transition-all">
+      <span class="">All</span>
+      <span class="text-[11px] opacity-80 font-bold">48</span>
+    </button>
+    <button class="px-3 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-sm text-xs transition-colors flex items-center gap-1">
+      <span class="">🐱 Cats</span>
+      <span class="text-outline text-[11px]">28</span>
+    </button>
+    <button class="px-3 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-sm text-xs transition-colors flex items-center gap-1">
+      <span class="">🐶 Dogs</span>
+      <span class="text-outline text-[11px]">16</span>
+    </button>
+    <button class="px-3 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-error font-label-sm text-xs transition-colors flex items-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+      <span class="">Needs Help</span>
+      <span class="font-bold text-[11px]">12</span>
+    </button>
+  </div>
+</div>
+<!-- Live Recent Activity Ticker (Mirroring CheapFoodMap's live activity top card) -->
+<div class="px-space-md pt-1 pb-space-xs">
+<div class="p-space-sm rounded-lg bg-surface-container-low shadow-sm flex items-start gap-space-sm relative overflow-hidden">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-on-secondary-container text-[18px]">volunteer_activism</span>
+</div>
+<div class="flex-1 min-w-0 pr-4">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-primary font-bold">Live Activity</span>
+<span class="font-label-sm text-label-sm text-outline">35m ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface truncate">
+<span class="font-semibold text-on-surface">Alex R.</span> fed <span class="font-semibold text-primary">Milo</span> with warm broth &amp; kibble
+            </p>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px] text-outline">location_on</span>
+              Oakwood Park West Trail
+            </p>
+</div>
+<button class="text-outline hover:text-on-surface transition-colors p-0.5" title="Dismiss">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<!-- Section Header & Sorting -->
+<div class="px-space-md py-2.5 flex items-center justify-between">
+  <div class="flex items-center gap-2">
+    <span class="font-headline-sm text-base text-on-surface font-semibold">Nearby Animals</span>
+    <span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-xs">12</span>
+  </div>
+  <div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-xs">
+    <span class="">Sort:</span>
+    <select class="bg-transparent font-medium text-xs text-primary py-0.5 px-1 rounded cursor-pointer focus:outline-none hover:underline">
+      <option>Most Urgent</option>
+      <option>Closest</option>
+      <option>Recently Fed</option>
+    </select>
+  </div>
+</div>
+<!-- Scrollable Animals Feed -->
+<div class="flex-1 overflow-y-auto px-space-md pb-space-xl flex flex-col gap-space-sm"><!-- Milo -->
+<article class="p-3.5 rounded-lg bg-surface-container-lowest border border-primary/20 shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group">
+  <div class="flex gap-3 items-center">
+    <div class="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">
+      <img alt="Orange Tabby cat Milo" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WBPcGf3OtbHZub-gnpYp_zkTBhVC3QAGRDtu3d08bsR8OLwCx3BcxKRnqj20U58QDYhzKYN8ibbRVu77elwz2i5s8aI1YuctyYO7U2wdToM9-7VHZ_ZYqp5K56UTj_GbvpZjs-be5ocjtZ6VBk0mDEJWzld3kfohar4GRSkamu76NXKJDo-mVwIbYPii0DuE6aZEW9eYP9jaatOO_65FhPSthywo3jvplBs-BVuRt_2ZqvM7Z9Uwypy9M">
+      <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-error border-2 border-white animate-pulse" title="Needs Food"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-1">
+        <div class="flex items-center gap-1.5 truncate">
+          <h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">Milo</h3>
+          <span class="text-xs text-outline font-normal">• Tabby</span>
+        </div>
+        <span class="font-label-sm text-xs text-outline shrink-0 flex items-center gap-0.5">
+          <span class="material-symbols-outlined text-[13px] text-primary">near_me</span> 350m
+        </span>
+      </div>
+      <p class="font-body-sm text-xs text-error font-medium flex items-center gap-1 mt-0.5">
+        <span class="material-symbols-outlined text-[14px]">restaurant</span> Needs food • Empty 9h ago
+      </p>
+      <p class="font-body-sm text-xs text-on-surface-variant truncate mt-0.5 opacity-80">
+        Friendly ginger with white mittens
+      </p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2 pt-0.5 border-t border-surface-container-high/60">
+    <button class="flex-1 h-9 rounded-full bg-primary hover:bg-primary-container text-on-primary font-label-sm text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[16px]">restaurant</span>
+      <span class="">Feed Milo</span>
+    </button>
+    <button class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="View on Map">
+      <span class="material-symbols-outlined text-[18px]">navigation</span>
+    </button>
+    <button class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Details">
+      <span class="material-symbols-outlined text-[18px]">info</span>
+    </button>
+  </div>
+</article>
+
+<!-- Barnaby -->
+<article class="p-3.5 rounded-lg bg-surface-container-lowest border border-surface-container-highest shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group">
+  <div class="flex gap-3 items-center">
+    <div class="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">
+      <img alt="Barnaby the golden terrier mixed dog" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1Ui684xUTRuFWo4zh2nnCCjhZgfeEfu4JcsGD1nhL51P6rqnGDPA3A3dPSWCjgKDdT0ZIotRVjoPDhKgI6nK1hAW8o7SWuT7ArjzqZo1qBK3BGCBK_DvbBhrQlC1yNDAdr01nhcOFgwfr5uDeFRIA3DoSAn9xG2hqZuSRdLaW-VP9TJQGv15SLzPkNWRida57gPJPuI_3700ejHu58JbNVOp3MFWuKY8w9CvPr66l99fQssQkM0yRtT_kc">
+      <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-white" title="Recently Fed"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-1">
+        <div class="flex items-center gap-1.5 truncate">
+          <h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">Barnaby</h3>
+          <span class="text-xs text-outline font-normal">• Terrier</span>
+        </div>
+        <span class="font-label-sm text-xs text-outline shrink-0 flex items-center gap-0.5">
+          <span class="material-symbols-outlined text-[13px]">directions_walk</span> 850m
+        </span>
+      </div>
+      <p class="font-body-sm text-xs text-secondary font-medium flex items-center gap-1 mt-0.5">
+        <span class="material-symbols-outlined text-[14px]">check_circle</span> Fed 40m ago • Water ok
+      </p>
+      <p class="font-body-sm text-xs text-on-surface-variant truncate mt-0.5 opacity-80">
+        Calm, wears old red fabric collar
+      </p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2 pt-0.5 border-t border-surface-container-high/60">
+    <button class="flex-1 h-9 rounded-full bg-surface-container hover:bg-tertiary-container hover:text-on-tertiary-container text-tertiary font-label-sm text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+      <span class="material-symbols-outlined text-[15px]">water_drop</span>
+      <span class="">Refill Water</span>
+    </button>
+    <button class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="View on Map">
+      <span class="material-symbols-outlined text-[18px]">navigation</span>
+    </button>
+    <button class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Details">
+      <span class="material-symbols-outlined text-[18px]">info</span>
+    </button>
+  </div>
+</article>
+
+<!-- Luna -->
+<article class="p-3.5 rounded-lg bg-surface-container-lowest border border-surface-container-highest shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group">
+  <div class="flex gap-3 items-center">
+    <div class="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">
+      <div class="w-full h-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAjOZQR94r3-lF3yQjIPu04vWD3lT-9pWul5nPIE3Ihu3X7Mkut76EtygvW243ubONMjDVF2AS88BF5nuzP9HcDQuyc_iJT0YbUvCVp_33bqed6YMK6-FQN_McP3lonsjfdAXZMTGufxdPo-GFah0bOjlj5Tna9L-Mh7hGY-jPraejqMegPdGi8OGpmy87OoVyoocf70hBiBqr4-N4zDs7tr1D4iqP41_jehAG_K5ggPZztx97aiSmj')"></div>
+      <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-tertiary border-2 border-white" title="Needs Water"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-1">
+        <div class="flex items-center gap-1.5 truncate">
+          <h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">Luna</h3>
+          <span class="text-xs text-outline font-normal">• Tuxedo</span>
+        </div>
+        <span class="font-label-sm text-xs text-outline shrink-0 flex items-center gap-0.5">
+          <span class="material-symbols-outlined text-[13px]">directions_walk</span> 1.2 km
+        </span>
+      </div>
+      <p class="font-body-sm text-xs text-tertiary font-medium flex items-center gap-1 mt-0.5">
+        <span class="material-symbols-outlined text-[14px]">water_drop</span> Needs fresh water &amp; check
+      </p>
+      <p class="font-body-sm text-xs text-on-surface-variant truncate mt-0.5 opacity-80">
+        Behind library garden shed
+      </p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2 pt-0.5 border-t border-surface-container-high/60">
+    <button class="flex-1 h-9 rounded-full bg-primary-fixed hover:bg-primary text-on-primary-fixed hover:text-on-primary font-label-sm text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+      <span class="material-symbols-outlined text-[15px]">set_meal</span>
+      <span class="">Dispatch Feed</span>
+    </button>
+    <button class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="View on Map">
+      <span class="material-symbols-outlined text-[18px]">navigation</span>
+    </button>
+    <button class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Details">
+      <span class="material-symbols-outlined text-[18px]">info</span>
+    </button>
+  </div>
+</article>
+
+<!-- Community Station -->
+<article class="p-3.5 rounded-lg bg-surface-container-low border border-surface-container-highest/50 shadow-sm flex flex-col gap-2.5">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2 min-w-0">
+      <div class="w-7 h-7 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed shrink-0">
+        <span class="material-symbols-outlined text-[15px]">roofing</span>
+      </div>
+      <div class="min-w-0">
+        <h4 class="font-headline-sm text-xs font-semibold text-on-surface truncate">Station #04 • Pine Grove</h4>
+        <p class="font-label-sm text-[11px] text-secondary font-medium">Auto-dispenser Active</p>
+      </div>
+    </div>
+    <span class="text-[11px] font-semibold text-outline shrink-0">72% Full</span>
+  </div>
+  <div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+    <div class="bg-secondary h-full rounded-full w-[72%]"></div>
+  </div>
+</article></div>
+</aside>
+<!-- RIGHT MAIN MAP CANVAS (Full interactive cartographic view mimicking CheapFoodMap) -->
+<main class="flex-1 h-full relative overflow-hidden bg-surface-container-low">
+<!-- Vector Map Static Canvas -->
+<div class="w-full h-full bg-cover bg-center absolute inset-0 z-0 filter brightness-[0.98]" data-location="Oakwood Park, Seattle, WA" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCWIfqDmP-SLPmPoYMA8wgBAwWGFK4KaoqnyYTXsk2GMyCOg8kmpTEtTlP_Nf83e5bSMDXFn6i1WQcWEszAYXbQUFB6jzu5f0MBOtXnGBy05i6n0j8jNEi5lrGGtKVSalFQIZDSDaira8tv-960gt2Ur2aNjSjerTT5duNV3Z55cfIfvuDfpEcNmQyPKethZnXYw24YX6j2SxCxFPB5wWP3uvE1iYwZM5xbPgSDqIA0aOBrTPFsACXE')"></div>
+<!-- Subtle Ambient Map Shading Overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-dim/40 via-transparent to-surface/20 pointer-events-none z-[1]"></div>
+<!-- Top Floating Controls on Map -->
+<div class="absolute top-space-md left-space-md right-space-md z-10 flex items-center justify-between pointer-events-none">
+<!-- Floating Status Notification Pills -->
+<div class="pointer-events-auto flex items-center gap-2 bg-surface-bright/95 backdrop-blur-md px-3.5 py-2 rounded-full shadow-md">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Live Community Watch: 14 Volunteers Active</span>
+</div>
+<!-- Center on Location Button -->
+<div class="pointer-events-auto flex items-center gap-2">
+<button class="h-10 px-4 rounded-full bg-surface-bright/95 backdrop-blur-md shadow-md text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container transition-all active:scale-95" id="center-btn">
+<span class="material-symbols-outlined text-[18px] text-primary">my_location</span>
+<span class="hidden sm:inline">Center on Oakwood</span>
+</button>
+</div>
+</div>
+<!-- Map Zoom & Utility Stack (Bottom-Left / Right) -->
+<div class="absolute bottom-space-xl left-space-md z-10 flex flex-col gap-1.5 shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" title="Zoom In">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+<div class="w-full h-[1px] bg-surface-container-high"></div>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" title="Zoom Out">
+<span class="material-symbols-outlined text-[20px]">remove</span>
+</button>
+<div class="w-full h-[1px] bg-surface-container-high"></div>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" title="Layers">
+<span class="material-symbols-outlined text-[20px]">layers</span>
+</button>
+</div>
+<!-- MAP CLUSTERS (CheapFoodMap inspired numbers/badges) -->
+<!-- Cluster 1: Downtown North -->
+<div class="absolute top-[28%] left-[22%] z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+<div class="w-14 h-14 rounded-full bg-primary/80 group-hover:bg-primary transition-all duration-300 flex items-center justify-center shadow-lg group-hover:scale-110">
+<div class="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold">
+            14
+          </div>
+</div>
+<span class="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-sm text-on-surface font-label-sm text-[10px] px-2 py-0.5 rounded-full shadow-sm text-nowrap">
+          North Green
+        </span>
+</div>
+<!-- Cluster 2: Metro East -->
+<div class="absolute top-[35%] right-[28%] z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-primary/70 group-hover:bg-primary transition-all duration-300 flex items-center justify-center shadow-lg group-hover:scale-110">
+<div class="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-label-md text-label-md font-bold">
+            8
+          </div>
+</div>
+</div>
+<!-- Cluster 3: South Station -->
+<div class="absolute bottom-[24%] left-[45%] z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+<div class="w-16 h-16 rounded-full bg-primary/85 group-hover:bg-primary transition-all duration-300 flex items-center justify-center shadow-lg group-hover:scale-110">
+<div class="w-13 h-13 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold">
+            22
+          </div>
+</div>
+<span class="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-sm text-on-surface font-label-sm text-[10px] px-2 py-0.5 rounded-full shadow-sm text-nowrap">
+          South Basin
+        </span>
+</div>
+<!-- MAP PIN 2: Barnaby (Dog) -->
+<div class="absolute top-[62%] right-[38%] z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+<div class="relative">
+<div class="w-11 h-11 rounded-full bg-surface-bright shadow-lg p-0.5 flex items-center justify-center group-hover:scale-110 transition-transform">
+<div class="w-full h-full rounded-full overflow-hidden">
+<img alt="Barnaby pin" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Ui684xUTRuFWo4zh2nnCCjhZgfeEfu4JcsGD1nhL51P6rqnGDPA3A3dPSWCjgKDdT0ZIotRVjoPDhKgI6nK1hAW8o7SWuT7ArjzqZo1qBK3BGCBK_DvbBhrQlC1yNDAdr01nhcOFgwfr5uDeFRIA3DoSAn9xG2hqZuSRdLaW-VP9TJQGv15SLzPkNWRida57gPJPuI_3700ejHu58JbNVOp3MFWuKY8w9CvPr66l99fQssQkM0yRtT_kc">
+</div>
+</div>
+<!-- Safe badge -->
+<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-bold text-[9px] shadow-sm">
+            ✓
+          </span>
+<!-- Tooltip badge -->
+<div class="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-surface px-2 py-0.5 rounded-full shadow-md text-nowrap font-label-sm text-[11px] text-on-surface font-semibold flex items-center gap-1">
+<span class="">Barnaby</span>
+<span class="text-secondary font-bold">• Fed 40m</span>
+</div>
+</div>
+</div>
+<!-- MAP PIN 3: Luna (Cat) -->
+<div class="absolute top-[20%] right-[18%] z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+<div class="relative">
+<div class="w-10 h-10 rounded-full bg-surface-bright shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-[20px]">pets</span>
+</div>
+<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center text-[10px]">
+            💧
+          </span>
+<div class="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-surface px-2 py-0.5 rounded-full shadow-md text-nowrap font-label-sm text-[11px] text-on-surface font-semibold">
+            Luna • 1.2km
+          </div>
+</div>
+</div>
+<!-- MAP PIN 1: Milo (HIGHLIGHTED PIN with Popover Preview Card) -->
+<div class="absolute top-[48%] left-[52%] z-20 -translate-x-1/2 -translate-y-1/2">
+<!-- Animated pulsing aura for urgent animal -->
+<div class="absolute -inset-3 rounded-full bg-error/25 animate-ping pointer-events-none"></div>
+<!-- The Target Pin -->
+<div class="relative w-14 h-14 rounded-full bg-surface-bright shadow-xl p-1 flex items-center justify-center cursor-pointer transition-transform hover:scale-105">
+<div class="w-full h-full rounded-full overflow-hidden">
+<img alt="Milo active marker" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1WBPcGf3OtbHZub-gnpYp_zkTBhVC3QAGRDtu3d08bsR8OLwCx3BcxKRnqj20U58QDYhzKYN8ibbRVu77elwz2i5s8aI1YuctyYO7U2wdToM9-7VHZ_ZYqp5K56UTj_GbvpZjs-be5ocjtZ6VBk0mDEJWzld3kfohar4GRSkamu76NXKJDo-mVwIbYPii0DuE6aZEW9eYP9jaatOO_65FhPSthywo3jvplBs-BVuRt_2ZqvM7Z9Uwypy9M">
+</div>
+<!-- Urgent Red Alert Badge -->
+<div class="absolute -top-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-[10px] font-bold shadow-md flex items-center gap-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-bright animate-pulse"></span>
+            9h
+          </div>
+</div>
+<!-- FLOATING ANIMAL QUICK-PREVIEW OVERLAY (Anchored right above/beside Milo) -->
+<div class="absolute bottom-16 -left-32 sm:-left-36 w-72 sm:w-80 rounded-xl bg-surface-bright/95 backdrop-blur-xl shadow-2xl p-space-md flex flex-col gap-space-sm z-30 transition-all">
+<!-- Card Header with Close -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-error animate-ping"></span>
+<span class="font-label-sm text-label-sm text-error font-bold uppercase tracking-wider">Urgent Attention Needed</span>
+</div>
+<button class="w-6 h-6 rounded-full hover:bg-surface-container flex items-center justify-center text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<!-- Pet Info Snapshot -->
+<div class="flex items-center gap-space-sm">
+<img alt="Milo thumbnail" class="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1WBPcGf3OtbHZub-gnpYp_zkTBhVC3QAGRDtu3d08bsR8OLwCx3BcxKRnqj20U58QDYhzKYN8ibbRVu77elwz2i5s8aI1YuctyYO7U2wdToM9-7VHZ_ZYqp5K56UTj_GbvpZjs-be5ocjtZ6VBk0mDEJWzld3kfohar4GRSkamu76NXKJDo-mVwIbYPii0DuE6aZEW9eYP9jaatOO_65FhPSthywo3jvplBs-BVuRt_2ZqvM7Z9Uwypy9M">
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-headline-sm text-on-surface truncate leading-tight">Milo (Orange Tabby)</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">pin_drop</span>
+                Bench 4, West Rose Garden
+              </p>
+</div>
+</div>
+<!-- Status Meter Breakdown -->
+<div class="p-2 rounded-lg bg-surface-container flex flex-col gap-1.5">
+<div class="flex justify-between items-center font-label-sm text-label-sm">
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-error">restaurant</span> Food status:
+              </span>
+<span class="text-error font-bold">Needs kibble (9h ago)</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full rounded-full w-[20%]"></div>
+</div>
+<div class="flex justify-between items-center font-label-sm text-label-sm pt-1">
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-tertiary">water_drop</span> Water status:
+              </span>
+<span class="text-secondary font-semibold">Refilled 1h ago</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full rounded-full w-[85%]"></div>
+</div>
+</div>
+<!-- One-Tap Action Buttons -->
+<div class="grid grid-cols-2 gap-2 pt-1">
+<button class="h-10 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-1 shadow-sm hover:bg-primary-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">restaurant</span>
+<span class="">I Fed Him</span>
+</button>
+<button class="h-10 rounded-full bg-tertiary text-on-tertiary font-label-md text-label-md flex items-center justify-center gap-1 shadow-sm hover:bg-tertiary-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">water_drop</span>
+<span class="">I Gave Water</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Floating Action Button (FAB): Report a Stray in Bottom-Right (CheapFoodMap orange button placement) -->
+<div class="absolute bottom-space-lg right-space-md lg:right-space-xl z-20 flex items-center gap-space-sm">
+<a class="h-13 px-6 rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 shadow-xl hover:bg-primary-container hover:text-on-primary-container active:scale-95 transition-all" data-path="report-stray" href="#">
+<span class="material-symbols-outlined text-[24px]">add_circle</span>
+<span class="font-bold tracking-wide">+ Report a Stray</span>
+</a>
+</div>
+</main>
+</div>
+</div>
+<script>
+  // Simple client-side micro-interactions for responsiveness
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('sidebar-search');
+    if (searchInput) {
+      searchInput.addEventListener('focus', () => {
+        searchInput.classList.add('shadow-inner');
+      });
+      searchInput.addEventListener('blur', () => {
+        searchInput.classList.remove('shadow-inner');
+      });
+    }
+
+    const centerBtn = document.getElementById('center-btn');
+    if (centerBtn) {
+      centerBtn.addEventListener('click', () => {
+        centerBtn.classList.add('scale-95');
+        setTimeout(() => centerBtn.classList.remove('scale-95'), 150);
+      });
+    }
+  });
+</script></main><footer class="w-full bg-surface-container-low"><div class="w-full px-space-md lg:px-space-xl py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><img alt="Brand logo. - Primary color: #e06a3b - Font: plusJakartaSans - Mode: light - Roundness: rounded-full" class="h-6 w-auto object-contain opacity-80" src="https://lh3.googleusercontent.com/aida/AEtjO1UilTehtdqRn2AzXnLqlUtKK_iS4f6PB6t6816grXUQ9F75IgZ1exC87rgKV7aHRKU5mBFx_kliKAchG-6Lz7O1bxHJ3Z18b8et0twe9bBIDBOJkv_-vLdjynjqGKzHS0z7kFcQKhn0Rk4wqSUI-B3r5Y53INjMzDJ69VThJBliYRphdg5w3NsxTGd1nWZ6a47Aw1A6jlqpCklQTOBDKt7E-dvYmnlEGuU_VCtmVr0DD80BUwD_BK4PTFY"><p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 FeedAnAnimalMap. Grassroots stray animal welfare network.</p></div><div class="flex items-center gap-space-lg font-label-sm text-label-sm text-on-surface-variant"><a class="hover:text-primary transition-colors" data-path="about" href="#">About</a><a class="hover:text-primary transition-colors" data-path="city-directory" href="#">Cities</a><a class="hover:text-primary transition-colors" data-path="community-feed" href="#">Volunteer Guidelines</a><a class="hover:text-primary transition-colors" data-path="contact" href="#">Emergency Hotlines</a></div></div></footer>
+
+</body></html>

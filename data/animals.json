@@ -1,0 +1,2104 @@
+{
+  "meta": {
+    "version": 1,
+    "app": "FeedAnAnimalMap",
+    "city": "Seattle, WA",
+    "region": "Oakwood Park & West End",
+    "center": {
+      "lat": 47.671236,
+      "lng": -122.343184
+    },
+    "defaultZoom": 15,
+    "maxZoom": 20,
+    "volunteersActive": 14,
+    "generatedAt": "2026-09-28T10:05:00-07:00",
+    "timeModel": "relative",
+    "timeModelNote": "Every *MinutesAgo / *DaysAgo field is an offset from the moment the app loads, so this snapshot never goes stale. The app converts them to absolute ISO timestamps in memory and stores volunteer actions as absolute ISO timestamps.",
+    "needsHelpRule": "needsHelp = food or water is past the species \"okHours\" threshold, or health is \"treatment\" or \"critical\".",
+    "urgencyPolicy": {
+      "cat": {
+        "food": {
+          "okHours": 8,
+          "urgentHours": 14
+        },
+        "water": {
+          "okHours": 6,
+          "urgentHours": 10
+        }
+      },
+      "dog": {
+        "food": {
+          "okHours": 10,
+          "urgentHours": 16
+        },
+        "water": {
+          "okHours": 8,
+          "urgentHours": 12
+        }
+      },
+      "rabbit": {
+        "food": {
+          "okHours": 8,
+          "urgentHours": 14
+        },
+        "water": {
+          "okHours": 6,
+          "urgentHours": 10
+        }
+      },
+      "bird": {
+        "food": {
+          "okHours": 6,
+          "urgentHours": 12
+        },
+        "water": {
+          "okHours": 4,
+          "urgentHours": 8
+        }
+      },
+      "guinea-pig": {
+        "food": {
+          "okHours": 5,
+          "urgentHours": 10
+        },
+        "water": {
+          "okHours": 4,
+          "urgentHours": 8
+        }
+      },
+      "default": {
+        "food": {
+          "okHours": 8,
+          "urgentHours": 14
+        },
+        "water": {
+          "okHours": 6,
+          "urgentHours": 10
+        }
+      }
+    },
+    "activityKinds": [
+      "feed",
+      "water",
+      "report",
+      "rescue",
+      "medicine",
+      "station"
+    ],
+    "speciesCatalog": [
+      {
+        "id": "cat",
+        "label": "Cats",
+        "singular": "Cat",
+        "emoji": "🐱"
+      },
+      {
+        "id": "dog",
+        "label": "Dogs",
+        "singular": "Dog",
+        "emoji": "🐶"
+      },
+      {
+        "id": "rabbit",
+        "label": "Rabbits",
+        "singular": "Rabbit",
+        "emoji": "🐰"
+      },
+      {
+        "id": "bird",
+        "label": "Birds",
+        "singular": "Bird",
+        "emoji": "🐦"
+      },
+      {
+        "id": "guinea-pig",
+        "label": "Guinea pigs",
+        "singular": "Guinea pig",
+        "emoji": "🐹"
+      }
+    ],
+    "tileLayers": [
+      {
+        "id": "light",
+        "label": "Light",
+        "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"https://carto.com/attributions\">CARTO</a>",
+        "subdomains": "abcd",
+        "maxZoom": 20
+      },
+      {
+        "id": "streets",
+        "label": "Streets",
+        "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
+        "subdomains": "",
+        "maxZoom": 19
+      },
+      {
+        "id": "google-streets",
+        "label": "Google Streets",
+        "url": "https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+        "attribution": "Map data &copy; Google",
+        "subdomains": "mt0,mt1,mt2,mt3",
+        "maxZoom": 20
+      },
+      {
+        "id": "google-satellite",
+        "label": "Google Satellite",
+        "url": "https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}",
+        "attribution": "Imagery &copy; Google, Maxar, Earthstar Geographics",
+        "subdomains": "mt0,mt1,mt2,mt3",
+        "maxZoom": 20
+      }
+    ]
+  },
+  "stations": [
+    {
+      "id": "station-01",
+      "name": "Station #01 - Riverside",
+      "ref": "Riverside Path, marker 7",
+      "type": "mixed",
+      "status": "Volunteer run",
+      "capacityPct": 58,
+      "caretaker": "Alex R.",
+      "notes": "Two dry bowls and one raised water trough.",
+      "lastServicedMinutesAgo": 420,
+      "location": {
+        "label": "Riverside Path, marker 7",
+        "area": "Riverside",
+        "lat": 47.669083,
+        "lng": -122.334399
+      }
+    },
+    {
+      "id": "station-02",
+      "name": "Station #02 - North Green",
+      "ref": "North gate, North Green",
+      "type": "dry-food",
+      "status": "Volunteer run",
+      "capacityPct": 64,
+      "caretaker": "Dana K.",
+      "notes": "Behind the gate so dogs cannot knock it over.",
+      "lastServicedMinutesAgo": 900,
+      "location": {
+        "label": "North gate, North Green",
+        "area": "North Green",
+        "lat": 47.675361,
+        "lng": -122.338894
+      }
+    },
+    {
+      "id": "station-03",
+      "name": "Station #03 - Market Alley",
+      "ref": "Produce stall corner, Market Alley",
+      "type": "wet-food",
+      "status": "Refill due",
+      "capacityPct": 45,
+      "caretaker": "Marcus L.",
+      "notes": "Wet food only - dry food attracts rats to the stalls.",
+      "lastServicedMinutesAgo": 1500,
+      "location": {
+        "label": "Produce stall corner, Market Alley",
+        "area": "Market Alley",
+        "lat": 47.666173,
+        "lng": -122.338844
+      }
+    },
+    {
+      "id": "station-04",
+      "name": "Station #04 - Pine Grove",
+      "ref": "Feeding station 4, Pine Grove",
+      "type": "auto-dispenser",
+      "status": "Auto-dispenser active",
+      "capacityPct": 72,
+      "caretaker": "Priya N.",
+      "notes": "Solar dispenser, refill every 48 hours.",
+      "lastServicedMinutesAgo": 180,
+      "location": {
+        "label": "Feeding station 4, Pine Grove",
+        "area": "Pine Grove",
+        "lat": 47.673484,
+        "lng": -122.337401
+      }
+    },
+    {
+      "id": "station-05",
+      "name": "Station #05 - South Basin",
+      "ref": "Basin benches, South Basin",
+      "type": "water",
+      "status": "Refill due",
+      "capacityPct": 38,
+      "caretaker": "Sam O.",
+      "notes": "Water only. Otis and Moose rely on this one.",
+      "lastServicedMinutesAgo": 1980,
+      "location": {
+        "label": "Basin benches, South Basin",
+        "area": "South Basin",
+        "lat": 47.662785,
+        "lng": -122.347751
+      }
+    },
+    {
+      "id": "station-06",
+      "name": "Station #06 - Old Bandstand",
+      "ref": "Stage doors, Old Bandstand",
+      "type": "mixed",
+      "status": "Volunteer run",
+      "capacityPct": 81,
+      "caretaker": "Jordan T.",
+      "notes": "Dry food plus a water cooler for the meadow dogs.",
+      "lastServicedMinutesAgo": 240,
+      "location": {
+        "label": "Stage doors, Old Bandstand",
+        "area": "Old Bandstand",
+        "lat": 47.676747,
+        "lng": -122.336316
+      }
+    }
+  ],
+  "animals": [
+    {
+      "id": "milo",
+      "name": "Milo",
+      "species": "cat",
+      "breed": "Orange Tabby",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Ginger with white mittens",
+      "description": "Friendly ginger with white mittens who sleeps on the warm bench cushions.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Alex R.",
+        "Priya N."
+      ],
+      "tags": [
+        "bench-sleeper",
+        "hand-fed"
+      ],
+      "notes": "Follows you to the kiosk if you shake a treat bag. Prefers wet food in cold weather.",
+      "photoUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WBPcGf3OtbHZub-gnpYp_zkTBhVC3QAGRDtu3d08bsR8OLwCx3BcxKRnqj20U58QDYhzKYN8ibbRVu77elwz2i5s8aI1YuctyYO7U2wdToM9-7VHZ_ZYqp5K56UTj_GbvpZjs-be5ocjtZ6VBk0mDEJWzld3kfohar4GRSkamu76NXKJDo-mVwIbYPii0DuE6aZEW9eYP9jaatOO_65FhPSthywo3jvplBs-BVuRt_2ZqvM7Z9Uwypy9M",
+      "stationId": "station-01",
+      "location": {
+        "label": "Bench 4, West Rose Garden",
+        "area": "West Rose Garden",
+        "lat": 47.671126,
+        "lng": -122.338513
+      },
+      "reportedDaysAgo": 38,
+      "lastFedMinutesAgo": 540,
+      "lastWateredMinutesAgo": 60,
+      "feedCount": 412,
+      "waterCount": 268
+    },
+    {
+      "id": "luna",
+      "name": "Luna",
+      "species": "cat",
+      "breed": "Domestic Shorthair (Tuxedo)",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Tuxedo black with a white bib",
+      "description": "Shy tuxedo girl who watches the duck pond from the old stone wall.",
+      "temperament": "shy",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": true,
+      "caretakers": [
+        "Dana K."
+      ],
+      "tags": [
+        "pond-watcher",
+        "dusk-only"
+      ],
+      "notes": "Only comes out after dusk. Leave the bowl on the wall, never on the grass.",
+      "photoUrl": "https://lh3.googleusercontent.com/aida-public/AB6AXuAjOZQR94r3-lF3yQjIPu04vWD3lT-9pWul5nPIE3Ihu3X7Mkut76EtygvW243ubONMjDVF2AS88BF5nuzP9HcDQuyc_iJT0YbUvCVp_33bqed6YMK6-FQN_McP3lonsjfdAXZMTGufxdPo-GFah0bOjlj5Tna9L-Mh7hGY-jPraejqMegPdGi8OGpmy87OoVyoocf70hBiBqr4-N4zDs7tr1D4iqP41_jehAG_K5ggPZztx97aiSmj",
+      "stationId": "station-02",
+      "location": {
+        "label": "Stone wall by the duck pond",
+        "area": "North Green",
+        "lat": 47.678866,
+        "lng": -122.33185
+      },
+      "reportedDaysAgo": 61,
+      "lastFedMinutesAgo": 120,
+      "lastWateredMinutesAgo": 420,
+      "feedCount": 197,
+      "waterCount": 96
+    },
+    {
+      "id": "clementine",
+      "name": "Clementine",
+      "species": "cat",
+      "breed": "Calico",
+      "sex": "female",
+      "ageClass": "senior",
+      "color": "Calico with a notch in her left ear",
+      "description": "Senior calico who lived at the market long before anyone kept records.",
+      "temperament": "cautious",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L.",
+        "Sam O."
+      ],
+      "tags": [
+        "senior",
+        "market-veteran"
+      ],
+      "notes": "Needs soft food and a warm crate below 8 degrees. Kindest cat on the block.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Crate behind the produce stalls",
+        "area": "Market Alley",
+        "lat": 47.666251,
+        "lng": -122.338911
+      },
+      "reportedDaysAgo": 214,
+      "lastFedMinutesAgo": 500,
+      "lastWateredMinutesAgo": 90,
+      "feedCount": 531,
+      "waterCount": 480
+    },
+    {
+      "id": "pepper",
+      "name": "Pepper",
+      "species": "cat",
+      "breed": "Bombay",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Glossy black with copper eyes",
+      "description": "Confident jet-black cat who patrols the community garden rows.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N."
+      ],
+      "tags": [
+        "garden-guard"
+      ],
+      "notes": "Loves feather toys. Will trade headbutts for food.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Raised bed 12, Community Garden",
+        "area": "Community Garden",
+        "lat": 47.672651,
+        "lng": -122.337411
+      },
+      "reportedDaysAgo": 52,
+      "lastFedMinutesAgo": 180,
+      "lastWateredMinutesAgo": 120,
+      "feedCount": 288,
+      "waterCount": 240
+    },
+    {
+      "id": "biscuit",
+      "name": "Biscuit",
+      "species": "cat",
+      "breed": "Cream Tabby",
+      "sex": "male",
+      "ageClass": "young",
+      "color": "Pale cream with faint stripes",
+      "description": "Young tabby who follows the school run and asks every child for a snack.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T."
+      ],
+      "tags": [
+        "school-run",
+        "beggar"
+      ],
+      "notes": "Very busy between 08:00 and 09:00. Feed on the library steps only.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Bottom step, Oakwood Library",
+        "area": "Library Steps",
+        "lat": 47.67581,
+        "lng": -122.34174
+      },
+      "reportedDaysAgo": 27,
+      "lastFedMinutesAgo": 240,
+      "lastWateredMinutesAgo": 180,
+      "feedCount": 163,
+      "waterCount": 141
+    },
+    {
+      "id": "mochi",
+      "name": "Mochi",
+      "species": "cat",
+      "breed": "Siamese Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Seal point with bright blue eyes",
+      "description": "Talkative seal-point mix who announces every walker on the riverside path.",
+      "temperament": "vocal",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": true,
+      "caretakers": [
+        "Yuki M."
+      ],
+      "tags": [
+        "talkative",
+        "river"
+      ],
+      "notes": "Chatty. One scoop is enough - two other volunteers already feed him.",
+      "photoUrl": null,
+      "stationId": "station-01",
+      "location": {
+        "label": "Marker 7, Riverside Path",
+        "area": "Riverside Path",
+        "lat": 47.667942,
+        "lng": -122.333987
+      },
+      "reportedDaysAgo": 44,
+      "lastFedMinutesAgo": 150,
+      "lastWateredMinutesAgo": 150,
+      "feedCount": 402,
+      "waterCount": 366
+    },
+    {
+      "id": "sable",
+      "name": "Sable",
+      "species": "cat",
+      "breed": "Black Domestic Shorthair",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Solid black, one white whisker patch",
+      "description": "Quiet black cat sheltering under the canal bridge arches.",
+      "temperament": "shy",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L."
+      ],
+      "tags": [
+        "under-bridge",
+        "skittish"
+      ],
+      "notes": "Dehydrates fast in dry weather - check the water bowl twice a day.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Arch 2, Canal Bridge",
+        "area": "Canal Bridge",
+        "lat": 47.663248,
+        "lng": -122.348714
+      },
+      "reportedDaysAgo": 33,
+      "lastFedMinutesAgo": 200,
+      "lastWateredMinutesAgo": 380,
+      "feedCount": 121,
+      "waterCount": 88
+    },
+    {
+      "id": "nutmeg",
+      "name": "Nutmeg",
+      "species": "cat",
+      "breed": "Brown Tabby",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Brown tabby with a raccoon-striped tail",
+      "description": "Bold tabby who has claimed the boathouse roof as her sunbed.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Sam O.",
+        "Dana K."
+      ],
+      "tags": [
+        "boathouse",
+        "sunbather"
+      ],
+      "notes": "Climbs the fishing netting to reach the roof. Do not startle her up high.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Roof edge, Oakwood Boat House",
+        "area": "Boat House",
+        "lat": 47.666867,
+        "lng": -122.361003
+      },
+      "reportedDaysAgo": 76,
+      "lastFedMinutesAgo": 90,
+      "lastWateredMinutesAgo": 90,
+      "feedCount": 233,
+      "waterCount": 210
+    },
+    {
+      "id": "tiger",
+      "name": "Tiger",
+      "species": "cat",
+      "breed": "Orange Tabby",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Deep orange with dark banding",
+      "description": "Big orange tom limping since Friday - injured front left leg, needs a vet check.",
+      "temperament": "cautious",
+      "health": "critical",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T.",
+        "Alex R."
+      ],
+      "tags": [
+        "injured",
+        "vet-needed"
+      ],
+      "notes": "Do not handle the leg. Trap appointment booked, keep him calm and fed in the meantime.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Under the pier planks",
+        "area": "South Basin",
+        "lat": 47.661937,
+        "lng": -122.345619
+      },
+      "reportedDaysAgo": 92,
+      "lastFedMinutesAgo": 900,
+      "lastWateredMinutesAgo": 150,
+      "feedCount": 176,
+      "waterCount": 154
+    },
+    {
+      "id": "hazel",
+      "name": "Hazel",
+      "species": "cat",
+      "breed": "Grey & White Shorthair",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Silver grey with white paws",
+      "description": "Gentle grey-and-white girl who waits by the north gate every morning.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N."
+      ],
+      "tags": [
+        "gate-waiter"
+      ],
+      "notes": "Polite. Sits and waits instead of meowing.",
+      "photoUrl": null,
+      "stationId": "station-02",
+      "location": {
+        "label": "North gate post, North Green",
+        "area": "North Green",
+        "lat": 47.675909,
+        "lng": -122.339177
+      },
+      "reportedDaysAgo": 58,
+      "lastFedMinutesAgo": 300,
+      "lastWateredMinutesAgo": 240,
+      "feedCount": 349,
+      "waterCount": 312
+    },
+    {
+      "id": "olive",
+      "name": "Olive",
+      "species": "cat",
+      "breed": "Russian Blue Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Slate grey with green eyes",
+      "description": "Elegant grey cat who keeps to the long grass at the east meadow edge.",
+      "temperament": "shy",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Dana K."
+      ],
+      "tags": [
+        "long-grass"
+      ],
+      "notes": "Rarely seen before noon.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Fence line, East Meadow",
+        "area": "East Meadow",
+        "lat": 47.675193,
+        "lng": -122.333005
+      },
+      "reportedDaysAgo": 71,
+      "lastFedMinutesAgo": 210,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 268,
+      "waterCount": 244
+    },
+    {
+      "id": "dusty",
+      "name": "Dusty",
+      "species": "cat",
+      "breed": "Grey Longhair",
+      "sex": "male",
+      "ageClass": "senior",
+      "color": "Dusty grey, matted winter coat",
+      "description": "Shaggy senior longhair who naps in the wheelbarrow by the tool shed.",
+      "temperament": "cautious",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Sam O."
+      ],
+      "tags": [
+        "senior",
+        "shaggy"
+      ],
+      "notes": "Coat needs brushing - he tolerates it after food.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Wheelbarrow, tool shed",
+        "area": "East Meadow",
+        "lat": 47.6734,
+        "lng": -122.331186
+      },
+      "reportedDaysAgo": 148,
+      "lastFedMinutesAgo": 360,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 302,
+      "waterCount": 281
+    },
+    {
+      "id": "jasmine",
+      "name": "Jasmine",
+      "species": "cat",
+      "breed": "Turkish Van Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "White with ginger patches",
+      "description": "Bright white cat with ginger patches who owns the hilltop steps.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Yuki M."
+      ],
+      "tags": [
+        "hilltop"
+      ],
+      "notes": "Comes running when you call her name.",
+      "photoUrl": null,
+      "stationId": "station-02",
+      "location": {
+        "label": "Top landing, Hilltop Steps",
+        "area": "Hilltop Steps",
+        "lat": 47.680192,
+        "lng": -122.350865
+      },
+      "reportedDaysAgo": 66,
+      "lastFedMinutesAgo": 420,
+      "lastWateredMinutesAgo": 270,
+      "feedCount": 219,
+      "waterCount": 198
+    },
+    {
+      "id": "pixel",
+      "name": "Pixel",
+      "species": "cat",
+      "breed": "Grey Tabby",
+      "sex": "male",
+      "ageClass": "young",
+      "color": "Steel grey tabby with a kinked tail",
+      "description": "Skittish young tabby living behind the old bandstand, always hungry.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L."
+      ],
+      "tags": [
+        "bandstand",
+        "kinked-tail"
+      ],
+      "notes": "Bolts if two people approach at once. Feed alone and step back.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Under the stage, Old Bandstand",
+        "area": "Old Bandstand",
+        "lat": 47.676058,
+        "lng": -122.337174
+      },
+      "reportedDaysAgo": 19,
+      "lastFedMinutesAgo": 570,
+      "lastWateredMinutesAgo": 240,
+      "feedCount": 88,
+      "waterCount": 84
+    },
+    {
+      "id": "waffle",
+      "name": "Waffle",
+      "species": "cat",
+      "breed": "Orange & White Shorthair",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Orange with a white chest",
+      "description": "Cheerful orange boy who greets the ferry crowds at the landing.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Alex R."
+      ],
+      "tags": [
+        "ferry",
+        "crowd-lover"
+      ],
+      "notes": "Watch the crowds - he naps right on the gangway.",
+      "photoUrl": null,
+      "stationId": "station-01",
+      "location": {
+        "label": "Bench 2, Ferry Landing",
+        "area": "Ferry Landing",
+        "lat": 47.666313,
+        "lng": -122.363262
+      },
+      "reportedDaysAgo": 83,
+      "lastFedMinutesAgo": 330,
+      "lastWateredMinutesAgo": 180,
+      "feedCount": 411,
+      "waterCount": 388
+    },
+    {
+      "id": "clover",
+      "name": "Clover",
+      "species": "cat",
+      "breed": "Tortoiseshell",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Mottled tortoiseshell with amber eyes",
+      "description": "Tortoiseshell who guards the compost corner of the community garden.",
+      "temperament": "cautious",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N."
+      ],
+      "tags": [
+        "garden",
+        "compost-corner"
+      ],
+      "notes": "Hisses at dogs but never at people.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Compost corner, Community Garden",
+        "area": "Community Garden",
+        "lat": 47.671628,
+        "lng": -122.336532
+      },
+      "reportedDaysAgo": 48,
+      "lastFedMinutesAgo": 270,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 254,
+      "waterCount": 233
+    },
+    {
+      "id": "marmalade",
+      "name": "Marmalade",
+      "species": "cat",
+      "breed": "Orange Domestic Longhair",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Deep marmalade orange",
+      "description": "Enormous marmalade tom who holds court outside the bakery.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L.",
+        "Yuki M."
+      ],
+      "tags": [
+        "bakery",
+        "gentle-giant"
+      ],
+      "notes": "Friendly but heavy - do not pick him up.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Bakery doorway, Market Alley",
+        "area": "Market Alley",
+        "lat": 47.665658,
+        "lng": -122.34017
+      },
+      "reportedDaysAgo": 103,
+      "lastFedMinutesAgo": 450,
+      "lastWateredMinutesAgo": 330,
+      "feedCount": 388,
+      "waterCount": 351
+    },
+    {
+      "id": "shadow",
+      "name": "Shadow",
+      "species": "cat",
+      "breed": "Black Domestic Shorthair",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Jet black, amber eyes",
+      "description": "Nocturnal black cat who lives under the depot platform ramp.",
+      "temperament": "shy",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T."
+      ],
+      "tags": [
+        "nocturnal",
+        "depot"
+      ],
+      "notes": "Reflective collar helps with visibility near the tracks.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Under the platform ramp, Depot",
+        "area": "Oakwood Depot",
+        "lat": 47.682442,
+        "lng": -122.338724
+      },
+      "reportedDaysAgo": 122,
+      "lastFedMinutesAgo": 200,
+      "lastWateredMinutesAgo": 210,
+      "feedCount": 176,
+      "waterCount": 168
+    },
+    {
+      "id": "sunny",
+      "name": "Sunny",
+      "species": "cat",
+      "breed": "Ginger & White Shorthair",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Pale ginger with white bib",
+      "description": "Sun-loving ginger who stretches out on the bandstand steps.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Sam O."
+      ],
+      "tags": [
+        "sunbather",
+        "bandstand"
+      ],
+      "notes": "Loves a chin scratch, will follow you home if allowed.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Front steps, Old Bandstand",
+        "area": "Old Bandstand",
+        "lat": 47.676835,
+        "lng": -122.337362
+      },
+      "reportedDaysAgo": 57,
+      "lastFedMinutesAgo": 390,
+      "lastWateredMinutesAgo": 240,
+      "feedCount": 297,
+      "waterCount": 275
+    },
+    {
+      "id": "poppy",
+      "name": "Poppy",
+      "species": "cat",
+      "breed": "Black & White Shorthair",
+      "sex": "female",
+      "ageClass": "young",
+      "color": "Black with white socks",
+      "description": "Playful youngster who chases leaves along the playground fence.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Dana K."
+      ],
+      "tags": [
+        "playground",
+        "kitten-at-heart"
+      ],
+      "notes": "High energy. Wand toys keep her out of the road.",
+      "photoUrl": null,
+      "stationId": "station-02",
+      "location": {
+        "label": "Playground fence line",
+        "area": "Playground",
+        "lat": 47.678166,
+        "lng": -122.339438
+      },
+      "reportedDaysAgo": 24,
+      "lastFedMinutesAgo": 300,
+      "lastWateredMinutesAgo": 150,
+      "feedCount": 142,
+      "waterCount": 138
+    },
+    {
+      "id": "tofu",
+      "name": "Tofu",
+      "species": "cat",
+      "breed": "White Domestic Shorthair",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Snow white with odd eyes",
+      "description": "Deaf white cat who reads hand signals and follows the kiosk queue.",
+      "temperament": "friendly",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": true,
+      "caretakers": [
+        "Yuki M."
+      ],
+      "tags": [
+        "deaf",
+        "hand-signals"
+      ],
+      "notes": "Deaf - approach from the front so he sees you coming.",
+      "photoUrl": null,
+      "stationId": "station-01",
+      "location": {
+        "label": "Kiosk queue line, West Trail",
+        "area": "West Trail",
+        "lat": 47.670596,
+        "lng": -122.337792
+      },
+      "reportedDaysAgo": 129,
+      "lastFedMinutesAgo": 180,
+      "lastWateredMinutesAgo": 200,
+      "feedCount": 336,
+      "waterCount": 318
+    },
+    {
+      "id": "ziggy",
+      "name": "Ziggy",
+      "species": "cat",
+      "breed": "Bengal Mix",
+      "sex": "male",
+      "ageClass": "young",
+      "color": "Spotted brown rosettes",
+      "description": "Wild-looking Bengal mix who treats every tree as a ladder.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T."
+      ],
+      "tags": [
+        "tree-climber",
+        "bengal"
+      ],
+      "notes": "Stays high when startled - food on the branch stump works.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Branch stump, Pine Grove",
+        "area": "Pine Grove",
+        "lat": 47.674124,
+        "lng": -122.337057
+      },
+      "reportedDaysAgo": 41,
+      "lastFedMinutesAgo": 240,
+      "lastWateredMinutesAgo": 210,
+      "feedCount": 187,
+      "waterCount": 174
+    },
+    {
+      "id": "maple",
+      "name": "Maple",
+      "species": "cat",
+      "breed": "Maine Coon Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Long red-brown coat with a bushy tail",
+      "description": "Fluffy giant who sleeps in the maple shade by the picnic tables.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Alex R."
+      ],
+      "tags": [
+        "fluffy",
+        "picnic-tables"
+      ],
+      "notes": "Big appetite - double portions agreed with the station volunteers.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Picnic table 3, Picnic Grove",
+        "area": "Picnic Grove",
+        "lat": 47.673554,
+        "lng": -122.3358
+      },
+      "reportedDaysAgo": 118,
+      "lastFedMinutesAgo": 300,
+      "lastWateredMinutesAgo": 180,
+      "feedCount": 421,
+      "waterCount": 396
+    },
+    {
+      "id": "bandit",
+      "name": "Bandit",
+      "species": "cat",
+      "breed": "Grey Tabby",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Grey tabby with a black mask patch",
+      "description": "Masked tabby who raids the recycling bins at the depot at dawn.",
+      "temperament": "cautious",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L."
+      ],
+      "tags": [
+        "opportunist",
+        "depot"
+      ],
+      "notes": "Keep lids on the bins or he will scatter everything.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Recycling bay, Depot",
+        "area": "Oakwood Depot",
+        "lat": 47.683241,
+        "lng": -122.341624
+      },
+      "reportedDaysAgo": 87,
+      "lastFedMinutesAgo": 330,
+      "lastWateredMinutesAgo": 270,
+      "feedCount": 158,
+      "waterCount": 149
+    },
+    {
+      "id": "willow",
+      "name": "Willow",
+      "species": "cat",
+      "breed": "Grey & White Persian Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Smoke grey with white chin",
+      "description": "Soft-voiced persian mix who lives beneath the weeping willow by the canal.",
+      "temperament": "shy",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Dana K.",
+        "Sam O."
+      ],
+      "tags": [
+        "willow",
+        "flat-face"
+      ],
+      "notes": "Flat-faced - wipe her eyes weekly and use shallow bowls.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Under the willow, Canal Path",
+        "area": "Canal Bridge",
+        "lat": 47.662985,
+        "lng": -122.351762
+      },
+      "reportedDaysAgo": 95,
+      "lastFedMinutesAgo": 240,
+      "lastWateredMinutesAgo": 240,
+      "feedCount": 289,
+      "waterCount": 271
+    },
+    {
+      "id": "tux",
+      "name": "Tux",
+      "species": "cat",
+      "breed": "Tuxedo Shorthair",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Black with white gloves",
+      "description": "Dapper tuxedo boy who poses on the market crates like he owns them.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N."
+      ],
+      "tags": [
+        "tuxedo",
+        "poser"
+      ],
+      "notes": "Loves being photographed, tolerates gentle handling.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Crate stack, Market Alley",
+        "area": "Market Alley",
+        "lat": 47.666153,
+        "lng": -122.337899
+      },
+      "reportedDaysAgo": 69,
+      "lastFedMinutesAgo": 360,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 243,
+      "waterCount": 226
+    },
+    {
+      "id": "cinnamon",
+      "name": "Cinnamon",
+      "species": "cat",
+      "breed": "Cinnamon Tabby",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Warm cinnamon brown with cream belly",
+      "description": "Soft cinnamon tabby who hides behind the market flower stall.",
+      "temperament": "shy",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L."
+      ],
+      "tags": [
+        "flower-stall",
+        "soft-coat"
+      ],
+      "notes": "Sneezes in pollen season - keep her away from the lilies.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Behind the flower stall, Market Alley",
+        "area": "Market Alley",
+        "lat": 47.665531,
+        "lng": -122.339234
+      },
+      "reportedDaysAgo": 74,
+      "lastFedMinutesAgo": 420,
+      "lastWateredMinutesAgo": 330,
+      "feedCount": 205,
+      "waterCount": 191
+    },
+    {
+      "id": "sage",
+      "name": "Sage",
+      "species": "cat",
+      "breed": "Silver Shorthair",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Pale sage-grey with pale green eyes",
+      "description": "Quiet silver cat often mistaken for a garden statue in the herb beds.",
+      "temperament": "cautious",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Dana K."
+      ],
+      "tags": [
+        "herb-beds",
+        "still-as-a-statue"
+      ],
+      "notes": "Does not mind being near people, just keeps her distance politely.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Herb bed 4, Community Garden",
+        "area": "Community Garden",
+        "lat": 47.67082,
+        "lng": -122.336133
+      },
+      "reportedDaysAgo": 39,
+      "lastFedMinutesAgo": 150,
+      "lastWateredMinutesAgo": 120,
+      "feedCount": 217,
+      "waterCount": 204
+    },
+    {
+      "id": "barnaby",
+      "name": "Barnaby",
+      "species": "dog",
+      "breed": "Jack Russell Terrier Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Golden tan, wiry coat",
+      "description": "Calm older terrier who waits calmly at the west gate for his walkers.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Alex R."
+      ],
+      "tags": [
+        "red-collar",
+        "calm"
+      ],
+      "notes": "Wears an old red fabric collar. Waits at the gate instead of following people.",
+      "photoUrl": "https://lh3.googleusercontent.com/aida/AEtjO1Ui684xUTRuFWo4zh2nnCCjhZgfeEfu4JcsGD1nhL51P6rqnGDPA3A3dPSWCjgKDdT0ZIotRVjoPDhKgI6nK1hAW8o7SWuT7ArjzqZo1qBK3BGCBK_DvbBhrQlC1yNDAdr01nhcOFgwfr5uDeFRIA3DoSAn9xG2hqZuSRdLaW-VP9TJQGv15SLzPkNWRida57gPJPuI_3700ejHu58JbNVOp3MFWuKY8w9CvPr66l99fQssQkM0yRtT_kc",
+      "stationId": "station-01",
+      "location": {
+        "label": "Oakwood Park West Trail",
+        "area": "West Trail",
+        "lat": 47.67562,
+        "lng": -122.352484
+      },
+      "reportedDaysAgo": 26,
+      "lastFedMinutesAgo": 40,
+      "lastWateredMinutesAgo": 120,
+      "feedCount": 356,
+      "waterCount": 322
+    },
+    {
+      "id": "rufus",
+      "name": "Rufus",
+      "species": "dog",
+      "breed": "Labrador Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Rich chocolate brown",
+      "description": "Hungry chocolate lab who patrols the north fence line every morning.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L.",
+        "Sam O."
+      ],
+      "tags": [
+        "food-motivated",
+        "fence-line"
+      ],
+      "notes": "Very food motivated. Two scoops max - he will act like he has never eaten.",
+      "photoUrl": null,
+      "stationId": "station-02",
+      "location": {
+        "label": "North fence line, North Green",
+        "area": "North Green",
+        "lat": 47.676438,
+        "lng": -122.352393
+      },
+      "reportedDaysAgo": 111,
+      "lastFedMinutesAgo": 660,
+      "lastWateredMinutesAgo": 180,
+      "feedCount": 402,
+      "waterCount": 366
+    },
+    {
+      "id": "juno",
+      "name": "Juno",
+      "species": "dog",
+      "breed": "German Shepherd Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Black and tan saddle",
+      "description": "Alert shepherd mix who guards the bandstand stage doors.",
+      "temperament": "protective",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T."
+      ],
+      "tags": [
+        "guard",
+        "shepherd"
+      ],
+      "notes": "Barks at cyclists. Approach slowly and let her sniff your hand first.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Stage doors, Old Bandstand",
+        "area": "Old Bandstand",
+        "lat": 47.673577,
+        "lng": -122.323455
+      },
+      "reportedDaysAgo": 133,
+      "lastFedMinutesAgo": 300,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 288,
+      "waterCount": 271
+    },
+    {
+      "id": "baxter",
+      "name": "Baxter",
+      "species": "dog",
+      "breed": "Beagle",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Tricolour with a white blaze",
+      "description": "Nose-down beagle who works the picnic tables for leftovers.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N."
+      ],
+      "tags": [
+        "nose-down",
+        "picnic"
+      ],
+      "notes": "Follows his nose into the picnic area - use small, frequent portions.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Picnic Grove entrance",
+        "area": "Picnic Grove",
+        "lat": 47.674531,
+        "lng": -122.337352
+      },
+      "reportedDaysAgo": 47,
+      "lastFedMinutesAgo": 420,
+      "lastWateredMinutesAgo": 360,
+      "feedCount": 312,
+      "waterCount": 297
+    },
+    {
+      "id": "nala",
+      "name": "Nala",
+      "species": "dog",
+      "breed": "Siberian Husky Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Grey and white with ice-blue eyes",
+      "description": "Husky mix on a skin treatment plan, waiting for a foster placement.",
+      "temperament": "shy",
+      "health": "treatment",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": true,
+      "caretakers": [
+        "Dana K.",
+        "Yuki M."
+      ],
+      "tags": [
+        "husky",
+        "skin-treatment",
+        "foster-needed"
+      ],
+      "notes": "Medicated rinse every 10 days. Never let her drink from the duck pond.",
+      "photoUrl": null,
+      "stationId": "station-02",
+      "location": {
+        "label": "Ranger hut steps, North Green",
+        "area": "North Green",
+        "lat": 47.681424,
+        "lng": -122.336127
+      },
+      "reportedDaysAgo": 78,
+      "lastFedMinutesAgo": 240,
+      "lastWateredMinutesAgo": 600,
+      "feedCount": 231,
+      "waterCount": 288
+    },
+    {
+      "id": "otis",
+      "name": "Otis",
+      "species": "dog",
+      "breed": "Basset Hound",
+      "sex": "male",
+      "ageClass": "senior",
+      "color": "Tan and white, long droopy ears",
+      "description": "Slow-moving senior hound who naps in the shade of the basin benches.",
+      "temperament": "cautious",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Sam O."
+      ],
+      "tags": [
+        "senior",
+        "hound",
+        "slow-walker"
+      ],
+      "notes": "Short walks only. He drinks more than he eats, so the basin bowl matters most.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Shade bench 1, South Basin",
+        "area": "South Basin",
+        "lat": 47.661264,
+        "lng": -122.348573
+      },
+      "reportedDaysAgo": 156,
+      "lastFedMinutesAgo": 300,
+      "lastWateredMinutesAgo": 540,
+      "feedCount": 264,
+      "waterCount": 172
+    },
+    {
+      "id": "winnie",
+      "name": "Winnie",
+      "species": "dog",
+      "breed": "Corgi Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Red and white with a fluffy rump",
+      "description": "Short-legged corgi mix who herds the pigeons away from the feeding station.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N.",
+        "Alex R."
+      ],
+      "tags": [
+        "short-legs",
+        "pigeon-patrol"
+      ],
+      "notes": "Guards the station bowl - feed her first and she will let the others eat.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Feeding station 4, Pine Grove",
+        "area": "Pine Grove",
+        "lat": 47.672235,
+        "lng": -122.334766
+      },
+      "reportedDaysAgo": 63,
+      "lastFedMinutesAgo": 720,
+      "lastWateredMinutesAgo": 240,
+      "feedCount": 298,
+      "waterCount": 275
+    },
+    {
+      "id": "bruno",
+      "name": "Bruno",
+      "species": "dog",
+      "breed": "Rottweiler Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Black and tan with a broad chest",
+      "description": "Gentle giant living in the builders yard behind the depot fence.",
+      "temperament": "protective",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L.",
+        "Jordan T."
+      ],
+      "tags": [
+        "big-dog",
+        "yard-dog"
+      ],
+      "notes": "Gentle with known volunteers, needs a calm voice and no sudden moves.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Builders yard, Depot fence",
+        "area": "Oakwood Depot",
+        "lat": 47.66187,
+        "lng": -122.359755
+      },
+      "reportedDaysAgo": 143,
+      "lastFedMinutesAgo": 300,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 246,
+      "waterCount": 233
+    },
+    {
+      "id": "sadie",
+      "name": "Sadie",
+      "species": "dog",
+      "breed": "Border Collie Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Black and white with a split face",
+      "description": "Toy-obsessed collie mix who will trade a fetch game for dinner.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T.",
+        "Dana K."
+      ],
+      "tags": [
+        "herder",
+        "toy-obsessed"
+      ],
+      "notes": "Needs ten minutes of play before eating or she ignores the bowl.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Meadow gate, East Meadow",
+        "area": "East Meadow",
+        "lat": 47.67425,
+        "lng": -122.330884
+      },
+      "reportedDaysAgo": 52,
+      "lastFedMinutesAgo": 180,
+      "lastWateredMinutesAgo": 240,
+      "feedCount": 331,
+      "waterCount": 308
+    },
+    {
+      "id": "cooper",
+      "name": "Cooper",
+      "species": "dog",
+      "breed": "Golden Retriever Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Golden with a grey muzzle",
+      "description": "Soft-mouthed golden mix who carries a tennis ball everywhere he goes.",
+      "temperament": "friendly",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Alex R.",
+        "Sam O."
+      ],
+      "tags": [
+        "friendly",
+        "grey-muzzle",
+        "ball"
+      ],
+      "notes": "Middle-aged with stiff hips - soft bedding and a raised bowl help.",
+      "photoUrl": null,
+      "stationId": "station-01",
+      "location": {
+        "label": "Rose garden lawn",
+        "area": "West Rose Garden",
+        "lat": 47.669077,
+        "lng": -122.337633
+      },
+      "reportedDaysAgo": 34,
+      "lastFedMinutesAgo": 240,
+      "lastWateredMinutesAgo": 180,
+      "feedCount": 374,
+      "waterCount": 349
+    },
+    {
+      "id": "daisy",
+      "name": "Daisy",
+      "species": "dog",
+      "breed": "Spaniel Mix",
+      "sex": "female",
+      "ageClass": "young",
+      "color": "Liver and white with feathered ears",
+      "description": "Young spaniel mix who bounces through the long grass chasing insects.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Dana K."
+      ],
+      "tags": [
+        "spaniel",
+        "puppy-energy"
+      ],
+      "notes": "Still learning not to jump up - feed from a flat hand.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Long grass, East Meadow",
+        "area": "East Meadow",
+        "lat": 47.674473,
+        "lng": -122.334856
+      },
+      "reportedDaysAgo": 21,
+      "lastFedMinutesAgo": 330,
+      "lastWateredMinutesAgo": 270,
+      "feedCount": 154,
+      "waterCount": 147
+    },
+    {
+      "id": "gus",
+      "name": "Gus",
+      "species": "dog",
+      "breed": "Greyhound Mix",
+      "sex": "male",
+      "ageClass": "senior",
+      "color": "Brindle with a white chest",
+      "description": "Retired racer who sleeps standing up and only wakes for dinner.",
+      "temperament": "shy",
+      "health": "monitor",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Alex R.",
+        "Yuki M."
+      ],
+      "tags": [
+        "senior",
+        "brindle",
+        "ex-racer"
+      ],
+      "notes": "Thin skin and thin coat - he needs a padded bed and a warm spot.",
+      "photoUrl": null,
+      "stationId": "station-01",
+      "location": {
+        "label": "Path bench 9, Riverside",
+        "area": "Riverside Path",
+        "lat": 47.664992,
+        "lng": -122.332136
+      },
+      "reportedDaysAgo": 168,
+      "lastFedMinutesAgo": 390,
+      "lastWateredMinutesAgo": 330,
+      "feedCount": 267,
+      "waterCount": 251
+    },
+    {
+      "id": "rocco",
+      "name": "Rocco",
+      "species": "dog",
+      "breed": "Boxer Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Fawn with a white chest and a docked tail",
+      "description": "Boxer mix with a healing jaw wound, on soft food and pain relief.",
+      "temperament": "protective",
+      "health": "treatment",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Jordan T.",
+        "Marcus L."
+      ],
+      "tags": [
+        "boxer",
+        "jaw-wound",
+        "soft-food"
+      ],
+      "notes": "Wound checked by the vet van on Tuesdays. Soft food and small portions only.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Boat ramp shelter, South Basin",
+        "area": "South Basin",
+        "lat": 47.659856,
+        "lng": -122.347711
+      },
+      "reportedDaysAgo": 97,
+      "lastFedMinutesAgo": 1080,
+      "lastWateredMinutesAgo": 120,
+      "feedCount": 189,
+      "waterCount": 164
+    },
+    {
+      "id": "lola",
+      "name": "Lola",
+      "species": "dog",
+      "breed": "Shih Tzu Mix",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Cream with grey ears",
+      "description": "Small fluffy girl who rides in the market trolley when her paws get cold.",
+      "temperament": "friendly",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": false,
+      "caretakers": [
+        "Priya N."
+      ],
+      "tags": [
+        "small-dog",
+        "matting-risk"
+      ],
+      "notes": "Coat mats quickly - brush twice a week or book a groom.",
+      "photoUrl": null,
+      "stationId": "station-03",
+      "location": {
+        "label": "Trolley bay, Market Alley",
+        "area": "Market Alley",
+        "lat": 47.664505,
+        "lng": -122.341422
+      },
+      "reportedDaysAgo": 89,
+      "lastFedMinutesAgo": 270,
+      "lastWateredMinutesAgo": 210,
+      "feedCount": 289,
+      "waterCount": 262
+    },
+    {
+      "id": "scout",
+      "name": "Scout",
+      "species": "dog",
+      "breed": "Cattle Dog Mix",
+      "sex": "male",
+      "ageClass": "young",
+      "color": "Blue speckle with a black patch",
+      "description": "Speckled cattle dog pup who tries to herd the park pigeons and fails.",
+      "temperament": "playful",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": true,
+      "microchipped": true,
+      "caretakers": [
+        "Sam O."
+      ],
+      "tags": [
+        "cattle-dog",
+        "speckled"
+      ],
+      "notes": "Needs daily exercise or he digs. Very trainable with treats.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Terrace field, Hilltop",
+        "area": "Hilltop Steps",
+        "lat": 47.671234,
+        "lng": -122.32422
+      },
+      "reportedDaysAgo": 17,
+      "lastFedMinutesAgo": 150,
+      "lastWateredMinutesAgo": 150,
+      "feedCount": 132,
+      "waterCount": 128
+    },
+    {
+      "id": "moose",
+      "name": "Moose",
+      "species": "dog",
+      "breed": "Newfoundland Mix",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "Solid black with a white bib",
+      "description": "Enormous gentle newfie mix who drinks a full bowl at every visit.",
+      "temperament": "cautious",
+      "health": "healthy",
+      "sterilized": true,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Sam O.",
+        "Dana K."
+      ],
+      "tags": [
+        "giant-breed",
+        "shade-seeker",
+        "big-drinker"
+      ],
+      "notes": "Needs a shaded bowl - he overheats quickly and empties it within minutes.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Boat house shade wall, South Basin",
+        "area": "South Basin",
+        "lat": 47.664697,
+        "lng": -122.364
+      },
+      "reportedDaysAgo": 127,
+      "lastFedMinutesAgo": 780,
+      "lastWateredMinutesAgo": 300,
+      "feedCount": 231,
+      "waterCount": 208
+    },
+    {
+      "id": "thistle",
+      "name": "Thistle",
+      "species": "rabbit",
+      "breed": "Dutch Rabbit",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Black and white dutch markings",
+      "description": "Domestic rabbit abandoned in the herb beds - cannot survive a winter outdoors alone.",
+      "temperament": "shy",
+      "health": "monitor",
+      "sterilized": false,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Dana K.",
+        "Priya N."
+      ],
+      "tags": [
+        "abandoned-pet",
+        "rabbit",
+        "dental-check"
+      ],
+      "notes": "Domestic rabbit - must not be released. Hay first, never bread or lettuce.",
+      "photoUrl": null,
+      "stationId": "station-04",
+      "location": {
+        "label": "Under the herb bench, Community Garden",
+        "area": "Community Garden",
+        "lat": 47.671383,
+        "lng": -122.336911
+      },
+      "reportedDaysAgo": 12,
+      "lastFedMinutesAgo": 120,
+      "lastWateredMinutesAgo": 90,
+      "feedCount": 96,
+      "waterCount": 88
+    },
+    {
+      "id": "bramble",
+      "name": "Bramble",
+      "species": "rabbit",
+      "breed": "Agouti Rabbit",
+      "sex": "male",
+      "ageClass": "young",
+      "color": "Agouti brown with a pale belly",
+      "description": "Young agouti rabbit living in the meadow bramble thicket with Thistle.",
+      "temperament": "cautious",
+      "health": "healthy",
+      "sterilized": false,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Sam O."
+      ],
+      "tags": [
+        "rabbit",
+        "thicket",
+        "bonded-pair"
+      ],
+      "notes": "Bonded with Thistle - keep the pair together if a foster home is found.",
+      "photoUrl": null,
+      "stationId": "station-06",
+      "location": {
+        "label": "Bramble thicket, East Meadow",
+        "area": "East Meadow",
+        "lat": 47.674381,
+        "lng": -122.335708
+      },
+      "reportedDaysAgo": 9,
+      "lastFedMinutesAgo": 200,
+      "lastWateredMinutesAgo": 150,
+      "feedCount": 74,
+      "waterCount": 69
+    },
+    {
+      "id": "kiwi",
+      "name": "Kiwi",
+      "species": "bird",
+      "breed": "Cockatiel",
+      "sex": "female",
+      "ageClass": "adult",
+      "color": "Grey with orange cheek patches",
+      "description": "Cage-trained cockatiel dumped near the pier, now using the hanging feeder.",
+      "temperament": "vocal",
+      "health": "monitor",
+      "sterilized": false,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Yuki M."
+      ],
+      "tags": [
+        "bird",
+        "dumped-pet",
+        "aviary"
+      ],
+      "notes": "Whistles at the ferry horn. Millet and seed in the hanging feeder only.",
+      "photoUrl": null,
+      "stationId": "station-01",
+      "location": {
+        "label": "Aviary tree line, Ferry Landing",
+        "area": "Ferry Landing",
+        "lat": 47.667603,
+        "lng": -122.363307
+      },
+      "reportedDaysAgo": 6,
+      "lastFedMinutesAgo": 90,
+      "lastWateredMinutesAgo": 45,
+      "feedCount": 58,
+      "waterCount": 52
+    },
+    {
+      "id": "pip",
+      "name": "Pip",
+      "species": "guinea-pig",
+      "breed": "Tricolour Guinea Pig",
+      "sex": "male",
+      "ageClass": "adult",
+      "color": "White, ginger and black patches",
+      "description": "Guinea pig left in a cardboard box by the boathouse wall.",
+      "temperament": "shy",
+      "health": "monitor",
+      "sterilized": false,
+      "vaccinated": false,
+      "microchipped": false,
+      "caretakers": [
+        "Marcus L."
+      ],
+      "tags": [
+        "guinea-pig",
+        "dumped-pet",
+        "vitamin-c"
+      ],
+      "notes": "Needs fresh greens for vitamin C every day - without it he gets sick fast.",
+      "photoUrl": null,
+      "stationId": "station-05",
+      "location": {
+        "label": "Crate by the boat house wall",
+        "area": "Boat House",
+        "lat": 47.665155,
+        "lng": -122.360162
+      },
+      "reportedDaysAgo": 4,
+      "lastFedMinutesAgo": 140,
+      "lastWateredMinutesAgo": 100,
+      "feedCount": 63,
+      "waterCount": 57
+    }
+  ],
+  "activity": [
+    {
+      "id": "act-01",
+      "minutesAgo": 35,
+      "actor": "Alex R.",
+      "kind": "feed",
+      "animalId": "milo",
+      "note": "fed Milo with warm broth & kibble",
+      "place": "Oakwood Park West Trail"
+    },
+    {
+      "id": "act-02",
+      "minutesAgo": 12,
+      "actor": "Priya N.",
+      "kind": "water",
+      "animalId": "hazel",
+      "note": "refilled the north gate bowl",
+      "place": "North gate, North Green"
+    },
+    {
+      "id": "act-03",
+      "minutesAgo": 58,
+      "actor": "Marcus L.",
+      "kind": "feed",
+      "animalId": "pixel",
+      "note": "left a pouch under the bandstand stage",
+      "place": "Old Bandstand"
+    },
+    {
+      "id": "act-04",
+      "minutesAgo": 96,
+      "actor": "Dana K.",
+      "kind": "medicine",
+      "animalId": "willow",
+      "note": "eye wipes and a shallow bowl swap",
+      "place": "Canal Path"
+    },
+    {
+      "id": "act-05",
+      "minutesAgo": 140,
+      "actor": "Sam O.",
+      "kind": "water",
+      "animalId": "otis",
+      "note": "topped up the basin trough",
+      "place": "South Basin"
+    },
+    {
+      "id": "act-06",
+      "minutesAgo": 210,
+      "actor": "Jordan T.",
+      "kind": "report",
+      "animalId": "tiger",
+      "note": "flagged the injured front leg for the vet van",
+      "place": "South Basin piers"
+    },
+    {
+      "id": "act-07",
+      "minutesAgo": 265,
+      "actor": "Yuki M.",
+      "kind": "feed",
+      "animalId": "mochi",
+      "note": "single scoop - no double feeding",
+      "place": "Riverside Path, marker 7"
+    },
+    {
+      "id": "act-08",
+      "minutesAgo": 320,
+      "actor": "Alex R.",
+      "kind": "rescue",
+      "animalId": "nutmeg",
+      "note": "checked the boathouse roof crate",
+      "place": "Oakwood Boat House"
+    },
+    {
+      "id": "act-09",
+      "minutesAgo": 395,
+      "actor": "Priya N.",
+      "kind": "feed",
+      "animalId": "poppy",
+      "note": "kept the playground bowl topped",
+      "place": "Playground fence"
+    },
+    {
+      "id": "act-10",
+      "minutesAgo": 470,
+      "actor": "Sam O.",
+      "kind": "station",
+      "animalId": null,
+      "stationId": "station-04",
+      "note": "serviced the Pine Grove auto-dispenser",
+      "place": "Pine Grove"
+    }
+  ]
+}

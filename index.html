@@ -1,0 +1,495 @@
+<!DOCTYPE html><html lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><title>FeedAnAnimalMap</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-secondary-container":"#007233","on-secondary-fixed-variant":"#005323","on-surface-variant":"#57423b","on-secondary":"#ffffff","on-error-container":"#93000a","surface-bright":"#fff8f6","on-surface":"#1e1b1a","surface-dim":"#e1d8d6","primary-container":"#c15326","error-container":"#ffdad6","on-background":"#1e1b1a","error":"#ba1a1a","on-primary-fixed":"#380d00","surface":"#fff8f6","surface-container-high":"#efe6e4","surface-variant":"#e9e1df","secondary-container":"#92f5a4","surface-container-highest":"#e9e1df","on-error":"#ffffff","on-primary-fixed-variant":"#812900","on-tertiary-fixed":"#001d31","on-primary-container":"#fffbff","inverse-primary":"#ffb59a","primary":"#a03b0e","outline":"#8b7269","surface-container-low":"#fbf2f0","secondary":"#006d30","secondary-fixed-dim":"#79db8d","surface-tint":"#a33e11","primary-fixed":"#ffdbcf","tertiary":"#006194","surface-container":"#f5ecea","inverse-on-surface":"#f8efed","surface-container-lowest":"#ffffff","on-primary":"#ffffff","secondary-fixed":"#95f8a7","background":"#fff8f6","tertiary-fixed-dim":"#93ccff","tertiary-container":"#007bb9","outline-variant":"#dec0b6","inverse-surface":"#342f2e","on-tertiary-container":"#fdfcff","on-tertiary":"#ffffff","on-tertiary-fixed-variant":"#004b73","on-secondary-fixed":"#00210a","primary-fixed-dim":"#ffb59a","tertiary-fixed":"#cce5ff"},"borderRadius":{"DEFAULT":"1rem","lg":"2rem","xl":"3rem","full":"9999px"},"spacing":{"space-xs":"0.375rem","space-lg":"1.5rem","space-xl":"2rem","13":"3.25rem","gutter":"1rem","space-sm":"0.5rem","margin":"1rem","space-md":"1rem","space-xs":"0.25rem","space-lg":"1.5rem","gutter-desktop":"1.5rem","margin-desktop":"2rem","space-xl":"2rem"},"fontFamily":{"headline-sm":["Plus Jakarta Sans"],"label-sm":["Inter"],"headline-md":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"label-md":["Inter"],"stat-counter":["Inter"],"body-md":["Plus Jakarta Sans"],"headline-lg-mobile":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],"label-lg":["Inter"],"headline-lg":["Plus Jakarta Sans"]},"fontSize":{"headline-sm":["18px",{"lineHeight":"24px","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-md":["22px",{"lineHeight":"28px","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"stat-counter":["15px",{"lineHeight":"18px","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-lg-mobile":["26px",{"lineHeight":"32px","fontWeight":"700"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"headline-lg":["32px",{"lineHeight":"40px","fontWeight":"700"}]}}}};</script><!-- ============================ map engine (open source, no API key) ============================ -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+/* ------------------------------------------------------------------ *
+ * FeedAnAnimalMap map styling.                                       *
+ * Kept in plain CSS (not Tailwind utilities) so pins, clusters and    *
+ * popups render correctly even before the CDN JIT has seen them.      *
+ * ------------------------------------------------------------------ */
+#map { position: absolute; inset: 0; z-index: 0; background: #f5ecea; }
+.leaflet-container { font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif; }
+.leaflet-container .leaflet-control-attribution { background: rgba(255, 248, 246, .88); border-radius: 9999px 0 0 0; font-size: 10px; }
+.leaflet-container .leaflet-control-attribution a { color: #a03b0e; }
+.leaflet-control-scale-line { background: rgba(255, 248, 246, .88); border-color: #8b7269; color: #57423b; font-size: 10px; }
+
+/* ------------------------------ animal pins ------------------------------ */
+.fta-pin-wrap, .fta-station-wrap, .fta-me-wrap, .fta-pick-wrap, .fta-cluster-icon { background: none; border: 0; }
+.fta-pin { position: relative; width: 48px; height: 62px; display: flex; flex-direction: column; align-items: center; }
+.fta-pin__disc {
+  width: 40px; height: 40px; border-radius: 9999px; overflow: hidden;
+  background: #fff8f6; border: 2.5px solid #a03b0e;
+  box-shadow: 0 6px 14px rgba(30, 27, 26, .25);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.fta-pin.is-needs .fta-pin__disc { border-color: #c15326; }
+.fta-pin.is-urgent .fta-pin__disc { border-color: #ba1a1a; }
+.fta-pin.is-ok .fta-pin__disc { border-color: #006d30; }
+.fta-pin__photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fta-pin__emoji { font-size: 20px; line-height: 1; }
+.fta-pin__label {
+  margin-top: 1px; padding: 1px 7px; border-radius: 9999px;
+  background: rgba(255, 248, 246, .95); box-shadow: 0 2px 6px rgba(30, 27, 26, .18);
+  font-size: 10.5px; font-weight: 700; color: #1e1b1a; white-space: nowrap;
+  display: flex; gap: 3px; align-items: center; max-width: 110px; overflow: hidden;
+}
+.fta-pin__label-state { font-weight: 600; color: #006d30; }
+.fta-pin.is-needs .fta-pin__label-state { color: #c15326; }
+.fta-pin.is-urgent .fta-pin__label-state { color: #ba1a1a; }
+.fta-pin__badge {
+  position: absolute; top: -3px; right: 0; padding: 1px 6px; border-radius: 9999px;
+  background: #c15326; color: #fffbff; font-size: 9.5px; font-weight: 800; letter-spacing: .02em;
+  box-shadow: 0 2px 6px rgba(30, 27, 26, .25);
+}
+.fta-pin__badge--error { background: #ba1a1a; }
+.fta-pin__pulse {
+  position: absolute; top: 0; left: 4px; width: 40px; height: 40px; border-radius: 9999px;
+  background: rgba(193, 83, 38, .20); animation: fta-pulse 2s ease-out infinite; pointer-events: none;
+}
+.fta-pin.is-urgent .fta-pin__pulse { background: rgba(186, 26, 26, .22); }
+@keyframes fta-pulse { 0% { transform: scale(.85); opacity: .9; } 70% { transform: scale(1.45); opacity: 0; } 100% { opacity: 0; } }
+.fta-pin-wrap:hover .fta-pin__disc { transform: scale(1.08); }
+.fta-pin-wrap.is-selected { z-index: 1200 !important; }
+.fta-pin-wrap.is-selected .fta-pin__disc { transform: scale(1.14); box-shadow: 0 0 0 4px rgba(160, 59, 14, .28), 0 8px 18px rgba(30, 27, 26, .32); }
+
+/* -------------------------------- clusters ------------------------------ */
+.fta-cluster {
+  display: flex; align-items: center; justify-content: center; border-radius: 9999px;
+  background: radial-gradient(circle at 30% 25%, #c15326, #a03b0e);
+  color: #fffbff; font-weight: 800; font-size: 14px;
+  box-shadow: 0 10px 22px rgba(30, 27, 26, .3), inset 0 0 0 3px rgba(255, 251, 255, .35);
+  transition: transform .16s ease;
+}
+.fta-cluster:hover { transform: scale(1.06); }
+
+/* --------------------- stations, visitor dot, report pin ---------------- */
+.fta-station {
+  width: 30px; height: 30px; border-radius: 9999px; background: #fdfcff; border: 2px solid #007bb9;
+  box-shadow: 0 4px 10px rgba(30, 27, 26, .3); color: #006194;
+  display: flex; align-items: center; justify-content: center;
+}
+.fta-station .material-symbols-outlined { font-size: 17px; }
+.fta-me { position: relative; width: 20px; height: 20px; border-radius: 9999px; background: #006194; border: 3px solid #fff8f6; box-shadow: 0 3px 10px rgba(30, 27, 26, .35); }
+.fta-me span { position: absolute; inset: -8px; border-radius: 9999px; border: 2px solid rgba(0, 97, 148, .45); animation: fta-pulse 2.4s ease-out infinite; }
+.fta-pick {
+  width: 28px; height: 28px; border-radius: 9999px; background: #ba1a1a; color: #fff;
+  box-shadow: 0 6px 14px rgba(30, 27, 26, .35); display: flex; align-items: center; justify-content: center;
+}
+.fta-pick .material-symbols-outlined { font-size: 18px; }
+/* ------------------------------ popup card ------------------------------ */
+.fta-popup .leaflet-popup-content-wrapper { border-radius: 1.1rem; padding: 0; overflow: hidden; box-shadow: 0 18px 40px rgba(30, 27, 26, .24); }
+.fta-popup .leaflet-popup-content { margin: 0; width: 296px !important; }
+.fta-popup .leaflet-popup-close-button { color: #8b7269 !important; padding: 8px 8px 0 0 !important; font-size: 20px !important; z-index: 5; }
+.fta-popup__card {
+  padding: 13px; display: flex; flex-direction: column; gap: 8px; width: 296px;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; color: #1e1b1a; background: #fff8f6;
+  max-height: 62vh; overflow-y: auto;
+}
+.fta-popup__head { display: flex; align-items: center; gap: 6px; }
+.fta-popup__dot { width: 9px; height: 9px; border-radius: 9999px; background: #006d30; }
+.fta-popup__dot.is-alert { background: #ba1a1a; animation: fta-blink 1.6s ease-in-out infinite; }
+@keyframes fta-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.fta-popup__kicker { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #a03b0e; }
+.fta-popup__distance { margin-left: auto; font-size: 11px; color: #8b7269; }
+.fta-popup__title { font-size: 15px; font-weight: 700; margin: 0; }
+.fta-popup__body { display: flex; gap: 10px; align-items: center; }
+.fta-popup__thumb { width: 52px; height: 52px; border-radius: .75rem; overflow: hidden; background: #f5ecea; flex: 0 0 auto; box-shadow: 0 2px 6px rgba(30, 27, 26, .15); }
+.fta-popup__id h4 { margin: 0; font-size: 16px; font-weight: 700; }
+.fta-popup__id p { margin: 2px 0 0; font-size: 11.5px; color: #57423b; }
+.fta-popup__place { display: flex; align-items: center; gap: 3px; }
+.fta-popup__place .material-symbols-outlined { font-size: 13px; color: #a03b0e; }
+.fta-popup__issue { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 6px 9px; border-radius: .6rem; }
+.fta-popup__issue .material-symbols-outlined { font-size: 16px; }
+.fta-popup__issue.is-ok { background: #95f8a7; color: #00210a; }
+.fta-popup__issue.is-alert { background: #ffdad6; color: #93000a; }
+.fta-popup__issue.is-water { background: #cce5ff; color: #001d31; }
+.fta-popup__meters { display: flex; flex-direction: column; gap: 3px; }
+.fta-popup__meter { display: flex; justify-content: space-between; font-size: 10.5px; color: #57423b; font-weight: 600; }
+.fta-bar { width: 100%; height: 6px; border-radius: 9999px; background: #e9e1df; overflow: hidden; }
+.fta-bar i { display: block; height: 100%; border-radius: 9999px; background: #006d30; transition: width .3s ease; }
+.fta-bar i.is-alert { background: #ba1a1a; }
+.fta-bar i.is-water { background: #007bb9; }
+.fta-popup__notes { margin: 0; font-size: 11.5px; line-height: 1.45; color: #1e1b1a; }
+.fta-popup__meta { margin: 0; font-size: 10.5px; color: #8b7269; }
+.fta-popup__actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.fta-btn {
+  display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer;
+  height: 34px; padding: 0 12px; border-radius: 9999px; font-size: 12px; font-weight: 700;
+  font-family: inherit; text-decoration: none; transition: transform .15s ease, background .15s ease;
+}
+.fta-btn .material-symbols-outlined { font-size: 16px; }
+.fta-btn:active { transform: scale(.96); }
+.fta-btn--primary { background: #a03b0e; color: #ffffff; }
+.fta-btn--primary:hover { background: #c15326; }
+.fta-btn--water { background: #006194; color: #ffffff; }
+.fta-btn--water:hover { background: #007bb9; }
+.fta-btn--ghost { background: #f5ecea; color: #57423b; padding: 0 10px; }
+.fta-btn--ghost:hover { background: #efe6e4; color: #1e1b1a; }
+
+/* -------------------------- avatars / sidebar --------------------------- */
+.fta-avatar[data-species="cat"] { background: linear-gradient(135deg, #ffe6da, #ffcfb9); }
+.fta-avatar[data-species="dog"] { background: linear-gradient(135deg, #e3f2d8, #c9e8bd); }
+.fta-avatar[data-species="rabbit"] { background: linear-gradient(135deg, #f2e6ff, #ded0f7); }
+.fta-avatar[data-species="bird"] { background: linear-gradient(135deg, #d9f0ff, #c2e4fb); }
+.fta-avatar[data-species="guinea-pig"] { background: linear-gradient(135deg, #fff2cf, #ffe3a8); }
+.fta-card { scroll-margin: 24px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* --------------------------- modals and toasts -------------------------- */
+.fta-modal-panel { max-height: min(90vh, 780px); overflow-y: auto; }
+#report-modal.fta-picking { background: transparent !important; backdrop-filter: none !important; pointer-events: none; align-items: flex-end; }
+#report-modal.fta-picking > * { pointer-events: auto; }
+#report-modal.fta-picking .fta-modal-panel { max-height: 46vh; }
+.fta-field {
+  width: 100%; height: 42px; padding: 0 12px; border-radius: .75rem; border: 1px solid #dec0b6;
+  background: #fff8f6; font-family: inherit; font-size: 13px; color: #1e1b1a;
+}
+.fta-field:focus { outline: none; border-color: #a03b0e; box-shadow: 0 0 0 3px rgba(160, 59, 14, .12); }
+textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
+.fta-label { font-size: 11px; font-weight: 700; color: #57423b; display: block; margin-bottom: 4px; }
+</style>
+
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased">
+<header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-surface-container-highest shadow-sm"><div class="h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4"><div class="flex items-center gap-3 shrink-0"><a class="flex items-center gap-2.5 group" data-path="map" href="#"><img alt="FeedAnAnimalMap Logo" class="h-9 w-9 object-contain rounded-full shadow-sm" src="https://lh3.googleusercontent.com/aida/AEtjO1UilTehtdqRn2AzXnLqlUtKK_iS4f6PB6t6816grXUQ9F75IgZ1exC87rgKV7aHRKU5mBFx_kliKAchG-6Lz7O1bxHJ3Z18b8et0twe9bBIDBOJkv_-vLdjynjqGKzHS0z7kFcQKhn0Rk4wqSUI-B3r5Y53INjMzDJ69VThJBliYRphdg5w3NsxTGd1nWZ6a47Aw1A6jlqpCklQTOBDKt7E-dvYmnlEGuU_VCtmVr0DD80BUwD_BK4PTFY"><span class="text-xl sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none font-headline-lg-mobile">FeedAnAnimalMap</span></a></div><nav class="hidden md:flex items-center gap-1.5" data-active-classes="bg-primary-fixed/40 text-primary border-primary/20"><a aria-current="page" class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-semibold bg-primary-fixed/50 text-primary border border-primary/30 transition-all shadow-sm" data-path="map" href="#"><span class="material-symbols-outlined text-[18px] text-primary">location_on</span><span class="">Map</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="city-directory" href="#"><span class="material-symbols-outlined text-[18px] text-outline">public</span><span class="">Cities</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="community-feed" href="#"><span class="material-symbols-outlined text-[18px] text-outline">chat_bubble</span><span class="">Community</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="leaderboard" href="#"><span class="material-symbols-outlined text-[18px] text-outline">emoji_events</span><span class="">Leaderboard</span></a><a class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" data-path="about" href="#"><span class="material-symbols-outlined text-[18px] text-outline">info</span><span class="">About</span></a></nav><div class="flex items-center gap-2.5 shrink-0"><button class="h-10 px-5 rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm flex items-center gap-1.5 shadow-sm active:scale-95 transition-all" title="Support Animal Relief"><span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="">Support</span></button><a class="h-10 px-4 rounded-full border border-surface-container-highest bg-white text-on-surface hover:bg-surface-container font-medium text-sm flex items-center justify-center transition-colors shadow-sm" data-path="profile" href="#"><span class="">Sign in</span></a></div></div></header>
+<!-- ============================ APP SHELL ============================ -->
+<main class="w-full pt-[68px] bg-surface min-h-[calc(100vh-80px)]">
+<div class="flex flex-col w-full">
+<div class="relative w-full h-[calc(100vh-68px)] flex overflow-hidden bg-surface">
+
+<!-- ---------------- LEFT PANEL: volunteer feed (CheapFoodMap style) ---------------- -->
+<aside id="sidebar-pane" class="w-full md:w-[420px] lg:w-[450px] shrink-0 h-full flex-col bg-surface z-30 shadow-xl overflow-hidden flex">
+
+  <!-- Search & geolocation bar -->
+  <div class="p-space-md pb-space-sm bg-surface flex flex-col gap-2.5 border-b border-surface-container-high">
+    <div class="relative flex items-center">
+      <span class="material-symbols-outlined absolute left-3 text-outline text-[20px] pointer-events-none">search</span>
+      <input id="sidebar-search" type="text" autocomplete="off" aria-label="Search animals, areas, caretakers and tags"
+        class="w-full h-11 pl-10 pr-28 rounded-full bg-surface-container text-on-surface font-body-md text-sm placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary/40 transition-all"
+        placeholder="Search park, area, stray...">
+      <button id="near-me-btn" type="button" title="Measure every distance from my location"
+        class="absolute right-1.5 h-8 px-3 rounded-full bg-surface-bright hover:bg-surface-container-high text-primary flex items-center gap-1 font-label-sm text-xs shadow-sm transition-all">
+        <span class="material-symbols-outlined text-[15px]">near_me</span><span>Near Me</span>
+      </button>
+    </div>
+    <div id="filter-chips" role="group" aria-label="Filter animals" class="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar text-nowrap"></div>
+  </div>
+
+  <!-- Live activity ticker -->
+  <div class="px-space-md pt-2">
+    <div id="activity-ticker" class="p-space-sm rounded-lg bg-surface-container-low shadow-sm flex items-start gap-space-sm relative overflow-hidden"></div>
+  </div>
+
+  <!-- Section header and sorting -->
+  <div class="px-space-md py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="font-headline-sm text-base text-on-surface font-semibold">Nearby Animals</span>
+      <span id="feed-count" class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-xs">0</span>
+    </div>
+    <div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-xs">
+      <span>Sort:</span>
+      <select id="feed-sort" aria-label="Sort animals"
+        class="bg-transparent font-medium text-xs text-primary py-0.5 px-1 rounded cursor-pointer focus:outline-none hover:underline">
+        <option value="urgent">Most Urgent</option>
+        <option value="closest">Closest</option>
+        <option value="recent">Recently Fed</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Scrollable animal feed (rendered from data/animals.json) -->
+  <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-space-xl flex flex-col gap-space-sm"></div>
+  <div id="feed-empty" class="hidden px-space-md pb-space-xl flex-col items-center gap-2 text-center">
+    <span class="material-symbols-outlined text-[32px] text-outline">search_off</span>
+    <p class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>
+  </div>
+
+  <!-- Data source and demo controls -->
+  <div class="px-space-md py-2 border-t border-surface-container-high flex items-center justify-between gap-2 bg-surface">
+    <span id="data-source" class="font-label-sm text-[10.5px] text-outline truncate">Loading dataset…</span>
+    <div class="flex items-center gap-1 shrink-0">
+      <button id="park-center-btn" type="button" title="Measure distances from the park centre again"
+        class="w-8 h-8 rounded-full hover:bg-surface-container text-outline hover:text-primary flex items-center justify-center transition-colors">
+        <span class="material-symbols-outlined text-[16px]">wrong_location</span>
+      </button>
+      <button id="reset-demo-btn" type="button" title="Clear the feeds and reports stored on this device"
+        class="w-8 h-8 rounded-full hover:bg-surface-container text-outline hover:text-error flex items-center justify-center transition-colors">
+        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+      </button>
+    </div>
+  </div>
+</aside>
+
+
+<!-- ---------------- RIGHT PANEL: real interactive map ---------------- -->
+<main class="flex-1 h-full relative overflow-hidden bg-surface-container-low">
+  <div id="map" role="application" aria-label="Interactive map of Oakwood Park animal locations"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-surface-dim/25 via-transparent to-surface/10 pointer-events-none z-[1]"></div>
+
+  <!-- Floating status pills -->
+  <div class="absolute top-space-md left-space-md right-space-md z-10 flex items-start justify-between gap-3 pointer-events-none">
+    <div class="pointer-events-auto flex flex-col items-start gap-2">
+      <div class="flex items-center gap-2 bg-surface-bright/95 backdrop-blur-md px-3.5 py-2 rounded-full shadow-md">
+        <span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+        <span class="font-label-sm text-label-sm text-on-surface font-semibold">Live Community Watch: <span id="volunteer-count">0</span> volunteers active</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-2 bg-surface-bright/95 backdrop-blur-md px-3.5 py-2 rounded-full shadow-md">
+        <span class="material-symbols-outlined text-[15px] text-primary">pets</span>
+        <span id="header-needs-help" class="font-label-sm text-label-sm text-on-surface font-semibold">0 need help right now</span>
+      </div>
+    </div>
+    <div class="pointer-events-auto flex items-center gap-2">
+      <button id="center-btn" type="button"
+        class="h-10 px-4 rounded-full bg-surface-bright/95 backdrop-blur-md shadow-md text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container transition-all active:scale-95">
+        <span class="material-symbols-outlined text-[18px] text-primary">my_location</span>
+        <span id="center-label" class="hidden sm:inline">Center on Oakwood Park</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Zoom and base map controls -->
+  <div class="absolute bottom-space-xl left-space-md z-10 flex flex-col items-stretch shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
+    <button id="zoom-in" type="button" title="Zoom in" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+      <span class="material-symbols-outlined text-[20px]">add</span>
+    </button>
+    <div class="w-full h-[1px] bg-surface-container-high"></div>
+    <button id="zoom-out" type="button" title="Zoom out" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+      <span class="material-symbols-outlined text-[20px]">remove</span>
+    </button>
+    <div class="w-full h-[1px] bg-surface-container-high"></div>
+    <button id="layer-btn" type="button" title="Switch base map" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+      <span class="material-symbols-outlined text-[20px]">layers</span>
+    </button>
+    <div class="px-2 py-1 text-center border-t border-surface-container-high">
+      <span id="layer-label" class="font-label-sm text-[10px] text-on-surface-variant">Google Streets</span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="hidden lg:flex absolute bottom-space-xl right-space-md z-10 flex-col gap-1.5 bg-surface-bright/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-md">
+    <span class="font-label-sm text-[10px] font-bold uppercase tracking-wider text-outline">Pin legend</span>
+    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
+      <span class="w-2.5 h-2.5 rounded-full bg-error"></span>Urgent - bowl empty
+    </span>
+    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
+      <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>Needs a refill
+    </span>
+    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
+      <span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>Fed and watered
+    </span>
+    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
+      <span class="material-symbols-outlined text-[14px] text-tertiary">roofing</span>Feeding station
+    </span>
+  </div>
+
+  <!-- Mobile list/map switch -->
+  <button id="mobile-view-toggle" type="button"
+    class="md:hidden absolute bottom-28 right-space-md z-20 h-11 px-4 rounded-full bg-surface-bright shadow-xl text-on-surface font-label-md text-label-md flex items-center gap-2 active:scale-95 transition-all">
+    <span class="material-symbols-outlined text-[18px] text-primary">map</span>
+    <span id="mobile-view-toggle-label">Map</span>
+  </button>
+
+  <!-- Report a stray FAB -->
+  <div class="absolute bottom-space-lg right-space-md lg:right-space-xl z-20 flex items-center gap-space-sm">
+    <button type="button" data-open-report
+      class="h-13 px-6 rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 shadow-xl hover:bg-primary-container hover:text-on-primary-container active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[24px]">add_circle</span>
+      <span class="font-bold tracking-wide">+ Report a Stray</span>
+    </button>
+  </div>
+</main>
+</div>
+
+<footer class="w-full bg-surface-container-low"><div class="w-full px-space-md lg:px-space-xl py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><img alt="Brand logo. - Primary color: #e06a3b - Font: plusJakartaSans - Mode: light - Roundness: rounded-full" class="h-6 w-auto object-contain opacity-80" src="https://lh3.googleusercontent.com/aida/AEtjO1UilTehtdqRn2AzXnLqlUtKK_iS4f6PB6t6816grXUQ9F75IgZ1exC87rgKV7aHRKU5mBFx_kliKAchG-6Lz7O1bxHJ3Z18b8et0twe9bBIDBOJkv_-vLdjynjqGKzHS0z7kFcQKhn0Rk4wqSUI-B3r5Y53INjMzDJ69VThJBliYRphdg5w3NsxTGd1nWZ6a47Aw1A6jlqpCklQTOBDKt7E-dvYmnlEGuU_VCtmVr0DD80BUwD_BK4PTFY"><p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 FeedAnAnimalMap. Grassroots stray animal welfare network.</p></div><div class="flex items-center gap-space-lg font-label-sm text-label-sm text-on-surface-variant"><a class="hover:text-primary transition-colors" data-path="about" href="#">About</a><a class="hover:text-primary transition-colors" data-path="city-directory" href="#">Cities</a><a class="hover:text-primary transition-colors" data-path="community-feed" href="#">Volunteer Guidelines</a><a class="hover:text-primary transition-colors" data-path="contact" href="#">Emergency Hotlines</a></div></div></footer>
+</div>
+</main>
+
+<!-- ======================= REPORT A STRAY MODAL ======================= -->
+<div id="report-modal" data-modal class="hidden fixed inset-0 z-[70] items-center justify-center p-3 sm:p-6 bg-inverse-surface/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="report-title">
+  <div class="fta-modal-panel w-full max-w-2xl bg-surface rounded-lg shadow-2xl border border-surface-container-highest">
+    <div class="flex items-start justify-between gap-3 p-4 border-b border-surface-container-high sticky top-0 bg-surface z-10">
+      <div>
+        <h2 id="report-title" class="font-headline-sm text-headline-sm text-on-surface font-bold">Report a stray</h2>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Everything you add here stays on this device and appears on the map instantly.</p>
+      </div>
+      <button type="button" data-close-modal="report-modal" class="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-outline shrink-0" title="Close">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+
+    <form id="report-form" novalidate>
+      <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="fta-label" for="report-name">Name (or leave it to us)</label>
+          <input id="report-name" class="fta-field" type="text" placeholder="Milo" autocomplete="off">
+        </div>
+        <div>
+          <label class="fta-label" for="report-species">Species</label>
+          <select id="report-species" class="fta-field">
+            <option value="cat">Cat</option>
+            <option value="dog">Dog</option>
+            <option value="rabbit">Rabbit</option>
+            <option value="bird">Bird</option>
+            <option value="guinea-pig">Guinea pig</option>
+          </select>
+        </div>
+        <div>
+          <label class="fta-label" for="report-breed">Breed / look</label>
+          <input id="report-breed" class="fta-field" type="text" placeholder="Orange tabby" autocomplete="off">
+        </div>
+        <div>
+          <label class="fta-label" for="report-color">Colour markings</label>
+          <input id="report-color" class="fta-field" type="text" placeholder="Ginger with white mittens" autocomplete="off">
+        </div>
+        <div>
+          <label class="fta-label" for="report-sex">Sex</label>
+          <select id="report-sex" class="fta-field">
+            <option value="unknown">Not sure</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </div>
+        <div>
+          <label class="fta-label" for="report-age">Age</label>
+          <select id="report-age" class="fta-field">
+            <option value="unknown">Not sure</option>
+            <option value="young">Young</option>
+            <option value="adult">Adult</option>
+            <option value="senior">Senior</option>
+          </select>
+        </div>
+        <div>
+          <label class="fta-label" for="report-health">Health check</label>
+          <select id="report-health" class="fta-field">
+            <option value="healthy">Looks healthy</option>
+            <option value="monitor">Needs monitoring</option>
+            <option value="treatment">Needs treatment</option>
+            <option value="critical">Critical - needs a vet now</option>
+          </select>
+        </div>
+        <div>
+          <label class="fta-label" for="report-sterilized">Ear-tipped / neutered</label>
+          <select id="report-sterilized" class="fta-field">
+            <option value="unsure">Not sure</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div>
+          <label class="fta-label" for="report-food">Food situation</label>
+          <select id="report-food" class="fta-field">
+            <option value="ok">Bowl is stocked / just fed</option>
+            <option value="needs">Empty - refill needed</option>
+            <option value="urgent">Empty for a long time</option>
+          </select>
+        </div>
+        <div>
+          <label class="fta-label" for="report-water">Water situation</label>
+          <select id="report-water" class="fta-field">
+            <option value="ok">Fresh water</option>
+            <option value="needs">Low or dirty - top up</option>
+            <option value="urgent">Dry bowl for a long time</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="fta-label" for="report-description">Short description</label>
+          <input id="report-description" class="fta-field" type="text" placeholder="Friendly ginger who naps on the bench cushions" autocomplete="off">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="fta-label" for="report-notes">Handling notes for other volunteers</label>
+          <textarea id="report-notes" class="fta-field" rows="2" placeholder="Approach slowly, feed from a flat hand, do not touch the injured leg."></textarea>
+        </div>
+        <div>
+          <label class="fta-label" for="report-photo">Photo URL (optional)</label>
+          <input id="report-photo" class="fta-field" type="url" placeholder="https://…" autocomplete="off">
+        </div>
+        <div>
+          <label class="fta-label" for="report-reporter">Your name (for the log)</label>
+          <input id="report-reporter" class="fta-field" type="text" placeholder="Alex R." autocomplete="off">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="fta-label" for="report-place">Landmark / description of the spot</label>
+          <input id="report-place" class="fta-field" type="text" placeholder="Bench 4, West Rose Garden" autocomplete="off">
+        </div>
+
+        <div class="sm:col-span-2 p-3 rounded-lg bg-surface-container border border-surface-container-high flex flex-col gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px] text-primary">location_on</span>Pin the location
+            </span>
+            <button id="report-pick-map" type="button" class="fta-btn fta-btn--primary">
+              <span class="material-symbols-outlined">add_location_alt</span>Pick on map
+            </button>
+            <button id="report-use-location" type="button" class="fta-btn fta-btn--ghost">
+              <span class="material-symbols-outlined">my_location</span>Use my location
+            </button>
+            <button id="report-use-center" type="button" class="fta-btn fta-btn--ghost">
+              <span class="material-symbols-outlined">wrong_location</span>Use park centre
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="report-lat" class="fta-field" type="text" readonly aria-label="Latitude">
+            <input id="report-lng" class="fta-field" type="text" readonly aria-label="Longitude">
+          </div>
+          <p id="report-pick-hint" class="font-label-sm text-[11px] text-on-surface-variant">Tip: press “Pick on map”, then click the exact spot where you saw the animal.</p>
+        </div>
+
+        <p id="report-error" class="hidden sm:col-span-2 p-2.5 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md"></p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 p-4 border-t border-surface-container-high sticky bottom-0 bg-surface">
+        <button id="report-cancel" type="button" class="h-10 px-4 rounded-full border border-surface-container-highest text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors">Cancel</button>
+        <button id="report-submit" type="submit" class="h-10 px-5 rounded-full bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-sm hover:bg-primary-container active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[18px]">publish</span>Save to the map
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ======================= ANIMAL DETAILS MODAL ======================= -->
+<div id="details-modal" data-modal class="hidden fixed inset-0 z-[75] items-center justify-center p-3 sm:p-6 bg-inverse-surface/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Animal details">
+  <div class="fta-modal-panel w-full max-w-xl bg-surface rounded-lg shadow-2xl border border-surface-container-highest p-4">
+    <div id="details-content"></div>
+  </div>
+</div>
+
+<!-- ============================ TOAST STACK =========================== -->
+<div id="toast-stack" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex flex-col items-center gap-2 pointer-events-none"></div>
+
+<!-- ------------------------------------------------------------------ *
+ * Tailwind class primer.                                             *
+ * The Play CDN compiles styles by scanning the DOM, so any utility     *
+ * that only ever appears in JavaScript-generated markup is listed      *
+ * here once. Purely a build hint: nothing inside is rendered.          *
+ * ------------------------------------------------------------------ -->
+<div id="fta-class-primer" class="hidden" aria-hidden="true">
+  <span class="border-error/30 border-tertiary/30 border-surface-container-highest ring-2 ring-primary/40"></span>
+  <span class="bg-primary text-on-primary bg-primary-container hover:bg-primary-container bg-tertiary text-on-tertiary hover:bg-tertiary-container text-on-tertiary-container"></span>
+  <span class="bg-surface-container text-on-surface hover:bg-surface-container-high hover:bg-surface-container bg-surface-container-lowest"></span>
+  <span class="bg-error text-on-error bg-error-container text-on-error-container bg-secondary-container text-on-secondary-container"></span>
+  <span class="bg-tertiary-fixed text-on-tertiary-fixed bg-primary-fixed text-on-primary-fixed-variant bg-secondary text-on-secondary"></span>
+  <span class="text-error text-secondary text-tertiary text-outline text-on-surface-variant text-on-surface"></span>
+  <span class="font-label-sm font-label-md font-body-sm font-headline-sm font-headline-md font-semibold font-bold"></span>
+  <span class="px-2 py-0.5 rounded-full text-[11px] text-[12px] text-[13px] text-[14px] text-[16px] text-[18px] text-[40px]"></span>
+  <span class="w-8 h-8 w-9 h-9 w-20 h-20 rounded-full rounded-lg rounded-xl flex items-center justify-center"></span>
+  <span class="flex-1 h-9 h-10 px-4 px-5 rounded-full font-semibold shadow-sm active:scale-95 transition-all transition-colors"></span>
+  <span class="py-1.5 px-2 flex-col gap-1.5 p-2.5 flex-wrap text-nowrap shrink-0 truncate max-w-xs"></span>
+  <span class="items-start justify-between border-b border-surface-container-high/70 border-surface-container-high"></span>
+  <span class="bg-inverse-surface/40 backdrop-blur-sm z-[70] z-[75] z-[90] fixed inset-0"></span>
+  <span class="font-mono text-center text-[10.5px] text-[10px] align-middle mr-1"></span>
+  <span class="animate-pulse animate-ping w-2.5 h-2.5 w-1.5 h-1.5 rounded-full border-2 border-white"></span>
+  <span class="group-hover:scale-105 hover:shadow-md animate-pulse text-2xl transition-transform duration-300 hover:underline active:scale-95"></span>
+</div>
+
+<!-- Embedded copy of data/animals.json (lets the app run straight from disk). -->
+<script src="data/animals-data.js"></script>
+<script src="index.js"></script>
+</body>
+</html>
