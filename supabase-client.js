@@ -22,6 +22,9 @@ try {
     window.sbLoadRecentEvents = sbLoadRecentEvents;
     window.sbLiveTicker = sbLiveTicker;
     window.sbUploadReportPhoto = sbUploadReportPhoto;
+    window.sbSubmitReport = sbSubmitReport;
+    window.sbCompressImage = sbCompressImage;
+    window.sbFormatBytes = sbFormatBytes;
     window.sbDisplayName = sbDisplayName;
   }
 } catch (e) { /* ignore */ }
@@ -135,13 +138,238 @@ function sbLiveTicker(onEvent) {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Image compression (Phase 4.6)
+ *
+ * Why this exists: the animal-photos bucket rejects anything over 500KB,
+ * and a modern phone photo is 4-12MB. So every image is re-encoded in the
+ * browser before upload.
+ *
+ * "Smallest possible" needs a real strategy rather than one fixed quality
+ * setting, because quality maps to bytes very differently per photo (a
+ * leafy park scene costs far more than a close-up of a cat). So we:
+ *
+ *   1. pick the best format the browser can actually encode (AVIF is ~30%
+ *      smaller than WebP at equal quality, JPEG is the last resort);
+ *   2. binary-search the highest quality that still fits the byte budget,
+ *      instead of guessing a single number;
+ *   3. if even the minimum quality overflows, step the dimensions down and
+ *      search again;
+ *   4. keep a hard ceiling so we never emit something the bucket will reject.
+ *
+ * Re-encoding through <canvas> also strips EXIF, which quietly removes the
+ * GPS coordinates and camera serial a stray photo would otherwise carry.
+ * ------------------------------------------------------------------ */
+const SB_IMAGE_DEFAULTS = {
+  maxEdge: 1200,             // longest edge, in px
+  targetBytes: 110 * 1024,   // aim here (~113KB: sharp on phones, tiny on disk)
+  hardCapBytes: 460 * 1024,  // never emit above this (bucket limit is 500KB)
+  minQuality: 0.45,          // below this the photo turns to mush
+  maxQuality: 0.92,
+  dimensionSteps: [1200, 900, 700, 520],
+};
+
+/* Which formats can this browser actually encode? AVIF support is still
+   partial, so probe once with a 1x1 canvas and remember the answer. */
+let sbImageFormatPromise = null;
+function sbBestImageFormat() {
+  if (sbImageFormatPromise) return sbImageFormatPromise;
+  sbImageFormatPromise = (async () => {
+    try {
+      const probe = document.createElement('canvas');
+      probe.width = 1;
+      probe.height = 1;
+      const order = [
+        { type: 'image/avif', ext: 'avif' },
+        { type: 'image/webp', ext: 'webp' },
+      ];
+      for (const candidate of order) {
+        const blob = await new Promise((resolve) => probe.toBlob(resolve, candidate.type, 0.5));
+        // Some browsers silently fall back to PNG; only accept a real match.
+        if (blob && blob.type === candidate.type) return candidate;
+      }
+    } catch (e) { /* fall through to jpeg */ }
+    return { type: 'image/jpeg', ext: 'jpg' };
+  })();
+  return sbImageFormatPromise;
+}
+
+function sbEncodeCanvas(canvas, type, quality) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+/* Highest quality whose encoded size still fits `budget`, found by binary
+   search. Keeps the smallest encode we saw, so we degrade gracefully when
+   even the minimum quality overflows. */
+async function sbSearchQuality(canvas, format, budget, minQuality, maxQuality) {
+  let best = null;
+  let lo = minQuality;
+  let hi = maxQuality;
+
+  for (let attempt = 0; attempt < 7; attempt++) {
+    const mid = (lo + hi) / 2;
+    const blob = await sbEncodeCanvas(canvas, format.type, mid);
+    if (!blob) break;
+    if (!best || blob.size < best.blob.size) best = { blob: blob, quality: mid };
+    if (blob.size <= budget) {
+      lo = mid;   // room to spare: try richer
+    } else {
+      hi = mid;   // too big: back off
+    }
+    if (hi - lo < 0.02) break;
+  }
+  return best;
+}
+
+/* Compress an image File down to a small AVIF/WebP/JPEG. Returns the
+   original File untouched when the browser cannot rasterise it (SVG/GIF)
+   or when compression would not actually help. */
+async function sbCompressImage(file, options = {}) {
+  const cfg = Object.assign({}, SB_IMAGE_DEFAULTS, options || {});
+  try {
+    if (!file || !file.type || !/^image\//.test(file.type)) return file;
+
+    // SVG/GIF have no meaningful canvas raster; send them as-is.
+    if (/svg|gif/.test(file.type)) return file;
+
+    // Already tiny and in a modern format: re-encoding cannot beat it.
+    if (file.size && file.size <= cfg.targetBytes && /(webp|avif)/.test(file.type)) return file;
+
+    const bitmap = await createImageBitmap(file);
+    const sourceLongEdge = Math.max(bitmap.width, bitmap.height);
+    const format = await sbBestImageFormat();
+
+    // Never upscale a small image.
+    const cap = Math.min(cfg.maxEdge, sourceLongEdge);
+    // Descending: try the largest step first, because that keeps the most
+    // detail. We only step DOWN when the current size still overflows the
+    // budget, so ordinary photos encode once at full quality and stop.
+    const steps = cfg.dimensionSteps
+      .filter((edge) => edge <= cap)
+      .sort((a, b) => b - a);
+    if (steps[0] !== cap) steps.unshift(cap);
+
+    let smallest = null;
+    for (const edge of steps) {
+      const scale = Math.min(1, edge / sourceLongEdge);
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+
+      const found = await sbSearchQuality(canvas, format, cfg.targetBytes, cfg.minQuality, cfg.maxQuality);
+      if (found && (!smallest || found.blob.size < smallest.blob.size)) smallest = found;
+      // Only stop shrinking once we are genuinely inside the budget. An
+      // encode that still overflows means this dimension is too large, so
+      // step down and try again rather than settling for an oversized file.
+      if (found && found.blob.size <= cfg.targetBytes) break;
+    }
+
+    try { bitmap.close(); } catch (e) { /* older browsers */ }
+
+    if (!smallest || !smallest.blob) return file;
+    if (file.size && smallest.blob.size >= file.size) return file;
+
+    // Still over the bucket limit after shrinking: retry once at the smallest
+    // step with a lower floor so we never emit something Storage rejects.
+    // Guarded by `options` so a pathological input cannot recurse forever.
+    if (smallest.blob.size > cfg.hardCapBytes && !cfg.retrying) {
+      const retry = await sbCompressImage(file, {
+        dimensionSteps: [520, 380],
+        targetBytes: Math.floor(cfg.targetBytes * 0.6),
+        minQuality: 0.35,
+        retrying: true,
+      });
+      if (retry !== file) return retry;
+    }
+
+    const base = (file.name || 'photo').replace(/\.[^.]+$/, '');
+    return new File([smallest.blob], base + '.' + format.ext, {
+      type: format.type,
+      lastModified: Date.now(),
+    });
+  } catch (err) {
+    console.warn('[sb] image compression skipped:', err.message);
+    return file;
+  }
+}
+
+/* Human-readable "4.2 MB -> 96 KB (98% smaller)" for the upload UI. */
+function sbFormatBytes(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return Math.round(n / 1024) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+/* Compress then upload a report photo to the public animal-photos bucket.
+   Returns the public URL, or null when there is no photo to upload. */
 async function sbUploadReportPhoto(file) {
+  if (!file) return null;
+  if (!sb) throw new Error('Supabase is not configured yet.');
   await sbEnsureAuth();
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 4);
+  let payload = await sbCompressImage(file);
+
+  // Last-resort guard: the bucket rejects anything over its file_size_limit,
+  // so drop to the smallest step rather than fail the whole report.
+  const cap = SB_IMAGE_DEFAULTS.hardCapBytes;
+  if (payload.size > cap) {
+    console.warn('[sb] photo still ' + sbFormatBytes(payload.size) + ' - retrying at minimum size');
+    payload = await sbCompressImage(payload, {
+      dimensionSteps: [520, 380],
+      targetBytes: 70 * 1024,
+      minQuality: 0.4,
+    });
+  }
+  if (payload.size > cap) throw new Error('Photo is too large even after compression.');
+
+  const ext = (payload.name.split('.').pop() || 'webp').toLowerCase().slice(0, 5);
   const key = 'reports/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
-  const { error } = await sb.storage.from('animal-photos').upload(key, file, { contentType: file.type, upsert: false });
+  const { error } = await sb.storage.from('animal-photos')
+    .upload(key, payload, { contentType: payload.type || 'image/webp', upsert: false });
   if (error) throw error;
   return sb.storage.from('animal-photos').getPublicUrl(key).data.publicUrl;
+}
+
+/* Insert a community report so the whole team sees it, not just this device. */
+async function sbSubmitReport(report) {
+  if (!sb) return false;
+  try {
+    const user = await sbEnsureAuth();
+    const payload = {
+      reporter_id: (user && !user.is_anonymous) ? user.id : null,
+      name: report.name || null,
+      species: report.species || null,
+      lat: Number.isFinite(report.lat) ? report.lat : null,
+      lng: Number.isFinite(report.lng) ? report.lng : null,
+      location_label: report.place || null,
+      photo_url: report.photoUrl || null,
+      description: report.description || null,
+      status: 'open',
+    };
+    let result = await sb.from('reports').insert([payload]);
+    // Older databases may not have every optional column yet - retry leaner.
+    if (result.error && /column|schema cache/i.test(result.error.message || '')) {
+      result = await sb.from('reports').insert([{
+        reporter_id: payload.reporter_id,
+        name: payload.name,
+        species: payload.species,
+        lat: payload.lat,
+        lng: payload.lng,
+        location_label: payload.location_label,
+        photo_url: payload.photo_url,
+        description: payload.description,
+      }]);
+    }
+    if (result.error) throw result.error;
+    return true;
+  } catch (err) {
+    console.warn('[sb] report submit failed (kept locally):', err.message);
+    return false;
+  }
 }
 
 /* ---------- Auth helpers used by auth.html + header account button ---------- */

@@ -199,7 +199,7 @@
     filter: 'all', query: '', sort: 'urgent', selectedId: null,
     userLocation: null, profile: { name: 'Guest volunteer' },
     layers: [], baseLayerIndex: 0, baseLayer: null,
-    map: null, markerLayer: null, markers: {}, userMarker: null, pickMarker: null,
+    map: null, markerLayer: null, markers: {}, userMarker: null, accuracyCircle: null, pickMarker: null,
     pickMode: false, mobileView: 'list', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
     dataSource: '', saveWarningShown: false
   };
@@ -885,9 +885,29 @@
     return marker;
   }
 
-  function renderUserMarker() {
+  function renderUserMarker(accuracy) {
     if (!state.map || !state.userLocation) return;
     if (state.userMarker) state.map.removeLayer(state.userMarker);
+
+    /* Draw the GPS accuracy circle. Without it a 60m fix and a 5m fix look
+       identical, which is what makes people distrust a correct position. */
+    if (state.accuracyCircle) {
+      state.map.removeLayer(state.accuracyCircle);
+      state.accuracyCircle = null;
+    }
+    if (accuracy && isFinite(accuracy) && accuracy > 0) {
+      state.accuracyCircle = window.L.circle([state.userLocation.lat, state.userLocation.lng], {
+        radius: accuracy,
+        color: '#1a73e8',
+        weight: 1,
+        opacity: 0.5,
+        fillColor: '#1a73e8',
+        fillOpacity: 0.10,
+        interactive: false,
+        keyboard: false
+      }).addTo(state.map);
+    }
+
     state.userMarker = window.L.marker([state.userLocation.lat, state.userLocation.lng], {
       icon: window.L.divIcon({
         className: 'fta-me-wrap',
@@ -946,7 +966,7 @@
       (position) => {
         state.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
         writeOverlay();
-        renderUserMarker();
+        renderUserMarker(position.coords.accuracy);
         renderMarkers();
         renderFeed();
         if (state.map) state.map.flyTo([state.userLocation.lat, state.userLocation.lng], 16, { duration: 0.8 });
@@ -969,7 +989,8 @@
   }
 
   /* Used by the "Report a stray" form: click the map to drop the pin. */
-  function placePickMarker(lat, lng) {
+  function placePickMarker(lat, lng, options) {
+    const opts = options || {};
     state.pickMode = false;
     const latInput = $('#report-lat');
     const lngInput = $('#report-lng');
@@ -991,8 +1012,26 @@
       title: 'New report pin',
       zIndexOffset: 600
     }).addTo(state.map);
+
+    /* When the pin came from GPS, the "you are here" dot MUST move with it.
+       They used to be independent, so the dot could sit on a stale fix from
+       localStorage and make a perfectly good pin look wrong. Keep them in
+       lockstep so what you see is one single truth. */
+    if (opts.fromGps) {
+      state.userLocation = { lat: lat, lng: lng };
+      writeOverlay();
+      renderUserMarker(opts.accuracy);
+    }
+
     const hint = $('#report-pick-hint');
-    if (hint) hint.textContent = 'Pinned at ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '.';
+    if (hint) {
+      if (opts.accuracy && isFinite(opts.accuracy)) {
+        hint.textContent = 'Pinned at ' + lat.toFixed(5) + ', ' + lng.toFixed(5)
+          + ' - accurate to about ' + formatDistance(opts.accuracy) + '.';
+      } else {
+        hint.textContent = 'Pinned at ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '.';
+      }
+    }
     const modal = $('#report-modal');
     if (modal) modal.classList.remove('fta-picking');
     switchMobileView('map');
@@ -1171,7 +1210,68 @@
     openModal('report-modal');
   }
 
-  function submitReport(event) {
+  /* ------------------------- report photo picker ---------------------- */
+  /* Holds the chosen File until submit. We keep the File (not a data URL)
+     so it can be uploaded straight to Supabase Storage. */
+  let pendingReportPhoto = null;
+
+  function setReportPhotoPreview(src) {
+    const box = $('#report-photo-preview');
+    if (!box) return;
+    if (!src) {
+      box.innerHTML = '<span class="material-symbols-outlined text-[26px]">photo_camera</span>';
+      return;
+    }
+    box.innerHTML = '<img alt="Selected stray photo" class="w-full h-full object-cover" src="' + esc(src) + '">';
+  }
+
+  function wireReportPhoto() {
+    const input = $('#report-photo-file');
+    const clear = $('#report-photo-clear');
+    const hint = $('#report-photo-hint');
+    if (!input) return;
+
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) { pendingReportPhoto = null; setReportPhotoPreview(null); if (clear) clear.classList.add('hidden'); return; }
+      if (!/^image\//.test(file.type)) {
+        toast('Please choose an image file.', 'error');
+        input.value = '';
+        return;
+      }
+      pendingReportPhoto = file;
+      // Object URL is cheap and instant; the real upload happens on submit.
+      setReportPhotoPreview(URL.createObjectURL(file));
+      if (clear) clear.classList.remove('hidden');
+      if (hint) {
+        const mb = typeof window.sbFormatBytes === 'function' ? window.sbFormatBytes(file.size) : (file.size / 1048576).toFixed(1) + ' MB';
+        hint.textContent = file.name + ' - ' + mb + '. It is compressed to about 110 KB before upload.';
+      }
+    });
+
+    if (clear) {
+      clear.addEventListener('click', () => {
+        pendingReportPhoto = null;
+        input.value = '';
+        setReportPhotoPreview(null);
+        clear.classList.add('hidden');
+        if (hint) hint.textContent = 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+      });
+    }
+  }
+
+  function resetReportPhoto() {
+    pendingReportPhoto = null;
+    const input = $('#report-photo-file');
+    if (input) input.value = '';
+    const clear = $('#report-photo-clear');
+    if (clear) clear.classList.add('hidden');
+    const hint = $('#report-photo-hint');
+    if (hint) hint.textContent = 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+    setReportPhotoPreview(null);
+  }
+
+  async function submitReport(event) {
     event.preventDefault();
     const value = (id) => {
       const node = document.getElementById(id);
@@ -1189,12 +1289,7 @@
     const lat = Number(value('report-lat'));
     const lng = Number(value('report-lng'));
     if (!isFinite(lat) || !isFinite(lng) || (lat === 0 && lng === 0)) {
-      fail('Please pick the location first - “Pick on map”, “Use my location”, or “Use park center”.');
-      return;
-    }
-    const photo = value('report-photo');
-    if (photo && !/^https?:\/\//i.test(photo)) {
-      fail('Photo must be a full http(s) image URL.');
+      fail('Please pick the location first - press “Pick on map” or “Use my location”.');
       return;
     }
 
@@ -1202,6 +1297,42 @@
     const reporter = value('report-reporter');
     const station = nearestStation(lat, lng);
     const place = value('report-place') || 'Community report pin';
+
+    const button = $('#report-submit');
+    const originalLabel = button ? button.innerHTML : '';
+    const setBusy = (busy, label) => {
+      if (!button) return;
+      button.disabled = busy;
+      button.classList.toggle('opacity-60', busy);
+      if (label) button.innerHTML = label;
+      else button.innerHTML = originalLabel;
+    };
+
+    /* Upload the photo + share the report. Local save happens either way, so
+       a network failure never loses what the volunteer typed. */
+    setBusy(true, '<span class="material-symbols-outlined text-[18px]">upload</span>Uploading photo…');
+    let photoUrl = null;
+    let shared = false;
+    try {
+      if (pendingReportPhoto && typeof window.sbUploadReportPhoto === 'function') {
+        photoUrl = await window.sbUploadReportPhoto(pendingReportPhoto);
+      }
+      if (typeof window.sbSubmitReport === 'function') {
+        shared = await window.sbSubmitReport({
+          name: value('report-name') || 'Unnamed stray',
+          species: species,
+          lat: lat,
+          lng: lng,
+          place: place,
+          photoUrl: photoUrl,
+          description: value('report-description'),
+        });
+      }
+    } catch (err) {
+      console.warn('[FeedAnAnimalMap] report upload failed', err);
+      toast('Photo upload failed - saving the report on this device only.', 'error');
+    }
+    setBusy(false);
 
     const animal = {
       id: 'report-' + now.toString(36),
@@ -1220,7 +1351,7 @@
       caretakers: [reporter || state.profile.name || 'Guest volunteer'],
       tags: ['community-report'],
       notes: value('report-notes') || 'Watch this spot for a few days and log what you see.',
-      photoUrl: photo || null,
+      photoUrl: photoUrl || null,
       stationId: station ? station.id : null,
       location: { label: place, area: station ? station.area : 'Reported area', lat: lat, lng: lng },
       reportedAt: new Date(now).toISOString(),
@@ -1242,12 +1373,28 @@
 
     writeOverlay();
     closeModal('report-modal');
+    resetReportPhoto();
+    // Also tell the shared feed, so other volunteers see the stray appear live.
+    try {
+      if (typeof window.sbLogEvent === 'function') {
+        window.sbLogEvent({
+          animalId: animal.id, stationId: animal.stationId, kind: 'report',
+          note: 'reported a new stray: ' + animal.name + ' (' + animal.breed + ')',
+          place: animal.location.label,
+        });
+      }
+    } catch (err) { /* local save already succeeded */ }
 
     state.filter = 'all';
     state.query = '';
     const search = $('#sidebar-search');
     if (search) search.value = '';
-    afterMutation('Report saved - ' + animal.name + ' is now on the map.', 'ok');
+    afterMutation(
+      shared
+        ? 'Report shared - ' + animal.name + ' is now on the map for everyone.'
+        : 'Report saved on this device - ' + animal.name + ' is on the map.',
+      'ok'
+    );
     switchMobileView('map');
     revealAnimal(animal.id);
   }
@@ -1611,31 +1758,58 @@
       });
     }
 
-    const useParkCenterButton = $('#report-use-center');
-    if (useParkCenterButton) {
-      useParkCenterButton.addEventListener('click', () => {
-        const center = state.meta.center || { lat: 0, lng: 0 };
-        placePickMarker(center.lat, center.lng);
-        const modal = $('#report-modal');
-        if (modal) modal.classList.remove('fta-picking');
-      });
-    }
-
     const useMyLocationButton = $('#report-use-location');
     if (useMyLocationButton) {
+      const originalLabel = useMyLocationButton.innerHTML;
+      // GPS can take several seconds (or hang while the user decides), so the
+      // button has to say so - otherwise it looks like nothing happened.
+      const setLocating = (busy) => {
+        useMyLocationButton.disabled = busy;
+        useMyLocationButton.classList.toggle('opacity-60', busy);
+        useMyLocationButton.innerHTML = busy
+          ? '<span class="material-symbols-outlined animate-spin">progress_activity</span>Locating…'
+          : originalLabel;
+      };
+
       useMyLocationButton.addEventListener('click', () => {
         if (!navigator.geolocation) {
           toast('Geolocation is unavailable in this browser.', 'error');
           return;
         }
-        navigator.geolocation.getCurrentPosition(
+        setLocating(true);
+        /* watchPosition (not getCurrentPosition) for the first fix: a single
+           reading is often the worst one available while the GPS warms up.
+           We take the first good fix and stop listening, so this stays quick
+           indoors but is accurate outdoors where it matters. */
+        let settled = false;
+        const watchId = navigator.geolocation.watchPosition(
           (position) => {
-            placePickMarker(position.coords.latitude, position.coords.longitude);
-            const modal = $('#report-modal');
-            if (modal) modal.classList.remove('fta-picking');
+            const accuracy = position.coords.accuracy;
+            // Ignore very rough fixes; if nothing better arrives we use this one.
+            if (settled && accuracy > 50) return;
+            settled = true;
+            navigator.geolocation.clearWatch(watchId);
+            setLocating(false);
+            placePickMarker(
+              position.coords.latitude,
+              position.coords.longitude,
+              { fromGps: true, accuracy: accuracy }
+            );
+            toast(accuracy && accuracy > 40
+              ? 'Pinned, but GPS was only accurate to about ' + formatDistance(accuracy) + '. Use “Pick on map” to fine-tune.'
+              : 'Pinned at your location (accurate to about ' + formatDistance(accuracy) + ').', 'ok');
           },
-          () => toast('Could not read your location.', 'error'),
-          { enableHighAccuracy: true, timeout: 8000 }
+          (error) => {
+            if (settled) return;
+            settled = true;
+            navigator.geolocation.clearWatch(watchId);
+            setLocating(false);
+            const denied = error && error.code === 1;
+            toast(denied
+              ? 'Location permission denied - you can still use "Pick on map".'
+              : 'Could not read your location - try "Pick on map" instead.', 'error');
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
       });
     }
@@ -1717,6 +1891,7 @@
     switchMobileView('list');
     wireEvents();
     wireAuthLink();
+    wireReportPhoto();
     syncProfileFromAuth();
     wireDeepLink();
 

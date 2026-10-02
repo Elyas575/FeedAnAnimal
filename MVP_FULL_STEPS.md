@@ -42,15 +42,17 @@ DONE WHEN: all tables exist, realtime ticked.
 DONE WHEN: 48/6 counts match. DB 500MB = ~700k feeds/chats (months free).
 
 ## PHASE 4 - Shared feeds + reports (45 min)
-- [ ] 4.1 index.html before index.js add:
+- [ X ] 4.1 index.html before index.js add:
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-client.js"></script>
-- [ ] 4.2 Fill SB_URL + SB_ANON in supabase-client.js
-- [ ] 4.3 index.js logCare() after writeOverlay() add sbLogEvent({animalId, kind})
-- [ ] 4.4 logStationCheck() after writeOverlay() add sbLogEvent({stationId, kind:'station'})
-- [ ] 4.5 boot() after hydrate(): sbEnsureAuth() + sbLoadRecentEvents() merge + sbLiveTicker() re-render
-- [ ] 4.6 Report form: compress image (1200px webp) + sbUploadReportPhoto + sbSubmitReport
+- [ X ] 4.2 Fill SB_URL + SB_ANON in supabase-client.js
+- [ X ] 4.3 index.js logCare() after writeOverlay() add sbLogEvent({animalId, kind})
+- [ X ] 4.4 logStationCheck() after writeOverlay() add sbLogEvent({stationId, kind:'station'})
+- [ X ] 4.5 boot() after hydrate(): sbEnsureAuth() + sbLoadRecentEvents() merge + sbLiveTicker() re-render
+- [ X ] 4.6 Report form: file picker + preview + sbCompressImage (1200px webp) + sbUploadReportPhoto + sbSubmitReport
 - [ ] 4.7 Test: npx serve . open normal + incognito, Feed in one, reload other = count+1 + ticker
+- [ ] 4.8 EXTRA (not in plan): activity.html "View all" page, deep links #animal=, volunteer + animal
+  avatars in the ticker/feed, migration-avatar.sql for events.actor_avatar
 DONE WHEN: shared test passes, no [sb] console errors.
 
 ## PHASE 5 - Chat DMs (1 hr)

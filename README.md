@@ -60,9 +60,10 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
 - "Near Me" uses the browser Geolocation API and re-measures every distance from
   where you actually are; "reset" returns to the park centre.
 - "+ Report a Stray" opens a full form. You can drop the pin on the map (the
-  modal docks to the bottom so the map is clickable), use your GPS position or
-  the park centre. Reports are saved locally, appear on the map immediately and
-  get assigned to the nearest feeding station.
+  modal docks to the bottom so the map is clickable) or use your GPS position.
+  The photo is compressed in the browser before upload. Reports are saved
+  locally, appear on the map immediately, get assigned to the nearest feeding
+  station, and are shared with other volunteers through Supabase.
 - Details drawer with the full profile, health/sterilisation flags, care history
   from this device and shortcuts to log a feed, water or vet check.
 - Station popups let you log a container check, which raises the capacity level

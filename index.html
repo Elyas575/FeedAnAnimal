@@ -404,9 +404,23 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
           <label class="fta-label" for="report-notes">Handling notes for other volunteers</label>
           <textarea id="report-notes" class="fta-field" rows="2" placeholder="Approach slowly, feed from a flat hand, do not touch the injured leg."></textarea>
         </div>
-        <div>
-          <label class="fta-label" for="report-photo">Photo URL (optional)</label>
-          <input id="report-photo" class="fta-field" type="url" placeholder="https://…" autocomplete="off">
+        <div class="sm:col-span-2">
+          <span class="fta-label">Photo (optional)</span>
+          <div class="flex items-start gap-3">
+            <div id="report-photo-preview" class="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container border border-surface-container-highest flex items-center justify-center text-outline">
+              <span class="material-symbols-outlined text-[26px]">photo_camera</span>
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col gap-1.5">
+              <input id="report-photo-file" type="file" accept="image/*" capture="environment"
+                class="fta-field w-full text-xs file:mr-3 file:rounded-full file:border-0 file:bg-surface-container-high file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-on-surface hover:file:bg-surface-container-highest">
+              <p id="report-photo-hint" class="font-label-sm text-[11px] text-on-surface-variant">
+                Take or choose a photo. It is shrunk to 1200px and uploaded automatically.
+              </p>
+              <button id="report-photo-clear" type="button" class="self-start text-xs font-semibold text-primary hover:underline hidden">
+                Remove photo
+              </button>
+            </div>
+          </div>
         </div>
         <div>
           <label class="fta-label" for="report-reporter">Your name (for the log)</label>
@@ -427,9 +441,6 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
             </button>
             <button id="report-use-location" type="button" class="fta-btn fta-btn--ghost">
               <span class="material-symbols-outlined">my_location</span>Use my location
-            </button>
-            <button id="report-use-center" type="button" class="fta-btn fta-btn--ghost">
-              <span class="material-symbols-outlined">wrong_location</span>Use park centre
             </button>
           </div>
           <div class="flex items-center gap-2">
