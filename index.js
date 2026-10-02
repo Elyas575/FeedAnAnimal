@@ -1580,35 +1580,8 @@
     openModal('details-modal');
     setSelected(animal.id, false);
   }
-  function wireAuthLink() {
-    const link = $('#auth-link');
-    const label = $('#auth-link-label');
-    if (!link) return;
-    const refresh = async () => {
-      try {
-        const auth = (typeof window !== 'undefined' && window.sbAuth) ? window.sbAuth : null;
-        if (!auth) return;
-        const user = await auth.currentUser();
-        if (!label) return;
-        if (user && user.email) {
-          label.textContent = user.email.split('@')[0];
-          link.setAttribute('title', 'Signed in as ' + user.email + ' — click to manage account');
-        } else if (user && !user.is_anonymous) {
-          label.textContent = 'Account';
-        } else {
-          label.textContent = 'Sign in';
-        }
-      } catch (e) { /* keep Sign in */ }
-    };
-    refresh();
-    try {
-      const auth = (typeof window !== 'undefined' && window.sbAuth) ? window.sbAuth : null;
-      if (auth && auth.client() && auth.client().auth && auth.client().auth.onAuthStateChange) {
-        auth.client().auth.onAuthStateChange(() => refresh());
-      }
-    } catch (e) {}
-    setTimeout(refresh, 2000);
-  }
+  /* The Sign in button label is now handled by site-header.js on every page,
+     so index.js does not need its own copy. */
 
   // Keep local profile + report name in sync with the real Supabase login
   /* Pulls the provider's profile photo (Google sets user_metadata.avatar_url /
@@ -1949,7 +1922,6 @@
     renderStatusBar();
     switchMobileView('list');
     wireEvents();
-    wireAuthLink();
     wireReportPhoto();
     syncProfileFromAuth();
     wireDeepLink();

@@ -118,14 +118,10 @@ Object.keys(SCORE_EXPECT).forEach((kind) => {
 /* ------------------------------- the page ------------------------------ */
 ok('community.html has a title', html.indexOf('<title>') !== -1);
 ok('page loads the supabase client', html.indexOf('src="supabase-client.js"') !== -1);
-ok('page loads community.js', html.indexOf('src="community.js"') !== -1);
-ok('page has a leaderboard container', html.indexOf('id="board"') !== -1);
-ok('page has the three time windows',
-  html.indexOf('data-w="week"') !== -1 && html.indexOf('data-w="month"') !== -1 && html.indexOf('data-w="all"') !== -1);
-ok('page explains how points work', html.indexOf('id="scores"') !== -1);
-ok('page shows the full ladder', html.indexOf('id="tiers"') !== -1);
-ok('page has a "your rank" panel', html.indexOf('id="mine"') !== -1);
-ok('page has an empty state', html.indexOf('id="board-empty"') !== -1);
+ok('page no longer loads community.js', html.indexOf('src="community.js"') === -1);
+ok('page has no leaderboard markup left',
+  html.toLowerCase().indexOf('leaderboard') === -1 && html.indexOf('id="board"') === -1
+  && html.indexOf('id="tiers"') === -1 && html.indexOf('data-w=') === -1);
 ok('page links back to the map', html.indexOf('href="index.html"') !== -1);
 ok('page has a meta description', html.indexOf('name="description"') !== -1);
 ok('page has a favicon', html.indexOf('rel="icon"') !== -1);
@@ -153,8 +149,18 @@ ok('client degrades gracefully if the RPC is missing',
 ok('client validates the window argument', /\['week', 'month', 'all'\]\.indexOf\(span\)/.test(client));
 
 /* ------------------------------- nav link ----------------------------- */
-ok('nav links Leaderboard to community.html',
-  /data-path="leaderboard" href="community\.html"/.test(indexHtml));
+// The nav moved out of index.html into site-header.js, so assert the links
+// live in the shared header now. The community page is forum-only since the
+// rank ladder was removed from it.
+const sharedHeader = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
+ok('shared navbar links Community to community.html',
+  sharedHeader.indexOf("href: 'community.html'") !== -1);
+ok('shared navbar has no Leaderboard pill',
+  sharedHeader.toLowerCase().indexOf('leaderboard') === -1);
+ok('shared navbar links Activity to activity.html',
+  sharedHeader.indexOf("href: 'activity.html'") !== -1);
+ok('shared navbar links Sign in to auth.html',
+  /href="auth\.html"/.test(sharedHeader));
 
 /* --------------------------------- run --------------------------------- */
 let bad = 0;

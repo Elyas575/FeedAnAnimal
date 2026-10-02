@@ -28,8 +28,125 @@ try {
     window.sbDisplayName = sbDisplayName;
     window.sbLeaderboard = sbLeaderboard;
     window.sbMyRank = sbMyRank;
+    window.sbForumTopics = sbForumTopics;
+    window.sbForumCreateTopic = sbForumCreateTopic;
+    window.sbForumReplies = sbForumReplies;
+    window.sbForumCreateReply = sbForumCreateReply;
+    window.sbForumToggleLike = sbForumToggleLike;
   }
 } catch (e) { /* ignore */ }
+
+/* ------------------------------------------------------------------ *
+ * Community forum (see supabase/schema-forum.sql)
+ *
+ * Wakie-style topics: volunteers post a title + body, others reply.
+ * Every function returns null when the forum tables are not installed
+ * yet, so forum.js can fall back to localStorage and the page still
+ * works before the SQL has been run.
+ * ------------------------------------------------------------------ */
+
+/* Newest-first topic list. sort: 'recent' | 'top' | 'active'. */
+async function sbForumTopics(sort) {
+  if (!sb) return null;
+  try {
+    let q = sb.from('topics').select('*');
+    if (sort === 'top') q = q.order('like_count', { ascending: false }).order('created_at', { ascending: false });
+    else if (sort === 'active') q = q.order('last_reply_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    else q = q.order('created_at', { ascending: false });
+    const { data, error } = await q.limit(100);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('[sb] forum topics unavailable (run supabase/schema-forum.sql):', err.message);
+    return null;
+  }
+}
+
+async function sbForumCreateTopic(title, body) {
+  if (!sb) return null;
+  try {
+    const user = await sbEnsureAuth();
+    if (!user || user.is_anonymous) return { error: 'signin' };
+    const cleanTitle = String(title || '').trim().slice(0, 140);
+    const cleanBody = String(body || '').trim().slice(0, 4000);
+    if (cleanTitle.length < 3 || !cleanBody) return { error: 'invalid' };
+    const { data, error } = await sb.from('topics').insert([{
+      author_id: user.id,
+      author_name: await sbDisplayName('Volunteer'),
+      author_avatar: await sbAvatarUrl(),
+      title: cleanTitle,
+      body: cleanBody,
+    }]).select().single();
+    if (error) throw error;
+    return { topic: data };
+  } catch (err) {
+    console.warn('[sb] forum create topic failed:', err.message);
+    return (/relation|table|schema cache/i.test(err.message || '')) ? null : { error: 'failed' };
+  }
+}
+
+async function sbForumReplies(topicId) {
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.from('replies').select('*')
+      .eq('topic_id', topicId).order('created_at', { ascending: true }).limit(200);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('[sb] forum replies unavailable:', err.message);
+    return null;
+  }
+}
+
+async function sbForumCreateReply(topicId, body) {
+  if (!sb) return null;
+  try {
+    const user = await sbEnsureAuth();
+    if (!user || user.is_anonymous) return { error: 'signin' };
+    const clean = String(body || '').trim().slice(0, 2000);
+    if (!clean) return { error: 'invalid' };
+    const { data, error } = await sb.from('replies').insert([{
+      topic_id: topicId,
+      author_id: user.id,
+      author_name: await sbDisplayName('Volunteer'),
+      author_avatar: await sbAvatarUrl(),
+      body: clean,
+    }]).select().single();
+    if (error) throw error;
+    return { reply: data };
+  } catch (err) {
+    console.warn('[sb] forum create reply failed:', err.message);
+    return (/relation|table|schema cache/i.test(err.message || '')) ? null : { error: 'failed' };
+  }
+}
+
+/* Toggles the signed-in volunteer's like. Returns { liked, like_count }
+   or { error: 'signin' } / null when the tables are missing. */
+async function sbForumToggleLike(topicId) {
+  if (!sb) return null;
+  try {
+    const user = await sbEnsureAuth();
+    if (!user || user.is_anonymous) return { error: 'signin' };
+    const existing = await sb.from('topic_likes')
+      .select('topic_id').eq('topic_id', topicId).eq('user_id', user.id).maybeSingle();
+    if (existing.error && !/no rows|PGRST116/i.test(existing.error.message || '')) throw existing.error;
+    if (existing.data) {
+      const del = await sb.from('topic_likes').delete().eq('topic_id', topicId).eq('user_id', user.id);
+      if (del.error) throw del.error;
+      await sb.rpc('forum_like_delta', { p_topic: topicId, p_delta: -1 }).then(
+        function () {}, function () { /* trigger-less fallback below */ });
+      return { liked: false };
+    }
+    const ins = await sb.from('topic_likes').insert([{ topic_id: topicId, user_id: user.id }]);
+    if (ins.error) throw ins.error;
+    await sb.rpc('forum_like_delta', { p_topic: topicId, p_delta: 1 }).then(
+      function () {}, function () { /* trigger-less fallback below */ });
+    return { liked: true };
+  } catch (err) {
+    console.warn('[sb] forum like failed:', err.message);
+    return (/relation|table|schema cache/i.test(err.message || '')) ? null : { error: 'failed' };
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * Community ladder (see supabase/schema-leaderboard.sql)

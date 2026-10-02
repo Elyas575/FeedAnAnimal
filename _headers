@@ -27,6 +27,18 @@
 /supabase-client.js
   Cache-Control: public, max-age=3600, must-revalidate
 
+/site-header.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/tailwind-theme.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/community.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/forum.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
 /data/*
   Cache-Control: public, max-age=3600, must-revalidate
 

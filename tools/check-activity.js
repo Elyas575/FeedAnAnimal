@@ -438,6 +438,53 @@ const BUDGET = 110 * 1024;
  * A broken internal link is a 404 in production, so assert every local
  * href/src in every shipped page actually exists on disk. */
 const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', 'community.html', '404.html'];
+// The shared navbar must exist on EVERY shipped page.
+rows.push([fs.existsSync(path.join(ROOT, 'site-header.js')) ? 'OK  ' : 'MISS', 'deploy file present: site-header.js']);
+pages.forEach((file) => {
+  const body = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  rows.push([body.includes('id="site-header"') ? 'OK  ' : 'MISS', file + ' uses the shared header placeholder']);
+  rows.push([body.includes('src="site-header.js"') ? 'OK  ' : 'MISS', file + ' loads site-header.js']);
+  // A hard-coded header would drift out of sync again - that is the bug.
+  rows.push([body.includes('Support Animal Relief') ? 'MISS' : 'OK  ', file + ' has no hard-coded navbar']);
+  rows.push([body.includes('has-site-header') || body.includes('pt-[68px]') ? 'OK  ' : 'MISS',
+    file + ' clears the fixed navbar']);
+});
+
+const header = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
+check('the navbar is defined in exactly one file', 'var LINKS = [', header);
+check('the navbar has a Map link', "label: 'Map'", header);
+rows.push([header.toLowerCase().indexOf('leaderboard') === -1 ? 'OK  ' : 'MISS',
+  'the navbar has no Leaderboard link']);
+check('the navbar has an Activity link', "label: 'Activity'", header);
+check('the navbar has a Community link', "label: 'Community'", header);
+check('the navbar keeps the Support button', 'Support Animal Relief', header);
+check('the navbar keeps the brand', 'FeedAnAnimalMap', header);
+check('the navbar keeps the paw logo', '\uD83D\uDC3E', header);
+check('the active nav item is derived, not hard-coded', 'function currentId(', header);
+check('the Sign in label is wired on every page', 'auth-link-label', header);
+
+// Regression: the Material palette used to be inlined in index.html only, so
+// every other page rendered this navbar UNSTYLED (the classes did not exist).
+// The theme must now load on EVERY page, and AFTER the Tailwind CDN.
+const theme = fs.readFileSync(path.join(ROOT, 'tailwind-theme.js'), 'utf8');
+rows.push([theme.indexOf('primary-fixed') !== -1 ? 'OK  ' : 'MISS', 'tailwind-theme.js defines the primary-fixed palette']);
+rows.push([theme.indexOf('surface-container-highest') !== -1 ? 'OK  ' : 'MISS', 'tailwind-theme.js defines surface-container-highest']);
+rows.push([/tailwind\.config\s*=/.test(theme) ? 'OK  ' : 'MISS', 'tailwind-theme.js assigns tailwind.config']);
+pages.forEach((file) => {
+  const body = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const cdn = body.indexOf('cdn.tailwindcss.com');
+  const themeAt = body.indexOf('src="tailwind-theme.js"');
+  rows.push([themeAt !== -1 ? 'OK  ' : 'MISS', file + ' loads the shared theme']);
+  rows.push([cdn !== -1 ? 'OK  ' : 'MISS', file + ' loads the Tailwind CDN']);
+  rows.push([themeAt > cdn && cdn !== -1 ? 'OK  ' : 'MISS', file + ' loads the theme AFTER the CDN']);
+});
+// The navbar relies on these custom classes; without the theme they are no-ops.
+['bg-primary-fixed/50', 'text-primary', 'border-primary/30', 'text-on-surface',
+ 'text-on-surface-variant', 'bg-surface-container', 'text-outline',
+ 'border-surface-container-highest'].forEach((cls) => {
+  rows.push([header.indexOf(cls) !== -1 && theme.indexOf(cls.split('/')[0].replace(/^(bg|text|border)-/, '')) !== -1
+    ? 'OK  ' : 'MISS', 'navbar class "' + cls + '" exists in the shared theme']);
+});
 const linked = new Set();
 pages.forEach((page) => {
   const body = fs.readFileSync(path.join(ROOT, page), 'utf8');

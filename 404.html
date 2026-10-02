@@ -6,7 +6,7 @@
 <title>Page not found — FeedAnAnimalMap</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 <style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
        background:#fff8f6;color:#1e1b1a;text-align:center;padding:24px;
@@ -20,9 +20,14 @@
   a.btn:hover{background:#c15326}
   .links{margin-top:18px;font-size:13px}
   .links a{color:#a03b0e}
+  /* clear the shared fixed navbar */
+  body.has-site-header{padding-top:68px}
 </style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-theme.js"></script>
 </head>
 <body>
+<div id="site-header"></div>
   <main class="card">
     <div style="font-size:56px">🐾</div>
     <h1>We couldn't find that page</h1>
@@ -33,5 +38,6 @@
       <a href="/auth.html">Sign in</a>
     </p>
   </main>
+<script src="site-header.js"></script>
 </body>
 </html>
