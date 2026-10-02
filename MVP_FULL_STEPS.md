@@ -55,7 +55,10 @@ DONE WHEN: 48/6 counts match. DB 500MB = ~700k feeds/chats (months free).
   avatars in the ticker/feed, migration-avatar.sql for events.actor_avatar
 DONE WHEN: shared test passes, no [sb] console errors.
 
-## PHASE 5 - Chat DMs (1 hr)
+## PHASE 5 - Chat DMs (1 hr) - OPTIONAL, not needed for MVP
+- Skipped for now: DMs are a nice-to-have. The MVP works without them and ships
+  faster without 1hr of RLS edge-case debugging. Chat tables + get_or_create_dm
+  RPC already exist in the database, so this can be added post-launch.
 - [ ] 5.1 Details modal add [Message Caretaker] + [Block] buttons
 - [ ] 5.2 Click -> sbRequireEmail() (email only for chat, feed stays anon)
 - [ ] 5.3 -> sbOpenDm(otherUserId, animalId) via rpc get_or_create_dm (otherUserId = latest events.actor_id for animal != me)
@@ -65,10 +68,13 @@ DONE WHEN: shared test passes, no [sb] console errors.
 DONE WHEN: live DM + block works.
 
 ## PHASE 6 - Hardening (30 min)
-- [ ] 6.1 Add _headers caching, SEO meta/title/og/favicon, footer Privacy/Terms/Contact
-- [ ] 6.2 Debounce feed + note <100 chars
-- [ ] 6.3 Monthly cleanup: delete from events where created_at < now()-interval '90 days' (counts stay via trigger)
-- [ ] 6.4 Run node tools/build-data.js + selftest + check-markup, git status shows no .env/service_role
+- [ X ] 6.1 _headers (caching + security), SEO meta/title/og on all pages,
+  inline-SVG favicon, og-image.svg, robots.txt, sitemap.xml, 404.html,
+  privacy.html, terms.html, footer Privacy/Terms/Contact
+- [ ] 6.2 Debounce feed + note <100 chars (nice-to-have, not MVP-blocking)
+- [ X ] 6.3 Monthly cleanup SQL written (supabase/cleanup-events.sql)
+- [ X ] 6.4 npm run test green (selftest + check-markup + check-activity),
+  no secrets in git (verified across all 27 commits)
 DONE WHEN: no secrets in git, validators pass.
 
 ## PHASE 7 - Go live (20 min)

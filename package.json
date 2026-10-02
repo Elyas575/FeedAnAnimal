@@ -7,7 +7,10 @@
   "scripts": {
     "seed": "node tools/seed-supabase.js",
     "build-data": "node tools/build-data.js",
-    "selftest": "node tools/selftest.js"
+    "selftest": "node tools/selftest.js",
+    "check": "node tools/check-markup.js && node tools/check-activity.js",
+    "test": "node tools/selftest.js && node tools/check-markup.js && node tools/check-activity.js",
+    "build": "node tools/build-data.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.0"

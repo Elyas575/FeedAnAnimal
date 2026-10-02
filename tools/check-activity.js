@@ -199,7 +199,11 @@ check('placePickMarker accepts options', 'function placePickMarker(lat, lng, opt
 check('placePickMarker takes a fromGps flag', 'opts.fromGps', js);
 check('a GPS pin updates state.userLocation', 'state.userLocation = { lat: lat, lng: lng };', js);
 check('a GPS pin re-renders the blue dot', 'renderUserMarker(opts.accuracy)', js);
-check('a GPS pin persists the new location', 'writeOverlay();', js);
+// A GPS pin must NOT be persisted as the map reference, and must never move
+// the viewport - the map is park-scoped.
+const pinBlock = js.slice(js.indexOf('if (opts.fromGps)'), js.indexOf('if (opts.fromGps)') + 260);
+rows.push([pinBlock.indexOf('writeOverlay') === -1 ? 'OK  ' : 'MISS', 'a GPS pin does not persist as a map reference']);
+rows.push([/flyTo|setView/.test(pinBlock) === false ? 'OK  ' : 'MISS', 'a GPS pin never moves the viewport']);
 check('the pin carries the GPS accuracy', 'accuracy: accuracy', js);
 check('accuracy is shown to the user', 'accurate to about', js);
 check('a rough fix warns the user', 'GPS was only accurate to about', js);
@@ -216,6 +220,47 @@ rows.push([(js.match(/clearWatch\(watchId\)/g) || []).length >= 2 ? 'OK  ' : 'MI
   'clears the GPS watch on BOTH success and failure']);
 check('GPS caching is disabled for report pins', 'maximumAge: 0', js);
 check('locateMe also passes accuracy', 'renderUserMarker(position.coords.accuracy)', js);
+
+/* --- the map is park-scoped, never centred on the visitor ------------ *
+ * A saved GPS point used to become both the startup reference AND the
+ * distance origin, so the map jumped to the visitor and every distance
+ * changed depending on where you were standing. */
+rows.push([/state\.userLocation = overlay\.userLocation \|\| state\.meta\.center/.test(js) === false ? 'OK  ' : 'MISS',
+  'a saved GPS point is not used as the map reference on load']);
+check('referencePoint is the park centre', 'const referencePoint = () => state.meta.center', js);
+rows.push([/referencePoint = \(\) => state\.userLocation/.test(js) === false ? 'OK  ' : 'MISS',
+  'distances are not measured from the visitor']);
+// locateMe must not fly the viewport anywhere.
+const locateBlock = js.slice(js.indexOf('function locateMe()'), js.indexOf('function useParkCenter()'));
+rows.push([/flyTo|setView/.test(locateBlock) === false ? 'OK  ' : 'MISS',
+  '"Near Me" does not move the map viewport']);
+check('"Near Me" reports whether you are in the area', 'You are inside the mapped area', js);
+check('"Near Me" warns when outside the area', 'You are outside the mapped area', js);
+check('reset clears the stored location', 'state.userLocation = null;', js);
+check('reset re-frames the whole park', 'showing the whole', js);
+check('map opens on the park centre', '}).setView([center.lat, center.lng]', js);
+
+/* --- opening view shows the WHOLE park ------------------------------- *
+ * The old fitBounds() used the filtered subset and carried maxZoom: 15,
+ * so the park (1.7km across) never fitted in one screen. */
+check('fitToPark() helper exists', 'function fitToPark(options)', js);
+check('opening fit is delegated to fitToPark', 'fitToPark();', js);
+check('fitToPark includes every animal', 'state.animals.forEach((a) => points.push', js);
+check('fitToPark includes every station', 'state.stations.forEach((s) => points.push', js);
+check('fitToPark includes the park centre', 'if (centre) points.push([centre.lat, centre.lng])', js);
+// The subset bug: fitting rows (filtered) instead of the whole dataset.
+rows.push([/const bounds = \[\];[\s\S]{0,400}bounds\.push/.test(js) === false ? 'OK  ' : 'MISS',
+  'fit no longer uses the filtered marker subset']);
+const fitBlock = js.slice(js.indexOf('function fitToPark(options)'), js.indexOf('function animalMarker('));
+// Strip comments first: the rationale comment mentions "maxZoom" by name.
+const fitCode = fitBlock.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+rows.push([/maxZoom/.test(fitCode) === false ? 'OK  ' : 'MISS',
+  'fitToPark has no maxZoom cap (that blocked zooming out to the full park)']);
+check('fitToPark pads the bounds slightly', '.pad(0.08)', js);
+check('reset button re-frames the whole park', 'fitToPark({ animate: true });', js);
+check('map starts zoomed out before fitting', 'state.meta.startZoom || 13', js);
+rows.push([/state\.meta\.defaultZoom \|\| 15\);[\s\S]{0,40}attributionControl/.test(js) === false ? 'OK  ' : 'MISS',
+  'initial setView no longer starts at a close-in defaultZoom']);
 
 /* compression + upload helpers on the client */
 check('sbCompressImage() defined', 'async function sbCompressImage', sc);
@@ -388,6 +433,50 @@ const BUDGET = 110 * 1024;
   }
   finish();
 })().catch((e) => { rows.push(['MISS', 'compression harness threw: ' + e.message]); finish(); });
+
+/* --- Phase 6: deploy surface (MVP blocker) ---------------------------- *
+ * A broken internal link is a 404 in production, so assert every local
+ * href/src in every shipped page actually exists on disk. */
+const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', '404.html'];
+const linked = new Set();
+pages.forEach((page) => {
+  const body = fs.readFileSync(path.join(ROOT, page), 'utf8');
+  Array.from(body.matchAll(/(?:href|src)="(\/[^"?#]*|[A-Za-z0-9_.\/-]+\.(?:html|js|css|svg|json|txt|xml))"/g))
+    .forEach((m) => {
+      const target = m[1].replace(/^\//, '');
+      if (target && !/^(https?:|mailto:|#)/.test(target)) linked.add(target);
+    });
+});
+Array.from(linked).sort().forEach((target) => {
+  rows.push([fs.existsSync(path.join(ROOT, target)) ? 'OK  ' : 'MISS', 'internal link resolves: ' + target]);
+});
+
+/* deploy config files that must ship */
+['_headers', 'robots.txt', 'sitemap.xml', '404.html', '.nojekyll', 'og-image.svg']
+  .forEach((f) => rows.push([fs.existsSync(path.join(ROOT, f)) ? 'OK  ' : 'MISS', 'deploy file present: ' + f]));
+
+/* SEO essentials on the landing page */
+const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+check('index.html has a meta description', 'name="description"', idx);
+check('index.html has Open Graph title', 'property="og:title"', idx);
+check('index.html has Open Graph description', 'property="og:description"', idx);
+check('index.html has an Open Graph image', 'property="og:image"', idx);
+check('index.html has a favicon', 'rel="icon"', idx);
+check('index.html has a canonical url', 'rel="canonical"', idx);
+check('index.html sets a theme colour', 'name="theme-color"', idx);
+check('favicon is an inline SVG (cannot 404)', "href=\"data:image/svg+xml,%3Csvg", idx);
+check('footer links to Privacy', '/privacy.html', idx);
+check('footer links to Terms', '/terms.html', idx);
+check('footer has a Contact address', 'mailto:hello@feedanimals.org', idx);
+// The OG image the meta tags point at has to exist.
+rows.push([/og:image"\s+content="https:\/\/feedanimals\.pages\.dev\/og-image\.svg"/.test(idx) ? 'OK  ' : 'MISS',
+  'og:image points at the og-image.svg we ship']);
+// _headers must not cache HTML, or deploys never appear.
+const headers = fs.readFileSync(path.join(ROOT, '_headers'), 'utf8');
+rows.push([/no-cache/.test(headers) ? 'OK  ' : 'MISS', '_headers disables caching for HTML']);
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+rows.push([typeof pkg.scripts.build === 'string' ? 'OK  ' : 'MISS', 'package.json has a build script for Pages']);
+rows.push([typeof pkg.scripts.test === 'string' ? 'OK  ' : 'MISS', 'package.json has a test script']);
 
 function finish() {
   let bad = 0;

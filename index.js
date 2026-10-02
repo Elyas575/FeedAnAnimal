@@ -263,7 +263,12 @@
 
     state.activity = (payload.activity || []).map((raw) => normalizeActivity(Object.assign({ source: 'seed' }, raw)));
     state.log = overlay.log.map((raw) => normalizeActivity(Object.assign({ source: 'user' }, raw)));
-    state.userLocation = overlay.userLocation || state.meta.center || null;
+    /* The map is always framed on the park, never on the visitor. A saved
+       GPS point from a previous session must not become the map's reference
+       (it used to: state.userLocation was seeded from localStorage here and
+       then used as referencePoint(), which also skewed every distance).
+       The blue dot is drawn from this value, but it never moves the map. */
+    state.userLocation = overlay.userLocation || null;
     state.profile = overlay.profile || { name: state.meta.defaultVolunteerName || 'Guest volunteer' };
     state.dataSource = sourceLabel;
 
@@ -272,7 +277,11 @@
   /* ============================== selectors =========================== */
   const animalById = (id) => state.animals.find((a) => a.id === id) || null;
   const stationById = (id) => state.stations.find((s) => s.id === id) || null;
-  const referencePoint = () => state.userLocation || state.meta.center || { lat: 0, lng: 0 };
+  /* Distances and "needs help" urgency are measured from the park centre.
+       Using the visitor's position here made every distance change just by
+       reloading the page on a different street, which is meaningless for a
+       park-scoped map. "Near Me" is now purely a display/sort aid. */
+  const referencePoint = () => state.meta.center || { lat: 0, lng: 0 };
 
   function speciesInfo(id) {
     const found = (state.meta.speciesCatalog || []).find((s) => s.id === id);
@@ -753,7 +762,9 @@
       return false;
     }
     const center = state.meta.center || { lat: 47.671236, lng: -122.343184 };
-    /* Leaflet renders Google's raster tiles; Google's own terms/attribution still apply. */
+    /* Leaflet renders Google's raster tiles; Google's own terms/attribution still apply.
+       We start zoomed out; fitToPark() refines this to the exact park extent as
+       soon as the dataset loads, so the opening frame is never a close-up. */
     state.map = window.L.map('map', {
       zoomControl: false,
       attributionControl: true,
@@ -762,7 +773,7 @@
       worldCopyJump: true,
       zoomSnap: 0.5,
       zoomDelta: 0.5
-    }).setView([center.lat, center.lng], state.meta.defaultZoom || 15);
+    }).setView([center.lat, center.lng], state.meta.startZoom || 13);
 
     window.L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
     /* Default to the Google Streets base map; the layers button cycles the rest. */
@@ -830,22 +841,49 @@
 
     state.markers = {};
     const rows = selectAnimals();
-    const bounds = [];
     rows.forEach((row) => {
       const marker = animalMarker(row);
       state.markers[row.animal.id] = marker;
       group.addLayer(marker);
-      bounds.push([row.animal.location.lat, row.animal.location.lng]);
     });
     state.stations.forEach((station) => group.addLayer(stationMarker(station)));
 
     state.map.addLayer(group);
     state.markerLayer = group;
 
-    if (bounds.length && !state.fitted) {
+    /* Frame the WHOLE park on first load, not just the animals that survive
+       the current filter. Fitting the filtered subset meant that opening the
+       page with "Cats" active zoomed into a corner, and the extent changed
+       every time a chip was applied. We also drop the maxZoom cap: it was
+       inherited from the old default-zoom behaviour and prevented zooming
+       out far enough to see the full 1.7km park. */
+    if (!state.fitted) {
       state.fitted = true;
-      state.map.fitBounds(bounds, { padding: [48, 48], maxZoom: state.meta.defaultZoom || 15 });
+      fitToPark();
     }
+  }
+
+  /* Zoom out far enough to show every animal and station in one view. */
+  function fitToPark(options) {
+    if (!state.map) return;
+    const points = [];
+    state.animals.forEach((a) => points.push([a.location.lat, a.location.lng]));
+    state.stations.forEach((s) => points.push([s.location.lat, s.location.lng]));
+    const centre = state.meta.center || null;
+    if (centre) points.push([centre.lat, centre.lng]);
+    if (!points.length) return;
+
+    const opts = options || {};
+    if (points.length === 1) {
+      state.map.setView(points[0], state.meta.defaultZoom || 15);
+      return;
+    }
+    state.map.fitBounds(L.latLngBounds(points).pad(0.08), {
+      padding: opts.padding || [40, 40],
+      // No maxZoom here on purpose: this must be allowed to zoom OUT.
+      animate: opts.animate !== false,
+      duration: opts.duration === undefined ? 0.6 : opts.duration,
+    });
   }
   function animalMarker(row) {
     const animal = row.animal;
@@ -956,9 +994,15 @@
   const isNarrow = () => window.matchMedia('(max-width: 767px)').matches;
 
   /* ---------------------------- geolocation --------------------------- */
+  /* Finds where the visitor is and drops the blue "you are here" dot.
+
+     Deliberately does NOT move the map: this is a park-scoped map, so the
+     viewport stays on the park and the dot simply shows whether you are
+     inside it. It used to flyTo() the visitor, which threw away the park
+     view entirely and made the map useless for browsing the animals. */
   function locateMe() {
     if (!navigator.geolocation) {
-      toast('This browser cannot share a location - using Oakwood Park center.', 'error');
+      toast('This browser cannot share a location.', 'error');
       return;
     }
     toast('Requesting your location…', 'info');
@@ -968,24 +1012,41 @@
         writeOverlay();
         renderUserMarker(position.coords.accuracy);
         renderMarkers();
-        renderFeed();
-        if (state.map) state.map.flyTo([state.userLocation.lat, state.userLocation.lng], 16, { duration: 0.8 });
-        toast('Distances are now measured from your position.', 'ok');
+
+        // Tell the user whether they are even inside the mapped area.
+        const centre = state.meta.center || null;
+        const here = state.userLocation;
+        let inside = true;
+        if (centre && state.animals.length) {
+          const edge = state.animals.reduce((worst, a) => {
+            const d = haversine(centre, a.location);
+            return d > worst ? d : worst;
+          }, 0);
+          inside = haversine(centre, here) <= edge + 500;
+        }
+        toast(inside
+          ? 'You are inside the mapped area - shown as the blue dot.'
+          : 'You are outside the mapped area - the blue dot may be off screen.', inside ? 'ok' : 'error');
       },
       (error) => {
-        toast('Location unavailable (' + error.message + ') - keeping Oakwood Park center.', 'error');
+        const denied = error && error.code === 1;
+        toast(denied ? 'Location permission denied.' : 'Location unavailable (' + error.message + ').', 'error');
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
   }
 
   function useParkCenter() {
-    state.userLocation = state.meta.center || null;
+    state.userLocation = null;
     writeOverlay();
-    renderUserMarker();
+    if (state.userMarker) state.map.removeLayer(state.userMarker);
+    state.userMarker = null;
+    if (state.accuracyCircle) state.map.removeLayer(state.accuracyCircle);
+    state.accuracyCircle = null;
     renderFeed();
     renderMarkers();
-    toast('Distances reset to the ' + (state.meta.region || 'park') + ' reference point.', 'ok');
+    fitToPark({ animate: true });
+    toast('Cleared your location - showing the whole ' + (state.meta.region || 'park') + '.', 'ok');
   }
 
   /* Used by the "Report a stray" form: click the map to drop the pin. */
@@ -1013,13 +1074,11 @@
       zIndexOffset: 600
     }).addTo(state.map);
 
-    /* When the pin came from GPS, the "you are here" dot MUST move with it.
-       They used to be independent, so the dot could sit on a stale fix from
-       localStorage and make a perfectly good pin look wrong. Keep them in
-       lockstep so what you see is one single truth. */
+    /* When the pin came from GPS, the "you are here" dot moves with it so the
+       two can never disagree. This does NOT persist as a map reference and
+       never moves the viewport - the map stays on the park. */
     if (opts.fromGps) {
       state.userLocation = { lat: lat, lng: lng };
-      writeOverlay();
       renderUserMarker(opts.accuracy);
     }
 

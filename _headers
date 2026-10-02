@@ -1,0 +1,41 @@
+/*
+  Cloudflare Pages / Netlify header rules.
+  Long cache for immutable-ish assets, no-cache for HTML so deploys land instantly.
+*/
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=()
+
+/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/*.html
+  Cache-Control: no-cache, must-revalidate
+
+/activity.html
+  Cache-Control: no-cache, must-revalidate
+
+/auth.html
+  Cache-Control: no-cache, must-revalidate
+
+/index.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/supabase-client.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/data/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/og-image.svg
+  Cache-Control: public, max-age=86400
+
+/*.svg
+  Cache-Control: public, max-age=86400
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff

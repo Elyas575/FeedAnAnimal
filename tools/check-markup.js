@@ -54,10 +54,17 @@ dynamicHooks.forEach((hook) => {
   }
 });
 
-/* assets the page loads must exist on disk */
-const assets = Array.from(html.matchAll(/(?:src|href)="((?!https?:|\/\/|#)[^"]+)"/g)).map((m) => m[1]);
+/* assets the page loads must exist on disk.
+   Only real on-disk paths are checked: remote URLs, protocol-relative URLs,
+   fragments, and non-file schemes (data: inline favicons, mailto:, tel:) are
+   all valid and must not be reported as missing files. */
+const NON_FILE = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
+const assets = Array.from(html.matchAll(/(?:src|href)="([^"]+)"/g))
+  .map((m) => m[1])
+  .filter((value) => !NON_FILE.test(value));
 assets.forEach((asset) => {
-  if (!fs.existsSync(path.join(ROOT, asset))) problems.push('index.html references a missing file: ' + asset);
+  const clean = asset.split(/[?#]/)[0];
+  if (clean && !fs.existsSync(path.join(ROOT, clean))) problems.push('index.html references a missing file: ' + asset);
 });
 
 /* the fallback dataset has to mirror data/animals.json */
