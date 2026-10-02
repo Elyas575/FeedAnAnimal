@@ -26,8 +26,44 @@ try {
     window.sbCompressImage = sbCompressImage;
     window.sbFormatBytes = sbFormatBytes;
     window.sbDisplayName = sbDisplayName;
+    window.sbLeaderboard = sbLeaderboard;
+    window.sbMyRank = sbMyRank;
   }
 } catch (e) { /* ignore */ }
+
+/* ------------------------------------------------------------------ *
+ * Community ladder (see supabase/schema-leaderboard.sql)
+ *
+ * Points are computed in Postgres from the events table, never in the
+ * browser - otherwise anyone could edit a number in devtools and top the
+ * board. These wrappers degrade to [] when the RPC is not installed yet,
+ * so the community page still renders if the SQL has not been run.
+ * ------------------------------------------------------------------ */
+async function sbLeaderboard(span) {
+  const win = ['week', 'month', 'all'].indexOf(span) === -1 ? 'all' : span;
+  try {
+    if (!sb) return [];
+    const { data, error } = await sb.rpc('leaderboard', { p_window: win });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('[sb] leaderboard unavailable (run supabase/schema-leaderboard.sql):', err.message);
+    return [];
+  }
+}
+
+async function sbMyRank() {
+  try {
+    if (!sb) return null;
+    const { data, error } = await sb.rpc('my_rank');
+    if (error) throw error;
+    // Supabase returns a single row as an array for set-returning functions.
+    return (data && data[0]) || null;
+  } catch (err) {
+    console.warn('[sb] my_rank unavailable:', err.message);
+    return null;
+  }
+}
 
 async function sbEnsureAuth() {
   if (!sb) return null;

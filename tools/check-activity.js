@@ -437,7 +437,7 @@ const BUDGET = 110 * 1024;
 /* --- Phase 6: deploy surface (MVP blocker) ---------------------------- *
  * A broken internal link is a 404 in production, so assert every local
  * href/src in every shipped page actually exists on disk. */
-const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', '404.html'];
+const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', 'community.html', '404.html'];
 const linked = new Set();
 pages.forEach((page) => {
   const body = fs.readFileSync(path.join(ROOT, page), 'utf8');
