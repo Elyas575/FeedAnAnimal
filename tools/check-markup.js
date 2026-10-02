@@ -80,7 +80,11 @@ const globals = new Set([
   'Set', 'Map', 'Date', 'Number', 'String', 'Boolean', 'Object', 'Array', 'JSON', 'Math',
   'Promise', 'Error', 'RegExp', 'fetch', 'setTimeout', 'clearTimeout', 'setInterval',
   'clearInterval', 'parseInt', 'parseFloat', 'isFinite', 'isNaN', 'require', 'console',
-  'if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'new', 'do', 'else'
+  'URLSearchParams', 'URL', 'FormData', 'Blob', 'File',
+  // reserved keywords — never user-defined names, so the call-site regex may match them
+  'if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'new', 'do', 'else',
+  'async', 'await', 'try', 'finally', 'delete', 'void', 'in', 'of', 'instanceof', 'yield',
+  'throw', 'case', 'break', 'continue', 'default', 'extends', 'super', 'this', 'class', 'with'
 ]);
 
 const definedNames = new Set();

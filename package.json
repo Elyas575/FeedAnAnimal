@@ -1,0 +1,15 @@
+{
+  "name": "feedtheanimalsmap",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FeedTheAnimalsMap - stray-animal feeding map (static frontend + Supabase backend)",
+  "type": "commonjs",
+  "scripts": {
+    "seed": "node tools/seed-supabase.js",
+    "build-data": "node tools/build-data.js",
+    "selftest": "node tools/selftest.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.0"
+  }
+}

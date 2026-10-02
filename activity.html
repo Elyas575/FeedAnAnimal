@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Activity - FeedAnAnimalMap</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;color:#1e1b1a}
+.fta-field{height:42px;padding:0 14px;border-radius:9999px;border:1px solid #dec0b6;background:#fff;font-size:13px}
+.chip{padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:600;background:#f5ecea;white-space:nowrap}
+.chip.on{background:#a03b0e;color:#fff}
+.row{background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.avatar{width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;background:#f5ecea;display:flex;align-items:center;justify-content:center;font-size:22px;position:relative}
+/* photo above initials above background - see .thumb below */
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+.avatar .initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;z-index:1}
+/* animal photo at the trailing edge of each row */
+.thumb{position:relative;width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f5ecea}
+/* the photo must paint ABOVE the emoji fallback, and the emoji above the
+   background - explicit z-index so DOM order can never invert this again */
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+.thumb .emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;z-index:1}
+</style>
+</head>
+<body>
+<div class="max-w-2xl mx-auto p-4 pb-20">
+<div class="flex items-center gap-3 sticky top-0 py-3" style="background:#fff8f6">
+<a href="index.html" class="w-10 h-10 rounded-full bg-white border border-[#efe6e4] flex items-center justify-center"><span class="material-symbols-outlined">arrow_back</span></a>
+<div class="flex-1"><h1 class="text-xl font-bold">All activity</h1>
+<p id="act-sub" class="text-xs text-[#57423b]">Live from Supabase + this device</p></div>
+<span id="live-dot" class="text-xs font-bold text-green-700">● LIVE</span>
+</div>
+<div class="flex gap-2 mt-1">
+<input id="q" class="fta-field flex-1" placeholder="Search Rufus, feed, station...">
+<select id="kind" class="fta-field" style="max-width:130px"><option value="">All kinds</option><option>feed</option><option>water</option><option>station</option><option>report</option><option>vet</option><option>medicine</option></select>
+</div>
+<div id="chips" class="flex gap-2 mt-3 overflow-x-auto pb-1">
+<button class="chip on" data-f="all">All</button>
+<button class="chip" data-f="mine">Mine only</button>
+<button class="chip" data-f="cloud">Live shared</button>
+<button class="chip" data-f="local">This device</button>
+</div>
+<div id="list" class="flex flex-col gap-2 mt-3"></div>
+<div id="empty" class="hidden text-center text-sm mt-8">No activity matches. Try clearing search.</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+
+<script>
+(function(){
+var $ = function(id){ return document.getElementById(id); };
+var rows = [], filter = 'all';
+var esc = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+var rel = function(iso){ var d = Date.now()-Date.parse(iso); if(isNaN(d)) return ''; var m=Math.round(d/60000); if(m<1) return 'just now'; if(m<60) return m+'m ago'; var h=Math.round(m/60); if(h<24) return h+'h ago'; return Math.round(h/24)+'d ago'; };
+var when = function(iso){ var t = Date.parse(iso); if(isNaN(t)) return 'unknown time'; var d = new Date(t); var pad=function(n){ return String(n).padStart(2,'0'); };
+return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); };
+var pretty = function(id){ var s = String(id||''); return s.charAt(0).toUpperCase()+s.slice(1).replace(/-/g,' '); };
+
+/* --- photos ------------------------------------------------------- *
+ * The emoji/initials layer always renders first, so a dead photo URL
+ * (the old Google aida links 403) silently falls back instead of
+ * showing a broken image icon. */
+var HUES = ['#a03b0e','#7c4a21','#4b6b3a','#2f6f6a','#3b5a8a','#6b3a7a','#8a5a2b','#5a6b2f'];
+var SPECIES_EMOJI = { cat:'🐱', dog:'🐶', rabbit:'🐰', bird:'🐦', 'guinea-pig':'🐹', 'guineapig':'🐹' };
+
+function initialsOf(name){
+var parts = String(name==null?'':name).trim().split(/[\s._-]+/).filter(Boolean);
+if(!parts.length) return '?';
+if(parts.length===1) return parts[0].slice(0,2).toUpperCase();
+return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
+}
+function hueOf(name){
+var src = String(name==null?'':name), h = 0;
+for(var i=0;i<src.length;i++) h = (h*31+src.charCodeAt(i)) >>> 0;
+return HUES[h % HUES.length];
+}
+function personAvatar(name, url){
+var photo = url ? '<img src="'+esc(url)+'" alt="" loading="lazy" onerror="this.remove()">' : '';
+return '<span class="avatar" style="background:'+esc(hueOf(name))+'" title="'+esc(name||'Volunteer')+'">'
++'<span class="initials">'+esc(initialsOf(name))+'</span>'+photo+'</span>';
+}
+function animalThumb(animalId){
+var a = animalsById[animalId];
+var emoji = a ? (SPECIES_EMOJI[a.species] || '🐾') : '🐾';
+var photo = (a && a.photoUrl) ? '<img src="'+esc(a.photoUrl)+'" alt="" loading="lazy" onerror="this.remove()">' : '';
+/* emoji FIRST, photo SECOND: both are absolutely positioned, so the later
+   sibling paints on top. That way a real photo covers the emoji, and the
+   onerror handler removes the dead <img> to reveal the emoji again. */
+return '<span class="thumb"><span class="emoji">'+emoji+'</span>'+photo+'</span>';
+}
+
+/* Animal id -> {name, photoUrl, species}, loaded from the same dataset
+ * index.html uses so the photos match the map exactly. */
+var animalsById = {};
+async function loadAnimals(){
+try {
+var res = await fetch('data/animals.json', { cache:'no-store' });
+if(!res.ok) throw new Error('http '+res.status);
+var doc = await res.json();
+(doc.animals||[]).forEach(function(a){ animalsById[a.id] = {name:a.name, species:a.species, photoUrl:a.photoUrl||null}; });
+} catch(e){ console.warn('[activity] animal photos unavailable:', e.message); }
+}
+function loadLocal(){
+try {
+var raw = localStorage.getItem('fta.overlay.v1'); if(!raw) return [];
+var o = JSON.parse(raw); var log = o.log||[];
+return log.map(function(e){ return {id:e.id, actor:e.actor||'You', actorAvatar:e.actorAvatar||'', kind:e.kind, note:e.note, place:e.place, at:e.at, animal:e.animalId, src:'local'}; });
+} catch(e){ return []; }
+}
+async function loadCloud(){
+try {
+if(!window.sbLoadRecentEvents) return [];
+var data = await window.sbLoadRecentEvents(100);
+return (data||[]).map(function(r){ return {id:r.id, actor:r.actor_name||'Volunteer', actorAvatar:r.actor_avatar||'', kind:r.kind, note:r.note||r.kind, place:r.place||'', at:r.created_at, animal:r.animal_id, station:r.station_id, src:'cloud'}; });
+} catch(e){ return []; }
+}
+function match(r){
+var q = ($('q').value||'').toLowerCase();
+var k = $('kind').value;
+if(k && r.kind!==k) return false;
+if(filter==='mine' && !(r.src==='local')) return false;
+if(filter==='cloud' && r.src!=='cloud') return false;
+if(filter==='local' && r.src!=='local') return false;
+if(q && ((r.actor+' '+r.note+' '+r.place+' '+(r.animal||'')+' '+r.kind).toLowerCase().indexOf(q)<0)) return false;
+return true;
+}
+function render(){
+var list = $('list'); var n = 0;
+var filtered = rows.filter(match).sort(function(a,b){ return Date.parse(b.at)-Date.parse(a.at); });
+list.innerHTML = filtered.slice(0,200).map(function(r){
+n++;
+var label = r.animal ? pretty(r.animal) : (r.station ? 'Station ' + pretty(r.station) : 'Community');
+var icon = r.kind==='feed' ? 'restaurant' : r.kind==='water' ? 'water_drop' : r.kind==='station' ? 'checklist' : r.kind==='report' ? 'campaign' : r.kind==='vet' ? 'medical_services' : r.kind==='medicine' ? 'medication' : r.kind==='rescue' ? 'volunteer_activism' : 'event_note';
+var link = r.animal ? 'index.html#animal='+encodeURIComponent(r.animal) : (r.station ? 'index.html#station='+encodeURIComponent(r.station) : '');
+return '<div class="row">'+personAvatar(r.actor, r.actorAvatar)
++'<div class="flex-1 min-w-0"><p class="text-sm"><b>'+esc(r.actor)+'</b> '+esc(r.note||r.kind)+'</p>'
++'<p class="text-xs text-[#57423b]">'+esc(label)+' &middot; '+esc(r.place||'Oakwood Park')+' &middot; '+esc(rel(r.at))+'</p>'
++'<p class="text-[11px] text-[#8a6b60] mt-0.5">'+(r.src==='cloud' ? 'shared from Supabase' : 'logged on this device')+' &middot; '+esc(when(r.at))+(link ? ' &middot; <a href="'+link+'" style="text-decoration:underline;font-weight:600">'+esc(r.src==='cloud'?'Open on map':'View details')+'</a>' : '')+'</p></div>'
++(r.animal ? animalThumb(r.animal) : '<span class="thumb"><span class="emoji material-symbols-outlined" style="font-size:20px;color:#a03b0e">'+icon+'</span></span>')
++'</div>';
+}).join('');
+$('empty').classList.toggle('hidden', n>0);
+var total = filtered.length;
+$('act-sub').textContent = total + ' update' + (total===1?'':'s') + ' - live from Supabase + this device';
+if(total > 200){ var more = document.createElement('p'); more.className='text-center text-xs text-[#8a6b60] mt-3'; more.textContent='Showing newest 200 of ' + total + ' - narrow the search to see older ones'; list.appendChild(more); }
+}
+async function boot(){
+if(window.sbEnsureAuth) try{ await window.sbEnsureAuth(); }catch(e){}
+await loadAnimals();
+rows = loadLocal().concat(await loadCloud());
+render();
+if(window.sbLiveTicker) window.sbLiveTicker(function(r){
+rows.unshift({id:r.id, actor:r.actor_name||'Volunteer', actorAvatar:r.actor_avatar||'', kind:r.kind, note:r.note||r.kind, place:r.place||'', at:r.created_at, animal:r.animal_id, station:r.station_id, src:'cloud'});
+render();
+});
+}
+$('q').oninput = render; $('kind').onchange = render;
+var chips = document.querySelectorAll('#chips .chip');
+for(var i=0;i<chips.length;i++){ (function(c){
+c.onclick = function(){ for(var j=0;j<chips.length;j++) chips[j].classList.remove('on'); c.classList.add('on'); filter = c.getAttribute('data-f'); render(); };
+})(chips[i]); }
+boot();
+})();
+</script>
+</body>
+</html>

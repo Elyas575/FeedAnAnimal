@@ -73,6 +73,12 @@ create table if not exists events (
   created_at timestamptz default now()
 );
 
+-- 4b. Avatar columns (safe to re-run: only added when missing).
+-- events.actor_avatar snapshots the volunteer's photo at the moment they fed,
+-- so the ticker can still show a face if they later change their profile pic.
+alter table events add column if not exists actor_avatar text;
+alter table profiles add column if not exists avatar_url text;
+
 -- 5. Reports = + Report a Stray form
 create table if not exists reports (
   id uuid primary key default gen_random_uuid(),

@@ -150,6 +150,7 @@
       animalId: raw.animalId || null,
       stationId: raw.stationId || null,
       actor: raw.actor || 'Volunteer',
+      actorAvatar: raw.actorAvatar || raw.actor_avatar || null,
       note: raw.note || '',
       place: raw.place || '',
       at: raw.at || isoFromMinutes(raw.minutesAgo || 0),
@@ -199,7 +200,7 @@
     userLocation: null, profile: { name: 'Guest volunteer' },
     layers: [], baseLayerIndex: 0, baseLayer: null,
     map: null, markerLayer: null, markers: {}, userMarker: null, pickMarker: null,
-    pickMode: false, mobileView: 'list', tickerIndex: 0, tickerHidden: false,
+    pickMode: false, mobileView: 'list', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
     dataSource: '', saveWarningShown: false
   };
 
@@ -371,6 +372,58 @@
     ? { kind: 'water', icon: 'water_drop', title: 'Log water' }
     : { kind: 'feed', icon: 'restaurant', title: 'Log food' });
 
+  /* --------------------------- people avatars ------------------------- */
+  /* Deterministic colours + initials so every volunteer gets a stable,
+     recognisable avatar even when nobody has uploaded a real photo. */
+  const AVATAR_HUES = ['#a03b0e', '#7c4a21', '#4b6b3a', '#2f6f6a', '#3b5a8a', '#6b3a7a', '#8a5a2b', '#5a6b2f'];
+
+  function nameInitials(name) {
+    const parts = String(name == null ? '' : name).trim().split(/[\s._-]+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function nameHue(name) {
+    const source = String(name == null ? '' : name);
+    let hash = 0;
+    for (let i = 0; i < source.length; i++) hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+    return AVATAR_HUES[hash % AVATAR_HUES.length];
+  }
+
+  /* Real photo when we have one, colour-coded initials underneath.
+     Layering matters: both children are absolutely positioned, so the photo
+     is emitted SECOND (paints on top) and the initials FIRST. If the photo
+     URL is dead the onerror handler removes the <img>, revealing the
+     initials again. Never reverse this order. */
+  function personAvatarHtml(name, avatarUrl, sizeClass) {
+    const initials = esc(nameInitials(name));
+    const hue = esc(nameHue(name));
+    const size = sizeClass || 'w-8 h-8';
+    const photo = avatarUrl
+      ? '<img src="' + esc(avatarUrl) + '" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover z-[2]" onerror="this.remove()">'
+      : '';
+    return '<span class="relative inline-flex ' + size + ' rounded-full overflow-hidden shrink-0 align-middle" style="background:' + hue + '" title="' + esc(name || 'Volunteer') + '">' +
+      '<span class="absolute inset-0 z-[1] flex items-center justify-center text-[11px] font-bold text-white">' + initials + '</span>' +
+      photo +
+    '</span>';
+  }
+
+  /* Small animal photo for the ticker/feed. Same dead-link protection and
+     same layering rule as personAvatarHtml: fallback first, photo second. */
+  function animalThumbHtml(animal, sizeClass) {
+    const size = sizeClass || 'w-9 h-9';
+    const emoji = animal ? speciesInfo(animal.species).emoji : '🐾';
+    const species = animal ? animal.species : 'unknown';
+    const photo = (animal && animal.photoUrl)
+      ? '<img src="' + esc(animal.photoUrl) + '" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover z-[2]" onerror="this.remove()">'
+      : '';
+    return '<span class="relative inline-flex ' + size + ' rounded-xl overflow-hidden shrink-0 align-middle fta-avatar" data-species="' + esc(species) + '">' +
+      '<span class="absolute inset-0 z-[1] flex items-center justify-center text-lg">' + emoji + '</span>' +
+      photo +
+    '</span>';
+  }
+
   function avatarHtml(animal) {
     if (animal.photoUrl) {
       return '<img alt="' + esc(animal.name + ' the ' + animal.breed) + '" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="' + esc(animal.photoUrl) + '">';
@@ -426,13 +479,17 @@
     const isUser = entry.source === 'user';
 
     card.innerHTML =
-      '<div class="w-8 h-8 rounded-full ' + (isUser ? 'bg-primary-fixed' : 'bg-secondary-container') + ' flex items-center justify-center shrink-0 mt-0.5">' +
-        '<span class="material-symbols-outlined ' + (isUser ? 'text-on-primary-fixed-variant' : 'text-on-secondary-container') + ' text-[18px]">volunteer_activism</span>' +
-      '</div>' +
+      animalThumbHtml(animal, 'w-10 h-10') +
       '<div class="flex-1 min-w-0 pr-4">' +
-        '<div class="flex items-center justify-between">' +
-          '<span class="font-label-sm text-label-sm text-primary font-bold">' + (isUser ? 'Your activity' : 'Live Activity') + '</span>' +
-          '<span class="font-label-sm text-label-sm text-outline">' + relativeTime(entry.at) + '</span>' +
+        '<div class="flex items-center justify-between gap-2">' +
+          '<span class="flex items-center gap-1.5 min-w-0">' +
+            personAvatarHtml(actor, entry.actorAvatar, 'w-5 h-5') +
+            '<span class="font-label-sm text-label-sm text-primary font-bold truncate">' + (isUser ? 'Your activity' : 'Live Activity') + '</span>' +
+          '</span>' +
+          '<span class="flex items-center gap-2 shrink-0">' +
+            '<a href="activity.html" class="font-label-sm text-label-sm text-primary font-bold hover:underline whitespace-nowrap">View all</a>' +
+            '<span class="font-label-sm text-label-sm text-outline">' + relativeTime(entry.at) + '</span>' +
+          '</span>' +
         '</div>' +
         '<p class="font-body-sm text-body-sm text-on-surface truncate">' +
           '<span class="font-semibold">' + esc(actor) + '</span> ' + esc(entry.note || entry.kind) +
@@ -606,6 +663,8 @@
     const issue = primaryIssue(row);
     const station = stationById(animal.stationId);
     const directions = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
+    const mapsSearch = 'https://www.google.com/maps/search/?api=1&query=' + animal.location.lat + ',' + animal.location.lng;
+    const coordText = Number(animal.location.lat).toFixed(6) + ', ' + Number(animal.location.lng).toFixed(6);
     const myCare = historyFor(animal.id).length;
     const foodWidth = row.status.food === 'ok' ? 100 : row.status.food === 'needs' ? 40 : 15;
     const waterWidth = row.status.water === 'ok' ? 100 : row.status.water === 'needs' ? 40 : 15;
@@ -636,6 +695,9 @@
       '<p class="fta-popup__notes">' + esc(animal.notes) + '</p>' +
       '<p class="fta-popup__meta">' + esc(station ? station.name : 'No station assigned') + ' • ' + animal.feedCount + ' feeds logged' +
         (myCare ? ' • ' + myCare + ' by you' : '') + '</p>' +
+      '<p class="fta-popup__meta"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">location_on</span> ' +
+        '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open exact pin in Google Maps">' + esc(coordText) + '</a>' +
+        ' <button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" title="Copy coordinates" style="text-decoration:underline">Copy</button></p>' +
       '<div class="fta-popup__actions">' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--primary">' +
           '<span class="material-symbols-outlined">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
@@ -961,7 +1023,8 @@
 
     state.log.unshift({
       id: uid('log'), kind: kind, animalId: animal.id, stationId: animal.stationId,
-      actor: state.profile.name || 'You', note: note, place: animal.location.label,
+      actor: state.profile.name || 'You', actorAvatar: state.profile.avatarUrl || null,
+      note: note, place: animal.location.label,
       at: at, source: 'user'
     });
 
@@ -973,6 +1036,21 @@
       state.saveWarningShown = true;
       toast('Private storage is blocked, so this action lasts for this visit only.', 'error');
     }
+    // Phase 4: shared feed — also POST to Supabase. Local always wins, but we
+    // surface a warning if the cloud write failed so a "shared" feed never
+    // silently looks like it synced when it did not.
+    try {
+      if (typeof window !== 'undefined' && typeof window.sbLogEvent === 'function') {
+        Promise.resolve(window.sbLogEvent({ animalId: animal.id, stationId: animal.stationId, kind: kind, note: note, place: animal.location.label }))
+          .then((ok) => {
+            if (ok === false && !state.cloudWarned) {
+              state.cloudWarned = true;
+              toast('Saved on this device only - the shared feed could not be reached.', 'error');
+            }
+          })
+          .catch(() => {});
+      }
+    } catch (err) { /* local save already succeeded - ignore backend failure */ }
     afterMutation(kind === 'feed'
       ? 'Feed logged for ' + animal.name + ' - thank you!'
       : kind === 'water'
@@ -989,10 +1067,17 @@
     station.status = station.capacityPct > 50 ? 'Volunteer run' : 'Refill due';
     state.log.unshift({
       id: uid('log'), kind: 'station', animalId: null, stationId: station.id,
-      actor: state.profile.name || 'You', note: 'checked ' + station.name + ' and topped the container up',
+      actor: state.profile.name || 'You', actorAvatar: state.profile.avatarUrl || null,
+      note: 'checked ' + station.name + ' and topped the container up',
       place: station.ref, at: at, source: 'user'
     });
     writeOverlay();
+    // Phase 4: shared station check — also POST to Supabase
+    try {
+      if (typeof window !== 'undefined' && typeof window.sbLogEvent === 'function') {
+        window.sbLogEvent({ animalId: null, stationId: station.id, kind: 'station', note: 'checked ' + station.name + ' and topped the container up', place: station.ref });
+      }
+    } catch (err) { /* ignore */ }
     afterMutation(station.name + ' logged at ' + station.capacityPct + '% capacity.');
   }
 
@@ -1195,7 +1280,9 @@
         '</li>').join('') + '</ul>'
       : '<p class="font-body-sm text-xs text-on-surface-variant">No care logged from this device yet. Your first feed or water log will show up here.</p>';
 
-    const directions = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
+    const mapsUrl2 = 'https://www.google.com/maps/search/?api=1&query=' + animal.location.lat + ',' + animal.location.lng;
+    const coord2 = Number(animal.location.lat).toFixed(6) + ', ' + Number(animal.location.lng).toFixed(6);
+    const directions2 = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
 
     host.innerHTML =
       '<div class="flex items-start gap-3">' +
@@ -1251,6 +1338,13 @@
         (animal.source === 'report' ? detailRow('Source', 'Community report from this device') : '') +
       '</div>' +
 
+      '<div class="mt-4 p-2.5 rounded-lg bg-surface-container-low">' +
+        '<p class="font-label-sm text-[11px] text-on-surface-variant">Exact GPS (tap to open in Google Maps)</p>' +
+        '<p class="font-mono text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">' + esc(coord2) + '</a> ' +
+        '<button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" style="text-decoration:underline">Copy</button></p>' +
+        '<p class="font-label-sm text-[11px] text-outline mt-1">Demo pins use fictional Seattle coords. Replace with your real GPS (see below).</p>' +
+      '</div>' +
+
       '<p class="mt-4 font-body-sm text-body-sm text-on-surface">' + esc(animal.description) + '</p>' +
       '<p class="mt-2 p-2.5 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface-variant">' +
         '<span class="material-symbols-outlined text-[14px] text-primary align-middle mr-1">lightbulb</span>' + esc(animal.notes) + '</p>' +
@@ -1273,13 +1367,97 @@
           '<span class="material-symbols-outlined text-[18px]">medical_services</span>Vet visit</button>' +
         '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">my_location</span>Show on map</button>' +
-        '<a href="' + esc(directions) + '" target="_blank" rel="noopener" class="h-10 px-4 rounded-full border border-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container transition-colors">' +
+        '<a href="' + esc(directions2) + '" target="_blank" rel="noopener" class="h-10 px-4 rounded-full border border-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">directions</span>Directions</a>' +
       '</div>';
 
     openModal('details-modal');
     setSelected(animal.id, false);
   }
+  function wireAuthLink() {
+    const link = $('#auth-link');
+    const label = $('#auth-link-label');
+    if (!link) return;
+    const refresh = async () => {
+      try {
+        const auth = (typeof window !== 'undefined' && window.sbAuth) ? window.sbAuth : null;
+        if (!auth) return;
+        const user = await auth.currentUser();
+        if (!label) return;
+        if (user && user.email) {
+          label.textContent = user.email.split('@')[0];
+          link.setAttribute('title', 'Signed in as ' + user.email + ' — click to manage account');
+        } else if (user && !user.is_anonymous) {
+          label.textContent = 'Account';
+        } else {
+          label.textContent = 'Sign in';
+        }
+      } catch (e) { /* keep Sign in */ }
+    };
+    refresh();
+    try {
+      const auth = (typeof window !== 'undefined' && window.sbAuth) ? window.sbAuth : null;
+      if (auth && auth.client() && auth.client().auth && auth.client().auth.onAuthStateChange) {
+        auth.client().auth.onAuthStateChange(() => refresh());
+      }
+    } catch (e) {}
+    setTimeout(refresh, 2000);
+  }
+
+  // Keep local profile + report name in sync with the real Supabase login
+  /* Pulls the provider's profile photo (Google sets user_metadata.avatar_url /
+     picture), stores it on the local profile, and mirrors it into the profiles
+     table so other volunteers can resolve the same face. */
+  async function syncAvatar(user) {
+    try {
+      const meta = (user && user.user_metadata) || {};
+      const url = meta.avatar_url || meta.picture || meta.photo_url || null;
+      const clean = url ? String(url) : null;
+      const client = (typeof window !== 'undefined' && window.sb) ? window.sb : null;
+      if (clean && client && user && user.id) {
+        try {
+          await client.from('profiles')
+            .upsert({ id: user.id, avatar_url: clean }, { onConflict: 'id' });
+        } catch (e) { /* profile write is best-effort only */ }
+      }
+      return clean || state.profile.avatarUrl || null;
+    } catch (e) {
+      return (state.profile && state.profile.avatarUrl) || null;
+    }
+  }
+
+  async function syncProfileFromAuth() {
+    try {
+      const auth = (typeof window !== 'undefined' && window.sbAuth) ? window.sbAuth : null;
+      const getName = (typeof window !== 'undefined' && typeof window.sbDisplayName === 'function')
+        ? window.sbDisplayName : null;
+      if (!auth || !getName) return;
+      const user = await auth.currentUser();
+      if (user && !user.is_anonymous) {
+        const name = await getName(state.profile.name || 'Guest volunteer');
+        const avatarUrl = await syncAvatar(user);
+        if (name && name !== state.profile.name) {
+          state.profile = { name: name, avatarUrl: avatarUrl || state.profile.avatarUrl || null };
+          writeOverlay();
+          renderTicker();
+        }
+      }
+      try {
+        const client = auth.client();
+        if (client && client.auth && client.auth.onAuthStateChange) {
+          client.auth.onAuthStateChange(async () => {
+            const u = await auth.currentUser();
+            if (u && !u.is_anonymous) {
+              const n = await getName(state.profile.name || 'Guest volunteer');
+              const av = await syncAvatar(u);
+              if (n) { state.profile = { name: n, avatarUrl: av || state.profile.avatarUrl || null }; writeOverlay(); renderTicker(); }
+            }
+          });
+        }
+      } catch (e) {}
+    } catch (e) { /* stay as guest */ }
+  }
+
   /* ============================ event wiring ========================= */
   function handleAction(button) {
     const action = button.getAttribute('data-action');
@@ -1300,6 +1478,18 @@
       return;
     }
     if (action === 'station-check') logStationCheck(button.getAttribute('data-station'));
+    if (action === 'copy-coords') {
+      const a = animalById(id);
+      if (a) {
+        const txt = Number(a.location.lat).toFixed(6) + ', ' + Number(a.location.lng).toFixed(6);
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(() => toast('Coordinates copied: ' + txt, 'ok'));
+          } else { toast(txt, 'info'); }
+        } catch (e) { toast(txt, 'info'); }
+      }
+      return;
+    }
   }
 
   function wireEvents() {
@@ -1467,6 +1657,35 @@
       renderTicker();
     }, TICKER_ROTATE_MS);
   }
+  /* ----------------------------- deep links --------------------------- */
+  /* Lets other pages (activity.html) jump straight to an animal:
+     index.html#animal=milo  ->  opens the details modal for Milo.
+     Also understands #station=<id> and clears cleanly when the hash changes. */
+  function wireDeepLink() {
+    const apply = () => {
+      const hash = String(window.location.hash || '').replace(/^#/, '');
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      const animalId = params.get('animal');
+      const stationId = params.get('station');
+      if (animalId && animalById(animalId)) {
+        const animal = animalById(animalId);
+        if (state.map) {
+          state.map.setView([animal.location.lat, animal.location.lng], 16, { animate: true });
+        }
+        openDetails(animalId);
+        return;
+      }
+      if (stationId && stationById(stationId)) {
+        const station = stationById(stationId);
+        if (state.map) state.map.setView([station.location.lat, station.location.lng], 16, { animate: true });
+        toast('Showing ' + (station.name || stationId), 'info');
+      }
+    };
+    apply();
+    window.addEventListener('hashchange', apply);
+  }
+
   /* ============================== bootstrap ========================== */
   async function boot() {
     const overlay = readOverlay();
@@ -1497,6 +1716,71 @@
     renderStatusBar();
     switchMobileView('list');
     wireEvents();
+    wireAuthLink();
+    syncProfileFromAuth();
+    wireDeepLink();
+
+    // Phase 4: shared backend — anonymous auth + merge recent cloud events + live ticker
+    try {
+      // supabase-client.js explicitly assigns its helpers onto window, so a plain
+      // window lookup is enough (no eval, no bare global references).
+      const getFn = (name) => {
+        try {
+          if (typeof window !== 'undefined' && typeof window[name] === 'function') return window[name];
+        } catch (e) { /* ignore */ }
+        return null;
+      };
+      const ensureAuth = getFn('sbEnsureAuth');
+      const loadRecent = getFn('sbLoadRecentEvents');
+      const liveTicker = getFn('sbLiveTicker');
+      if (ensureAuth) ensureAuth();
+      if (loadRecent) {
+        loadRecent(30).then((rows) => {
+          if (!rows || !rows.length) return;
+          let added = 0;
+          rows.forEach((r) => {
+            const exists = state.activity.some((a) => a.id === r.id);
+            if (exists) return;
+            state.activity.unshift({
+              id: r.id,
+              actor: r.actor_name || 'Volunteer',
+              actorAvatar: r.actor_avatar || undefined,
+              kind: r.kind,
+              animalId: r.animal_id || undefined,
+              stationId: r.station_id || undefined,
+              note: r.note || (r.kind + (r.animal_id ? ' ' + r.animal_id : '')),
+              place: r.place || '',
+              at: r.created_at,
+              source: 'cloud',
+            });
+            added += 1;
+          });
+          if (added) { state.tickerIndex = 0; renderTicker(); }
+        }).catch(() => {});
+      }
+      if (liveTicker) {
+        liveTicker((row) => {
+          if (!row) return;
+          const exists = state.activity.some((a) => a.id === row.id);
+          if (exists) return;
+          state.activity.unshift({
+            id: row.id,
+            actor: row.actor_name || 'Volunteer',
+            actorAvatar: row.actor_avatar || undefined,
+            kind: row.kind,
+            animalId: row.animal_id || undefined,
+            stationId: row.station_id || undefined,
+            note: row.note || (row.kind + (row.animal_id ? ' ' + row.animal_id : '')),
+            place: row.place || '',
+            at: row.created_at,
+            source: 'cloud',
+          });
+          state.tickerIndex = 0;
+          renderTicker();
+          toast('Live: ' + (row.actor_name || 'Volunteer') + ' logged ' + row.kind, 'info');
+        });
+      }
+    } catch (err) { console.warn('[sb] backend init skipped', err.message); }
   }
 
   if (typeof document !== 'undefined') {
@@ -1524,6 +1808,10 @@
       normalizeAnimal: normalizeAnimal,
       normalizeStation: normalizeStation,
       normalizeActivity: normalizeActivity,
+      nameInitials: nameInitials,
+      nameHue: nameHue,
+      personAvatarHtml: personAvatarHtml,
+      animalThumbHtml: animalThumbHtml,
       layerSubdomains: layerSubdomains,
       setPolicy: (policy) => {
         POLICY = Object.assign({ default: { food: { okHours: 8, urgentHours: 14 }, water: { okHours: 6, urgentHours: 10 } } }, policy || {});
