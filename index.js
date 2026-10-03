@@ -1749,10 +1749,6 @@
 
     const nearMe = $('#near-me-btn');
     if (nearMe) nearMe.addEventListener('click', locateMe);
-    const parkCenter = $('#park-center-btn');
-    if (parkCenter) parkCenter.addEventListener('click', useParkCenter);
-    const resetButton = $('#reset-demo-btn');
-    if (resetButton) resetButton.addEventListener('click', resetDemo);
     const zoomIn = $('#zoom-in');
     if (zoomIn) zoomIn.addEventListener('click', () => state.map && state.map.zoomIn());
     const zoomOut = $('#zoom-out');
@@ -1940,7 +1936,7 @@
     renderStatusBar();
     // CheapFoodMap-style home screen: phones land on the map, desktop keeps
     // the split view (switchMobileView only hides the sidebar when narrow).
-    switchMobileView('list'); /* TEMP-SHOT */
+    switchMobileView(isNarrow() ? 'map' : 'list');
     wireEvents();
     wireReportPhoto();
     syncProfileFromAuth();
