@@ -272,19 +272,23 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   </div>
 
   <!-- Zoom and base map controls (desktop only - mobile pinches to zoom) -->
-  <div class="hidden md:flex absolute bottom-space-xl left-space-md z-10 flex flex-col items-stretch shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
-    <button id="zoom-in" type="button" title="Zoom in" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+  <!-- The cluster is sized by the caption below ("Google Streets"), which is
+       wider than a 40px button. The buttons must therefore be w-full: an
+       explicit w-10 would defeat items-stretch, leaving the panel ~45px wider
+       than its buttons with a dead white gap down the right-hand side. -->
+  <div class="hidden md:flex absolute bottom-space-xl left-space-md z-10 flex flex-col items-stretch min-w-[76px] shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
+    <button id="zoom-in" type="button" title="Zoom in" class="w-full h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
       <span class="material-symbols-outlined text-[20px]">add</span>
     </button>
     <div class="w-full h-[1px] bg-surface-container-high"></div>
-    <button id="zoom-out" type="button" title="Zoom out" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+    <button id="zoom-out" type="button" title="Zoom out" class="w-full h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
       <span class="material-symbols-outlined text-[20px]">remove</span>
     </button>
     <div class="w-full h-[1px] bg-surface-container-high"></div>
-    <button id="layer-btn" type="button" title="Switch base map" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+    <button id="layer-btn" type="button" title="Switch base map" class="w-full h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
       <span class="material-symbols-outlined text-[20px]">layers</span>
     </button>
-    <div class="px-2 py-1 text-center border-t border-surface-container-high">
+    <div class="px-2 py-1.5 text-center border-t border-surface-container-high">
       <span id="layer-label" class="font-label-sm text-[10px] text-on-surface-variant">Google Streets</span>
     </div>
   </div>

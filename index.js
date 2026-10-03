@@ -978,10 +978,10 @@
   function revealAnimal(id) {
     const animal = animalById(id);
     if (!animal) return;
-    /* Any width: if the list currently owns the screen, the pin the user just
-       asked for is off-screen behind it, so hand the screen back to the map.
-       (This used to be narrow-only, back when desktop was always split.) */
-    if (state.mobileView !== 'map') switchMobileView('map');
+    /* Only a phone has to hand the screen over: there the list covers the map
+       completely. On desktop the two sit side by side, so revealing a pin
+       must NOT collapse the side menu out from under the user. */
+    if (isNarrow() && state.mobileView !== 'map') switchMobileView('map');
     if (!state.map) return;
     const marker = state.markers[id];
     setSelected(id, true);
@@ -1114,9 +1114,10 @@
         renderMarkers();
         setLocatePending(false);
 
-        /* The list can be covering the map at any width now, so reveal it
+        /* On a phone the map can be sitting behind the list view. Reveal it
            first, and wait for switchMobileView()'s invalidateSize() so the
-           flyTo aims at a container that actually has a size. */
+           flyTo aims at a container that actually has a size. Desktop keeps
+           its side menu - the map just flies within the space it has. */
         const moveToVisitor = () => {
           if (!state.map) return;
           /* Fly to the visitor - not to the park. Never zoom back out below the
@@ -1124,7 +1125,7 @@
           const zoom = Math.max(state.map.getZoom(), state.meta.defaultZoom || 15, 16);
           state.map.flyTo([state.userLocation.lat, state.userLocation.lng], zoom, { duration: 0.8 });
         };
-        if (state.mobileView !== 'map') {
+        if (isNarrow() && state.mobileView !== 'map') {
           switchMobileView('map');
           setTimeout(moveToVisitor, 300);
         } else {
@@ -2067,15 +2068,15 @@
     renderFeed();
     renderTicker();
     renderStatusBar();
-    /* Always open on the map, at every width. Phones used to land on the map and
-       desktop on the split view, so "open on the map" was only ever true on a
-       phone. The map is the product; the list is one tap away on both. */
-    switchMobileView('map');
-    /* Opening the map now hides the sidebar at EVERY width, so the container is
-       always re-measured right after boot. Wait for switchMobileView()'s
-       invalidateSize() (260ms) before flying, or the flyTo aims at the
-       stale, pre-resize size and lands off-centre. */
-    window.setTimeout(openAtVisitor, 300);
+    /* Phones land on the map (one pane fits the screen); desktop keeps the split
+       view, so the side menu is there from the first frame. The desktop pill
+       can still collapse it to a full-bleed map on demand. */
+    switchMobileView(isNarrow() ? 'map' : 'list');
+    /* Point the opening frame at the visitor (or the New York fallback). On a
+       phone the sidebar hides here, so wait for switchMobileView()'s
+       invalidateSize() (260ms) or the flyTo aims at a zero-size container.
+       The desktop map keeps its size, so it can fly straight away. */
+    window.setTimeout(openAtVisitor, isNarrow() ? 300 : 0);
     wireEvents();
     wireReportPhoto();
     syncProfileFromAuth();

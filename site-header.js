@@ -52,6 +52,17 @@
     '#site-top-header{position:fixed;top:0;left:0;right:0;z-index:50;',
     'background:rgba(255,255,255,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);',
     'border-bottom:1px solid #e9e1df;box-shadow:0 1px 2px rgba(30,27,26,.05)}',
+    /* Single source of truth for the bar height, so a page that has to pad
+       itself (about.html, 404.html, ...) can never drift from the real bar. */
+    ':root{--site-header-h:68px}',
+    /* The navbar is injected into <body>, so it inherits whatever typography
+       each page set there. The map page renders at Tailwind's 1.5 while
+       about.html sets line-height:1.7 - that difference silently made every
+       header line box ~13% taller inside a FIXED-height bar, overflowing and
+       misaligning it, which is glaring once page content scrolls underneath
+       the translucent, blurred bar. Pin the metrics here so every page
+       renders the navbar exactly like the home page. */
+    '#site-top-header,#site-top-header *{line-height:1.5}',
     '#site-top-header .fta-hd-inner{display:flex;align-items:center;justify-content:space-between;',
     'gap:16px;width:100%;height:68px;padding:0 16px;box-sizing:border-box}',
     '@media (min-width:1024px){#site-top-header .fta-hd-inner{padding:0 32px}}',

@@ -43,8 +43,9 @@
   .btn-support .material-symbols-outlined{font-size:18px}
   .mini-paw{width:38px;height:38px;border-radius:9999px;background:#a03b0e;
     display:inline-flex;align-items:center;justify-content:center;font-size:19px}
-  /* clear the shared fixed navbar */
-  body.has-site-header{padding-top:68px}
+  /* clear the shared fixed navbar - height comes from the shared header CSS
+     (--site-header-h) so this can never drift from the real bar */
+  body.has-site-header{padding-top:var(--site-header-h,68px)}
 </style>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="tailwind-theme.js"></script>
