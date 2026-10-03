@@ -993,6 +993,22 @@
   const isNarrow = () => window.matchMedia('(max-width: 767px)').matches;
 
   /* ---------------------------- geolocation --------------------------- */
+  /* Pending state for the "where am I" buttons. A cold GPS fix takes seconds,
+     and the mobile circle is a bare icon with no label next to it, so without
+     a spinner it is indistinguishable from a button that did nothing. */
+  function setLocatePending(busy) {
+    const button = $('#mobile-locate-btn');
+    if (button) {
+      button.setAttribute('aria-busy', busy ? 'true' : 'false');
+      button.classList.toggle('opacity-60', busy);
+    }
+    const icon = $('#mobile-locate-icon');
+    if (icon) {
+      icon.textContent = busy ? 'progress_activity' : 'my_location';
+      icon.classList.toggle('animate-spin', busy);
+    }
+  }
+
   /* Finds where the visitor is, drops the blue "you are here" dot, and takes
      the map to them.
 
@@ -1006,6 +1022,7 @@
       return;
     }
     toast('Requesting your location…', 'info');
+    setLocatePending(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         state.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -1015,16 +1032,28 @@
            camera moves, so the "closest" order is already correct on arrival. */
         renderFeed();
         renderMarkers();
+        setLocatePending(false);
 
-        /* Fly to the visitor - not to the park. Never zoom back out below the
-           street level people expect from a "find me" button. */
-        if (state.map) {
+        /* On a phone the map can be sitting behind the list view. Reveal it
+           first, and wait for switchMobileView()'s invalidateSize() so the
+           flyTo aims at a container that actually has a size. */
+        const moveToVisitor = () => {
+          if (!state.map) return;
+          /* Fly to the visitor - not to the park. Never zoom back out below the
+             street level people expect from a "find me" button. */
           const zoom = Math.max(state.map.getZoom(), state.meta.defaultZoom || 15, 16);
           state.map.flyTo([state.userLocation.lat, state.userLocation.lng], zoom, { duration: 0.8 });
+        };
+        if (isNarrow() && state.mobileView !== 'map') {
+          switchMobileView('map');
+          setTimeout(moveToVisitor, 300);
+        } else {
+          moveToVisitor();
         }
         toast('Showing your location - the blue dot is you.', 'ok');
       },
       (error) => {
+        setLocatePending(false);
         const denied = error && error.code === 1;
         toast(denied ? 'Location permission denied.' : 'Location unavailable (' + error.message + ').', 'error');
       },
@@ -1755,16 +1784,19 @@
     if (zoomOut) zoomOut.addEventListener('click', () => state.map && state.map.zoomOut());
     const layerButton = $('#layer-btn');
     if (layerButton) layerButton.addEventListener('click', cycleBaseLayer);
-    /* The desktop "Center" pill and the mobile locate circle share one handler. */
+    /* Only the desktop pill stays on "Center on ..." - its own label says so.
+       The mobile circle is a bare my_location icon, which every other map app
+       reads as "take me to ME", so it runs the real geolocation flow instead. */
     const centerOnPark = () => {
       if (!state.map) return;
       const center = state.meta.center || { lat: 0, lng: 0 };
       state.map.flyTo([center.lat, center.lng], state.meta.defaultZoom || 15, { duration: 0.7 });
       toast('Centered on ' + (state.meta.region || 'Oakwood Park'), 'info');
     };
-    [$('#center-btn'), $('#mobile-locate-btn')].forEach((btn) => {
-      if (btn) btn.addEventListener('click', centerOnPark);
-    });
+    const centerButton = $('#center-btn');
+    if (centerButton) centerButton.addEventListener('click', centerOnPark);
+    const mobileLocateButton = $('#mobile-locate-btn');
+    if (mobileLocateButton) mobileLocateButton.addEventListener('click', locateMe);
 
     /* Mobile map chrome (CheapFoodMap style): Filters opens the list where the
        search box and filter chips live; the search circle does the same and
