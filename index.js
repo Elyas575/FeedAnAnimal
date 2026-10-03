@@ -1202,6 +1202,70 @@
     switchMobileView('map');
     toast('Location pinned on the map.', 'ok');
   }
+  /* Fills the report pin from the device GPS.
+
+     This is the DEFAULT for the form - most people report a stray they are
+     standing in front of - so openReportModal() calls it on its own. The
+     "Use my location" button is there to re-pin or fine-tune, not to be the
+     only way in.
+
+     watchPosition (not getCurrentPosition) for the first fix: a single reading
+     is often the worst one available while the GPS warms up. We take the
+     first good fix and stop listening, so this stays quick indoors but is
+     accurate outdoors where it matters. */
+  /* Captured lazily: the modal is not in the DOM at script-parse time. */
+  let reportUseLocationHtml = '';
+  function useMyLocationForReport() {
+    const useMyLocationButton = $('#report-use-location');
+    if (!useMyLocationButton) return;
+    if (!navigator.geolocation) {
+      toast('Geolocation is unavailable in this browser - press "Pick on map" instead.', 'error');
+      return;
+    }
+    if (!reportUseLocationHtml) reportUseLocationHtml = useMyLocationButton.innerHTML;
+    // GPS can take several seconds (or hang while the user decides), so the
+    // button has to say so - otherwise it looks like nothing happened.
+    const setLocating = (busy) => {
+      useMyLocationButton.disabled = busy;
+      useMyLocationButton.classList.toggle('opacity-60', busy);
+      useMyLocationButton.innerHTML = busy
+        ? '<span class="material-symbols-outlined animate-spin">progress_activity</span>Locating…'
+        : reportUseLocationHtml;
+    };
+
+    setLocating(true);
+    let settled = false;
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const accuracy = position.coords.accuracy;
+        // Ignore very rough fixes; if nothing better arrives we use this one.
+        if (settled && accuracy > 50) return;
+        settled = true;
+        navigator.geolocation.clearWatch(watchId);
+        setLocating(false);
+        placePickMarker(
+          position.coords.latitude,
+          position.coords.longitude,
+          { fromGps: true, accuracy: accuracy }
+        );
+        toast(accuracy && accuracy > 40
+          ? 'Pinned, but GPS was only accurate to about ' + formatDistance(accuracy) + '. Use “Pick on map” to fine-tune.'
+          : 'Pinned at your location (accurate to about ' + formatDistance(accuracy) + ').', 'ok');
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        navigator.geolocation.clearWatch(watchId);
+        setLocating(false);
+        const denied = error && error.code === 1;
+        toast(denied
+          ? 'Location permission denied - you can still use "Pick on map".'
+          : 'Could not read your location - try "Pick on map" instead.', 'error');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
   /* ============================= care actions ========================= */
   function afterMutation(message, tone) {
     state.tickerIndex = 0;
@@ -1379,15 +1443,30 @@
     form.reset();
 
     const hint = $('#report-pick-hint');
-    if (hint) hint.textContent = 'Tip: press “Pick on map”, then click the exact spot where you saw the animal.';
+    if (hint) hint.textContent = 'We pin your current location automatically. Press “Pick on map” if you saw the animal somewhere else.';
     const error = $('#report-error');
     if (error) { error.textContent = ''; error.classList.add('hidden'); }
 
-    const center = state.map ? state.map.getCenter() : (state.meta.center || { lat: 0, lng: 0 });
+    /* Default to where the reporter actually IS: people report a stray they
+       are standing in front of. A position we already know (from the opening
+       locate) is applied instantly with no further prompt; otherwise ask for
+       one. The old default was the map's viewport centre, which silently
+       pinned the report wherever the user last panned to. */
+    const known = state.userLocation;
+    const fallback = state.map ? state.map.getCenter() : (state.meta.center || { lat: 0, lng: 0 });
+    const start = known || fallback;
     const latInput = $('#report-lat');
     const lngInput = $('#report-lng');
-    if (latInput) latInput.value = Number(center.lat).toFixed(6);
-    if (lngInput) lngInput.value = Number(center.lng).toFixed(6);
+    if (latInput) latInput.value = Number(start.lat).toFixed(6);
+    if (lngInput) lngInput.value = Number(start.lng).toFixed(6);
+
+    if (known) {
+      /* Already located - no need to ask the browser again. */
+      if (hint) hint.textContent = 'Pinned to your current location. Press “Pick on map” if the animal was somewhere else.';
+    } else if (hint) {
+      hint.textContent = 'Finding your location… press “Pick on map” to choose the spot yourself.';
+    }
+    if (!known) useMyLocationForReport();
 
     const reporter = $('#report-reporter');
     if (reporter && state.profile.name && state.profile.name !== 'Guest volunteer') reporter.value = state.profile.name;
@@ -1936,60 +2015,7 @@
     }
 
     const useMyLocationButton = $('#report-use-location');
-    if (useMyLocationButton) {
-      const originalLabel = useMyLocationButton.innerHTML;
-      // GPS can take several seconds (or hang while the user decides), so the
-      // button has to say so - otherwise it looks like nothing happened.
-      const setLocating = (busy) => {
-        useMyLocationButton.disabled = busy;
-        useMyLocationButton.classList.toggle('opacity-60', busy);
-        useMyLocationButton.innerHTML = busy
-          ? '<span class="material-symbols-outlined animate-spin">progress_activity</span>Locating…'
-          : originalLabel;
-      };
-
-      useMyLocationButton.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-          toast('Geolocation is unavailable in this browser.', 'error');
-          return;
-        }
-        setLocating(true);
-        /* watchPosition (not getCurrentPosition) for the first fix: a single
-           reading is often the worst one available while the GPS warms up.
-           We take the first good fix and stop listening, so this stays quick
-           indoors but is accurate outdoors where it matters. */
-        let settled = false;
-        const watchId = navigator.geolocation.watchPosition(
-          (position) => {
-            const accuracy = position.coords.accuracy;
-            // Ignore very rough fixes; if nothing better arrives we use this one.
-            if (settled && accuracy > 50) return;
-            settled = true;
-            navigator.geolocation.clearWatch(watchId);
-            setLocating(false);
-            placePickMarker(
-              position.coords.latitude,
-              position.coords.longitude,
-              { fromGps: true, accuracy: accuracy }
-            );
-            toast(accuracy && accuracy > 40
-              ? 'Pinned, but GPS was only accurate to about ' + formatDistance(accuracy) + '. Use “Pick on map” to fine-tune.'
-              : 'Pinned at your location (accurate to about ' + formatDistance(accuracy) + ').', 'ok');
-          },
-          (error) => {
-            if (settled) return;
-            settled = true;
-            navigator.geolocation.clearWatch(watchId);
-            setLocating(false);
-            const denied = error && error.code === 1;
-            toast(denied
-              ? 'Location permission denied - you can still use "Pick on map".'
-              : 'Could not read your location - try "Pick on map" instead.', 'error');
-          },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-      });
-    }
+    if (useMyLocationButton) useMyLocationButton.addEventListener('click', useMyLocationForReport);
 
     const reportCancel = $('#report-cancel');
     if (reportCancel) reportCancel.addEventListener('click', () => closeModal('report-modal'));
