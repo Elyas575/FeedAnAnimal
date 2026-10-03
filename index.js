@@ -978,7 +978,10 @@
   function revealAnimal(id) {
     const animal = animalById(id);
     if (!animal) return;
-    if (isNarrow() && state.mobileView !== 'map') switchMobileView('map');
+    /* Any width: if the list currently owns the screen, the pin the user just
+       asked for is off-screen behind it, so hand the screen back to the map.
+       (This used to be narrow-only, back when desktop was always split.) */
+    if (state.mobileView !== 'map') switchMobileView('map');
     if (!state.map) return;
     const marker = state.markers[id];
     setSelected(id, true);
@@ -1009,6 +1012,83 @@
     }
   }
 
+  /* --------------------------- opening view --------------------------- */
+  /* Fallback frame when we have no position for the visitor. A wide slice of
+     New York State reads as "a map somewhere sensible" and stays recognisable
+     at every zoom, which beats leaving the camera on a demo park in another
+     state entirely. */
+  const FALLBACK_VIEW = { lat: 43.0, lng: -75.5, zoom: 7 };
+
+  function flyToFallback(reason) {
+    if (!state.map) return;
+    state.map.flyTo([FALLBACK_VIEW.lat, FALLBACK_VIEW.lng], FALLBACK_VIEW.zoom, { duration: 0.9 });
+    if (reason) toast(reason + ' - showing New York State.', 'info');
+  }
+
+  /* Aims the map at the visitor on open, so the first frame they see is their
+     own neighbourhood instead of the seeded demo park.
+
+     Geolocation is best effort and can fail in four different ways - no API,
+     insecure origin (browsers block it outside https/localhost), a refused
+     permission, or a timeout. Every one of those paths has to land somewhere
+     deliberate, so they all fall back rather than leaving the camera wherever
+     initMap() happened to put it. This runs silently on success: a toast on
+     every page load would be noise. */
+  function openAtVisitor() {
+    if (!state.map) return;
+
+    /* A position cached from an earlier visit frames the map immediately, so a
+       returning visitor never sees the demo park flash past. */
+    const cached = state.userLocation;
+    if (cached) {
+      state.map.flyTo([cached.lat, cached.lng], Math.max(state.map.getZoom(), 16), { duration: 0.6 });
+    }
+
+    if (!navigator.geolocation) {
+      if (!cached) flyToFallback('This browser cannot share your location');
+      return;
+    }
+
+    setLocatePending(true);
+    /* Guards against the success and failure paths both running if a late fix
+       arrives after a timeout has already been reported. */
+    let settled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (settled) return;
+        settled = true;
+        setLocatePending(false);
+
+        state.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+        writeOverlay();
+        renderUserMarker(position.coords.accuracy);
+        /* Distances now measure from the visitor, so the list and the pin
+           labels have to be rebuilt from the new reference. */
+        renderFeed();
+        renderMarkers();
+
+        /* Skip the second fly when the cached frame was already right (common
+           on a return visit - the browser usually re-serves the same fix), so
+           the map does not jitter between two spots metres apart. */
+        const moved = cached ? haversine(cached, state.userLocation) : Infinity;
+        if (moved > 50) {
+          state.map.flyTo([state.userLocation.lat, state.userLocation.lng], 16, { duration: 0.9 });
+        }
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        setLocatePending(false);
+        if (cached) return; /* already framed on the cached position */
+        flyToFallback('Location unavailable');
+      },
+      /* maximumAge lets a returning visitor get an instant cached fix with no
+         permission prompt; a cold start still has to wait for the GPS. */
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+    );
+  }
+
   /* Finds where the visitor is, drops the blue "you are here" dot, and takes
      the map to them.
 
@@ -1034,7 +1114,7 @@
         renderMarkers();
         setLocatePending(false);
 
-        /* On a phone the map can be sitting behind the list view. Reveal it
+        /* The list can be covering the map at any width now, so reveal it
            first, and wait for switchMobileView()'s invalidateSize() so the
            flyTo aims at a container that actually has a size. */
         const moveToVisitor = () => {
@@ -1044,7 +1124,7 @@
           const zoom = Math.max(state.map.getZoom(), state.meta.defaultZoom || 15, 16);
           state.map.flyTo([state.userLocation.lat, state.userLocation.lng], zoom, { duration: 0.8 });
         };
-        if (isNarrow() && state.mobileView !== 'map') {
+        if (state.mobileView !== 'map') {
           switchMobileView('map');
           setTimeout(moveToVisitor, 300);
         } else {
@@ -1215,23 +1295,41 @@
   }
 
   /* ------------------------- responsive list / map -------------------- */
+  /* "map" means the map owns the screen; "list" means the feed owns it. This
+     used to hide the sidebar only when narrow, so on desktop the split view
+     always showed the list no matter what the app booted into - which is why
+     the app could claim to open on the map and still land on the list.
+
+     Both widths now honour the same rule, so the map is genuinely full-bleed
+     on a phone AND on a desktop, and the toggle works the same on both. The
+     sidebar's own `md:flex` is removed on map view because it would otherwise
+     re-show the panel at desktop widths. */
   function switchMobileView(view) {
     state.mobileView = view;
     const sidebar = $('#sidebar-pane');
-    const label = $('#mobile-view-toggle-label');
-    const icon = $('#mobile-view-toggle-icon');
-    const narrow = isNarrow();
+    const onMap = view === 'map';
+
     if (sidebar) {
-      if (narrow && view === 'map') {
+      if (onMap) {
         sidebar.classList.add('hidden');
-        sidebar.classList.remove('flex');
+        sidebar.classList.remove('flex', 'md:flex');
       } else {
         sidebar.classList.remove('hidden');
         sidebar.classList.add('flex');
       }
     }
-    if (label) label.textContent = (narrow && view === 'map') ? 'List' : 'Map';
-    if (icon) icon.textContent = (narrow && view === 'map') ? 'list' : 'map';
+
+    /* Both toggles (mobile pill + desktop pill) label the action the user can
+       take next, not the view they are currently in. */
+    const label = onMap ? 'List' : 'Map';
+    const icon = onMap ? 'list' : 'map';
+    [$(`#mobile-view-toggle-label`), $('#desktop-list-toggle-label')].forEach((node) => {
+      if (node) node.textContent = label;
+    });
+    [$(`#mobile-view-toggle-icon`), $('#desktop-list-toggle-icon')].forEach((node) => {
+      if (node) node.textContent = icon;
+    });
+
     if (state.map) setTimeout(() => state.map.invalidateSize(), 260);
   }
 
@@ -1814,10 +1912,13 @@
       });
     }
 
+    /* The bottom-nav pill (phones) and the floating pill (desktop) drive the same
+       state, so the list stays one tap away at every width. */
+    const viewToggle = () => switchMobileView(state.mobileView === 'map' ? 'list' : 'map');
     const mobileToggle = $('#mobile-view-toggle');
-    if (mobileToggle) {
-      mobileToggle.addEventListener('click', () => switchMobileView(state.mobileView === 'map' ? 'list' : 'map'));
-    }
+    if (mobileToggle) mobileToggle.addEventListener('click', viewToggle);
+    const desktopToggle = $('#desktop-list-toggle');
+    if (desktopToggle) desktopToggle.addEventListener('click', viewToggle);
 
     const reportForm = $('#report-form');
     if (reportForm) reportForm.addEventListener('submit', submitReport);
@@ -1966,9 +2067,15 @@
     renderFeed();
     renderTicker();
     renderStatusBar();
-    // CheapFoodMap-style home screen: phones land on the map, desktop keeps
-    // the split view (switchMobileView only hides the sidebar when narrow).
-    switchMobileView(isNarrow() ? 'map' : 'list');
+    /* Always open on the map, at every width. Phones used to land on the map and
+       desktop on the split view, so "open on the map" was only ever true on a
+       phone. The map is the product; the list is one tap away on both. */
+    switchMobileView('map');
+    /* Opening the map now hides the sidebar at EVERY width, so the container is
+       always re-measured right after boot. Wait for switchMobileView()'s
+       invalidateSize() (260ms) before flying, or the flyTo aims at the
+       stale, pre-resize size and lands off-centre. */
+    window.setTimeout(openAtVisitor, 300);
     wireEvents();
     wireReportPhoto();
     syncProfileFromAuth();
