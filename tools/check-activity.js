@@ -278,6 +278,25 @@ check('compression encodes WebP', "'image/webp'", sc);
 check('compression falls back when it cannot convert', 'return file;', sc);
 check('sbSubmitReport() defined', 'async function sbSubmitReport', sc);
 check('sbSubmitReport writes photo_url', 'photo_url: report.photoUrl', sc);
+check('sbSubmitReport returns the new row id', "return (result.data && result.data.id) || true;", sc);
+check('sbSubmitReport asks for the id back', ".insert([payload]).select('id').single()", sc);
+
+/* --- reports must be READ, not just written --------------------------- *
+ * Bug: sbSubmitReport() inserted into `reports` but nothing ever selected
+ * from it. Every report was therefore invisible to other users and the map
+ * stayed empty. These assert the read half exists and is wired into boot. */
+check('sbLoadReports() defined', 'async function sbLoadReports', sc);
+check('sbLoadReports selects from reports', "sb.from('reports')", sc);
+check('sbLoadReports maps location_label to location.label', "label: label", sc);
+check('sbLoadReports maps photo_url to photoUrl', 'photoUrl: row.photo_url', sc);
+check('sbLoadReports stamps a stable id', "'report-' + String(row.id)", sc);
+check('sbLoadReports drops coordinate-less reports', 'null island', sc);
+check('sbLoadReports is exported', 'window.sbLoadReports = sbLoadReports', sc);
+check('boot() fetches community reports', "getFn('sbLoadReports')", js);
+check('boot() merges them into state.animals', 'state.animals = Array.from(merged.values())', js);
+check('boot() re-renders after merging reports', 'added + \' community report\'', js);
+/* The local pin must adopt the cloud id, or one report pins twice. */
+check('a shared report keeps the cloud row id', "'report-' + shared :", js);
 check('sbUploadReportPhoto returns null with no file', 'if (!file) return null;', sc);
 check('sbSubmitReport exposed on window', 'window.sbSubmitReport = sbSubmitReport;', sc);
 check('sbCompressImage exposed on window', 'window.sbCompressImage = sbCompressImage;', sc);
@@ -471,6 +490,143 @@ check('the Sign in label is wired on every page', 'auth-link-label', header);
 // Regression: the Material palette used to be inlined in index.html only, so
 // every other page rendered this navbar UNSTYLED (the classes did not exist).
 // The theme must now load on EVERY page, and AFTER the Tailwind CDN.
+/* ------------------------------------------------------------------ *
+ * Declaration order matters for the checkbox flags below: sbSubmitReport()
+ * is called before the animal object is built, so a `const` declared after
+ * that call throws a temporal dead zone ReferenceError. Strip comments first so
+ * the ordering tests look at real code, not the comments describing it.
+ * ------------------------------------------------------------------ */
+const jsCode = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+/* --- details drawer hides facts we do not know -------------------------- *
+ * The report form no longer asks for sex, age, temperament or neuter status,
+ * so a reported stray fills them with 'unknown'/false. Printing those anyway
+ * produced confident-looking noise ("Vaccinated: No", "Sex / age: unknown")
+ * that read as real observations and made the profile look broken. */
+check('detailRow skips unknown values', 'if (isUnknown(value)) return \'\';', js);
+check('unknown covers the placeholder strings', "text === 'not recorded'", js);
+check('unknown covers "unknown"', "text === 'unknown'", js);
+check('zero counts are hidden', 'if (n <= 0) return \'\';', js);
+check('care flags only render when yes', "animal.sterilized ? detailRow('Neutered', 'Yes')", js);
+check('no bare "Vaccinated: No" row', js.indexOf("detailRow('Vaccinated', yesNo") === -1 ? true : false, js);
+check('the yesNo helper is gone', js.indexOf('const yesNo =') === -1 ? true : false, js);
+/* Stale: the seed data was removed, so this warning is now a lie. */
+rows.push([js.indexOf('Demo pins use fictional') === -1 ? 'OK  ' : 'MISS',
+  'the stale "fictional Seattle coords" note is gone']);
+check('the reporter name is stored', 'reporterName:', js);
+check('the drawer credits the reporter', "detailRow('Reported'", js);
+check('the breed header drops unknown colour',
+  'animal.breed, animal.color].filter((part) => !isUnknown(part))', js);
+
+/* --- Directions must be obvious, not an icon --------------------------- *
+ * It used to render as a bare arrow glyph in a ghost pill, sharing a row with
+ * Feed/Water, so it read as decoration. "How do I get to this animal" is the
+ * reason most people open a pin, so every entry point spells the word out and
+ * uses the solid blue treatment. */
+check('directions button style exists', '.fta-btn--go {', html);
+/* Match on the declaration itself rather than "\n{", so the assertion holds
+   whether the file is checked out with LF or CRLF line endings. */
+check('directions style is the solid tertiary blue',
+  /\.fta-btn--go\s*\{[^}]*background:\s*#006194;\s*color:\s*#ffffff;/.test(html), html);
+check('directions text is pure white and heavy', 'font-weight: 800', html);
+check('directions label has a shadow for legibility', 'text-shadow: 0 1px 2px', html);
+check('directions sizing is in CSS, not inline', /width: 100%; justify-content: center; height: 40px/.test(html), html);
+rows.push([js.indexOf('fta-btn--go" style=') === -1 ? 'OK  ' : 'MISS',
+  'no inline styles left on the Directions button (CSS owns it)']);
+/* The icon font renders via ligatures and needs these settings. The rule is
+   `body`-prefixed because this <style> loads BEFORE the Tailwind CDN, which
+   appends its sheet to the end of head and would otherwise win on order. */
+check('icon font family is pinned', "body .material-symbols-outlined {", html);
+check('icon font has ligatures enabled', "-webkit-font-feature-settings: 'liga'", html);
+check('icon font is not uppercase-transformed', 'text-transform: none', html);
+check('icon font keeps ligatures on one line', 'white-space: nowrap', html);
+rows.push([(js.match(/Directions<\/a>/g) || []).length >= 3 ? 'OK  ' : 'MISS',
+  'all three Directions entry points spell the word']);
+/* The bug: an icon with no label. Guard against it coming back. */
+rows.push([js.indexOf('>directions</span></a>') === -1 ? 'OK  ' : 'MISS',
+  'no icon-only Directions link (the word is always shown)']);
+check('animal popup directions comes before the care actions',
+  js.indexOf('fta-btn--go') < js.indexOf('data-action="feed"'), js);
+check('details modal leads with directions',
+  'bg-tertiary text-white font-label-md text-label-md font-extrabold', js);
+
+/* --- food / water ticks feed the timestamps ----------------------------- *
+ * levelMinutes() turns these two answers into lastFedAt / lastWateredAt.
+ * Dropping the questions (they were removed once already) made every report
+ * fall back to 'ok' = "fed 5 minutes ago", silently filing starving animals as
+ * freshly fed. Both the local timestamps and the cloud markers must exist. */
+check('the form asks about food', 'id="report-needs-food"', html);
+check('the form asks about water', 'id="report-needs-water"', html);
+check('food is read as a checkbox', 'foodBox.checked', js);
+check('water is read as a checkbox', 'waterBox.checked', js);
+check('a food tick files it as urgent', "foodLevel = needsFood ? 'urgent' : 'ok'", js);
+check('a water tick files it as urgent', "waterLevel = needsWater ? 'urgent' : 'ok'", js);
+check('lastFedAt uses the food tick', "levelMinutes(species, 'food', foodLevel)", js);
+check('lastWateredAt uses the water tick', "levelMinutes(species, 'water', waterLevel)", js);
+rows.push([jsCode.indexOf('const foodLevel') !== -1 &&
+  jsCode.indexOf('const foodLevel') < jsCode.indexOf("levelMinutes(species, 'food', foodLevel)")
+  && jsCode.indexOf('const waterLevel') < jsCode.indexOf("levelMinutes(species, 'water', waterLevel)")
+  ? 'OK  ' : 'MISS', 'food/water levels are declared before they are used']);
+check('food needs are sent to the database', 'needsFood: needsFood', js);
+check('water needs are sent to the database', 'needsWater: needsWater', js);
+check('a food marker is written', "'[NEEDS_FOOD] '", sc);
+check('a water marker is written', "'[NEEDS_WATER] '", sc);
+check('the food marker is read back', "indexOf('[NEEDS_FOOD]') === 0", sc);
+check('the water marker is read back', "indexOf('[NEEDS_WATER]') === 0", sc);
+check('cloud reports restore lastFedAt', 'lastFedAt: new Date(nowMs', sc);
+check('cloud reports restore lastWateredAt', 'lastWateredAt: new Date(nowMs', sc);
+check('speciesRule() mirrors the dataset policy', 'function speciesRule(species)', sc);
+
+/* --- the medical-help tick --------------------------------------------- *
+ * Food and water are computed from timestamps, so the form only asks the one
+ * thing the app cannot infer. Health must survive the round trip to other
+ * users, or an injured stray arrives looking healthy. */
+check('the report form asks about medical help', 'id="report-health"', html);
+check('medical help is a checkbox', 'id="report-health" type="checkbox"', html);
+check('it is read as .checked', 'healthBox.checked', js);
+check('a ticked box marks the animal critical', "needsVet ? 'critical' : 'healthy'", js);
+check('the flag is sent to the database', 'needsVet: needsVet', js);
+/* Ordering: sbSubmitReport({ needsVet }) runs before the animal is built, so a
+   `const` declared after that call would throw a temporal dead zone error. */
+rows.push([jsCode.indexOf('const needsVet') !== -1 &&
+  jsCode.indexOf('const needsVet') < jsCode.indexOf('needsVet: needsVet') ? 'OK  ' : 'MISS',
+  'needsVet is declared before it is used (temporal dead zone)']);
+check('critical health is written on submit', '[NEEDS_VET]', sc);
+check('other users get the marker back', "indexOf('[NEEDS_VET]') === 0", sc);
+check('the marker restores health on load', "health: needsVet ? 'critical' : 'healthy'", sc);
+check('the marker is stripped from the description', "slice('[NEEDS_VET]'.length)", sc);
+check('the tick is reset when the form reopens', 'form.reset()', js);
+
+/* --- chat RLS: no self-referencing policy ------------------------------- *
+ * A SELECT policy on conversation_participants that queried
+ * conversation_participants re-entered its own policy forever. Postgres
+ * raised "infinite recursion detected", which killed reads of
+ * conversation_participants AND every table depending on it (messages,
+ * conversations) - so chat was dead while the tables existed.
+ *
+ * The fix routes membership checks through SECURITY DEFINER helpers. This
+ * asserts the shape of that fix so it cannot silently regress. */
+const chatSql = fs.readFileSync(path.join(ROOT, 'supabase', 'schema-chat.sql'), 'utf8');
+check('chat has a membership helper', 'create or replace function is_conversation_participant(', chatSql);
+check('the membership helper bypasses RLS', 'security definer', chatSql);
+check('the helper pins its search_path', 'set search_path = public', chatSql);
+check('chat has a member-ids helper for the block check',
+  'create or replace function conversation_member_ids(', chatSql);
+
+// The actual regression: a policy on the participants table must not query
+// the participants table directly. Inspect each `create policy ... on
+// conversation_participants` block and fail if it self-references.
+const selfRef = /create policy[^\n]*on conversation_participants[\s\S]*?;\s*\n/.exec(chatSql);
+rows.push([selfRef && !/from conversation_participants/.test(selfRef[0]) ? 'OK  ' : 'MISS',
+  'no policy on conversation_participants queries that same table']);
+rows.push([/is_conversation_participant\(conversation_participants\.conversation_id\)/.test(chatSql) ? 'OK  ' : 'MISS',
+  'the participants SELECT policy goes through the SECURITY DEFINER helper']);
+
+// execute must stay granted, or every policy calling the helper 403s.
+rows.push([/revoke execute on function is_conversation_participant/.test(chatSql) ? 'MISS' : 'OK  ',
+  'execute is not revoked on the helper (policies would break)']);
+
+// The theme must load on EVERY page, and AFTER the Tailwind CDN.
 const theme = fs.readFileSync(path.join(ROOT, 'tailwind-theme.js'), 'utf8');
 rows.push([theme.indexOf('primary-fixed') !== -1 ? 'OK  ' : 'MISS', 'tailwind-theme.js defines the primary-fixed palette']);
 rows.push([theme.indexOf('surface-container-highest') !== -1 ? 'OK  ' : 'MISS', 'tailwind-theme.js defines surface-container-highest']);

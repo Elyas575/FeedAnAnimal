@@ -578,6 +578,19 @@
     if (!rows.length) {
       host.innerHTML = '';
       if (empty) {
+        /* Two different "empty" states need two different messages. With the
+           seed data gone the app can genuinely have no animals at all, and
+           telling someone "no animal matches your filter" when they never
+           applied a filter reads as a broken app. */
+        const nothingAtAll = state.animals.length === 0;
+        const text = $('#feed-empty-text');
+        if (text) {
+          text.textContent = nothingAtAll
+            ? 'No animals reported yet. Tap “Report a Stray” to add the first one.'
+            : 'No animal matches that filter or search yet.';
+        }
+        const icon = $('#feed-empty-icon');
+        if (icon) icon.textContent = nothingAtAll ? 'pets' : 'search_off';
         empty.classList.remove('hidden');
         empty.classList.add('flex');
       }
@@ -706,13 +719,19 @@
       '<p class="fta-popup__meta"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">location_on</span> ' +
         '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open exact pin in Google Maps">' + esc(coordText) + '</a>' +
         ' <button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" title="Copy coordinates" style="text-decoration:underline">Copy</button></p>' +
+      /* Directions gets its OWN full-width row above the care actions. "Walk to
+         this animal" is the reason someone opened the popup, so it should not
+         compete with Feed/Water for horizontal space on one row. Sizing and
+         colour come from .fta-btn--go in index.html - no inline styles here, so
+         the button can't end up half-styled. */
+      '<a class="fta-btn fta-btn--go" target="_blank" rel="noopener" href="' + esc(directions) + '" ' +
+        'title="Walking directions to this animal">' +
+        '<span class="material-symbols-outlined">directions</span>Directions</a>' +
       '<div class="fta-popup__actions">' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--primary">' +
           '<span class="material-symbols-outlined">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
         '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--water">' +
           '<span class="material-symbols-outlined">water_drop</span>Water</button>' +
-        '<a class="fta-btn fta-btn--ghost" target="_blank" rel="noopener" href="' + esc(directions) + '" title="Walking directions">' +
-          '<span class="material-symbols-outlined">directions</span></a>' +
         '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Full profile">' +
           '<span class="material-symbols-outlined">info</span></button>' +
       '</div>' +
@@ -731,12 +750,13 @@
       '<div class="fta-bar"><i class="' + (station.capacityPct > 50 ? 'is-ok' : 'is-alert') + '" style="width:' + station.capacityPct + '%"></i></div>' +
       '<p class="fta-popup__notes">' + esc(station.notes) + '</p>' +
       '<p class="fta-popup__meta">Steward: ' + esc(station.caretaker) + ' • serviced ' + relativeTime(station.lastServicedAt) + '</p>' +
+      /* Station popups get the same prominent, worded Directions button. */
+      '<a class="fta-btn fta-btn--go" target="_blank" rel="noopener" title="Walking directions to this station" ' +
+        'href="https://www.google.com/maps/dir/?api=1&destination=' + station.location.lat + ',' + station.location.lng + '">' +
+        '<span class="material-symbols-outlined">directions</span>Directions</a>' +
       '<div class="fta-popup__actions">' +
         '<button type="button" data-action="station-check" data-station="' + esc(station.id) + '" class="fta-btn fta-btn--primary">' +
           '<span class="material-symbols-outlined">checklist</span>Log a station check</button>' +
-        '<a class="fta-btn fta-btn--ghost" target="_blank" rel="noopener" title="Directions" ' +
-          'href="https://www.google.com/maps/dir/?api=1&destination=' + station.location.lat + ',' + station.location.lng + '">' +
-          '<span class="material-symbols-outlined">directions</span></a>' +
       '</div>' +
     '</div>';
   }
@@ -1468,8 +1488,9 @@
     }
     if (!known) useMyLocationForReport();
 
-    const reporter = $('#report-reporter');
-    if (reporter && state.profile.name && state.profile.name !== 'Guest volunteer') reporter.value = state.profile.name;
+    /* No "your name" field any more: the log is attributed to state.profile.name,
+       which the shared header already keeps in sync with the signed-in account
+       (see syncProfileFromAuth). Asking twice was pure friction. */
 
     openModal('report-modal');
   }
@@ -1572,6 +1593,25 @@
       else button.innerHTML = originalLabel;
     };
 
+    /* The three "needs" ticks. Read BEFORE the upload block because
+       sbSubmitReport() needs them too.
+
+       report-health is a CHECKBOX (id kept from the old select), so read
+       .checked rather than going through value(). */
+    const healthBox = document.getElementById('report-health');
+    const needsVet = !!(healthBox && healthBox.checked);
+    const foodBox = document.getElementById('report-needs-food');
+    const needsFood = !!(foodBox && foodBox.checked);
+    const waterBox = document.getElementById('report-needs-water');
+    const needsWater = !!(waterBox && waterBox.checked);
+    /* A tick means "urgent", not just "needs" - the reporter is looking at the
+       animal right now and telling us the bowl is empty. This feeds
+       levelMinutes(), which backdates lastFedAt/lastWateredAt so computeStatus
+       lands on 'urgent' and the pin sorts to the top. Unticked stays 'ok'
+       (5 minutes ago = looks just fed). */
+    const foodLevel = needsFood ? 'urgent' : 'ok';
+    const waterLevel = needsWater ? 'urgent' : 'ok';
+
     /* Upload the photo + share the report. Local save happens either way, so
        a network failure never loses what the volunteer typed. */
     setBusy(true, '<span class="material-symbols-outlined text-[18px]">upload</span>Uploading photo…');
@@ -1590,6 +1630,9 @@
           place: place,
           photoUrl: photoUrl,
           description: value('report-description'),
+          needsVet: needsVet,
+          needsFood: needsFood,
+          needsWater: needsWater,
         });
       }
     } catch (err) {
@@ -1597,9 +1640,13 @@
       toast('Photo upload failed - saving the report on this device only.', 'error');
     }
     setBusy(false);
+    /* sbSubmitReport returns the new row's id. Reuse it for the local pin so
+       the local copy and the cloud row are one animal - otherwise the same
+       report would show up twice the next time sbLoadReports() runs. */
+    const localId = (shared && typeof shared === 'string') ? 'report-' + shared : 'report-' + now.toString(36);
 
     const animal = {
-      id: 'report-' + now.toString(36),
+      id: localId,
       name: value('report-name') || 'Unnamed stray',
       species: species,
       breed: value('report-breed') || speciesInfo(species).singular + ' (breed unknown)',
@@ -1608,19 +1655,25 @@
       color: value('report-color') || 'Not recorded',
       description: value('report-description') || 'Newly reported by a community volunteer.',
       temperament: 'unknown',
-      health: value('report-health') || 'healthy',
+      /* The medical-help tick. 'critical' (not 'treatment') so it lands on the
+         top-priority branch of computeStatus/primaryIssue and the card reads
+         "Critical condition - vet attention needed". */
+      health: needsVet ? 'critical' : 'healthy',
       sterilized: value('report-sterilized') === 'yes',
       vaccinated: false,
       microchipped: false,
       caretakers: [reporter || state.profile.name || 'Guest volunteer'],
+      /* Kept so the profile can say WHO reported it, not just "from this
+         device". Without it the drawer had nothing but "this device". */
+      reporterName: reporter || (state.profile.name || ''),
       tags: ['community-report'],
       notes: value('report-notes') || 'Watch this spot for a few days and log what you see.',
       photoUrl: photoUrl || null,
       stationId: station ? station.id : null,
       location: { label: place, area: station ? station.area : 'Reported area', lat: lat, lng: lng },
       reportedAt: new Date(now).toISOString(),
-      lastFedAt: new Date(now - levelMinutes(species, 'food', value('report-food') || 'ok') * 60000).toISOString(),
-      lastWateredAt: new Date(now - levelMinutes(species, 'water', value('report-water') || 'ok') * 60000).toISOString(),
+      lastFedAt: new Date(now - levelMinutes(species, 'food', foodLevel) * 60000).toISOString(),
+      lastWateredAt: new Date(now - levelMinutes(species, 'water', waterLevel) * 60000).toISOString(),
       feedCount: 0,
       waterCount: 0,
       source: 'report'
@@ -1663,11 +1716,36 @@
     revealAnimal(animal.id);
   }
   /* ========================== details drawer ========================= */
+  /* detailRow(label, value) renders one fact, but only if it is actually known.
+
+     The report form was cut down to photo / species / needs / location /
+     description, so a reported stray carries no sex, age, temperament, neuter
+     or microchip data. Printing those anyway produced a wall of confident
+     noise ("Sex / age: unknown • unknown", "Vaccinated: No") that read as real
+     observations and made the profile look broken.
+
+     Anything unknown, empty or unrecorded is skipped instead. Same for the
+     boolean care flags: "No" is indistinguishable from "we were never told",
+     so only an explicit "yes" is worth showing. */
+  const isUnknown = (value) => {
+    const text = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
+    return !text || text === 'unknown' || text === 'not recorded' ||
+      text === 'not sure' || text === 'none recorded' || text === 'unassigned' ||
+      text === 'not assigned' || text === 'n/a' || text === '-';
+  };
   function detailRow(label, value) {
+    if (isUnknown(value)) return '';
     return '<div class="flex items-start justify-between gap-3 py-1.5 border-b border-surface-container-high/70">' +
       '<span class="font-label-sm text-xs text-on-surface-variant">' + esc(label) + '</span>' +
       '<span class="font-label-sm text-xs text-on-surface font-semibold text-right">' + esc(value) + '</span>' +
       '</div>';
+  }
+
+  /* Only worth a row when a volunteer has actually logged something. */
+  function countRow(label, count) {
+    const n = Number(count) || 0;
+    if (n <= 0) return '';
+    return detailRow(label, n + (n === 1 ? ' time' : ' times'));
   }
 
   function openDetails(id) {
@@ -1677,7 +1755,6 @@
     const issue = primaryIssue(row);
     const station = stationById(animal.stationId);
     const history = historyFor(animal.id).slice(0, 6);
-    const yesNo = (value) => (value ? 'Yes' : 'No');
     const host = $('#details-content');
     if (!host) return;
 
@@ -1702,7 +1779,9 @@
           '<div class="flex items-start justify-between gap-2">' +
             '<div class="min-w-0">' +
               '<h3 class="font-headline-md text-headline-md text-on-surface">' + esc(animal.name) + '</h3>' +
-              '<p class="font-body-sm text-body-sm text-on-surface-variant">' + esc(animal.breed) + ' • ' + esc(animal.color) + '</p>' +
+              '<p class="font-body-sm text-body-sm text-on-surface-variant">' +
+          esc([animal.breed, animal.color].filter((part) => !isUnknown(part)).join(' • ') || speciesInfo(animal.species).singular) +
+          '</p>' +
             '</div>' +
             '<button type="button" data-close-modal="details-modal" class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-outline" title="Close">' +
               '<span class="material-symbols-outlined text-[18px]">close</span></button>' +
@@ -1735,25 +1814,29 @@
       '</div>' +
       '<div class="mt-4">' +
         detailRow('Species', speciesInfo(animal.species).singular) +
-        detailRow('Sex / age', (animal.sex || 'unknown') + ' • ' + (animal.ageClass || 'unknown')) +
+        /* Sex/age and temperament are only meaningful for animals someone has
+           actually observed up close; a report never has them. */
+        detailRow('Sex / age', [animal.sex, animal.ageClass].every(isUnknown)
+          ? '' : (isUnknown(animal.sex) ? '' : animal.sex) + ' • ' + (isUnknown(animal.ageClass) ? '' : animal.ageClass)) +
         detailRow('Temperament', animal.temperament) +
         detailRow('Health', animal.health) +
-        detailRow('Neutered', yesNo(animal.sterilized)) +
-        detailRow('Vaccinated', yesNo(animal.vaccinated)) +
-        detailRow('Microchipped', yesNo(animal.microchipped)) +
+        /* Care flags only render when affirmative: "No" would claim we checked
+           and found nothing, when really nobody was asked. */
+        (animal.sterilized ? detailRow('Neutered', 'Yes') : '') +
+        (animal.vaccinated ? detailRow('Vaccinated', 'Yes') : '') +
+        (animal.microchipped ? detailRow('Microchipped', 'Yes') : '') +
         detailRow('First reported', relativeTime(animal.reportedAt) + ' (' + clockTime(animal.reportedAt) + ')') +
-        detailRow('Logged feeds', String(animal.feedCount)) +
-        detailRow('Logged water refills', String(animal.waterCount)) +
-        detailRow('Caretakers', animal.caretakers.length ? animal.caretakers.join(', ') : 'None recorded') +
-        detailRow('Feeding station', station ? station.name : 'Not assigned') +
-        (animal.source === 'report' ? detailRow('Source', 'Community report from this device') : '') +
+        countRow('Feeds logged', animal.feedCount) +
+        countRow('Water refills logged', animal.waterCount) +
+        detailRow('Caretakers', animal.caretakers.length ? animal.caretakers.join(', ') : '') +
+        detailRow('Feeding station', station ? station.name : '') +
+        (animal.source === 'report' ? detailRow('Reported', animal.reporterName || 'by a community volunteer') : '') +
       '</div>' +
 
       '<div class="mt-4 p-2.5 rounded-lg bg-surface-container-low">' +
         '<p class="font-label-sm text-[11px] text-on-surface-variant">Exact GPS (tap to open in Google Maps)</p>' +
         '<p class="font-mono text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">' + esc(coord2) + '</a> ' +
         '<button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" style="text-decoration:underline">Copy</button></p>' +
-        '<p class="font-label-sm text-[11px] text-outline mt-1">Demo pins use fictional Seattle coords. Replace with your real GPS (see below).</p>' +
       '</div>' +
 
       '<p class="mt-4 font-body-sm text-body-sm text-on-surface">' + esc(animal.description) + '</p>' +
@@ -1769,17 +1852,21 @@
         historyHtml +
       '</div>' +
 
+      /* Directions leads this row, in solid blue with the word spelled out. It is the
+         reason most people open the profile, so it must not look like a
+         low-priority outline chip after four other buttons. */
       '<div class="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-surface-container-high">' +
+        '<a href="' + esc(directions2) + '" target="_blank" rel="noopener" ' +
+          'class="h-11 px-5 rounded-full bg-tertiary text-white font-label-md text-label-md font-extrabold flex items-center gap-2 shadow-md hover:opacity-95 active:scale-95 transition-all">' +
+          '<span class="material-symbols-outlined text-[20px]">directions</span>Directions</a>' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1.5 shadow-sm active:scale-95 transition-all">' +
           '<span class="material-symbols-outlined text-[18px]">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
-        '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-tertiary text-on-tertiary font-label-md text-label-md flex items-center gap-1.5 shadow-sm active:scale-95 transition-all">' +
+        '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">water_drop</span>Gave water</button>' +
         '<button type="button" data-action="medicine" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">medical_services</span>Vet visit</button>' +
         '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">my_location</span>Show on map</button>' +
-        '<a href="' + esc(directions2) + '" target="_blank" rel="noopener" class="h-10 px-4 rounded-full border border-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">directions</span>Directions</a>' +
       '</div>';
 
     openModal('details-modal');
@@ -2120,8 +2207,37 @@
       };
       const ensureAuth = getFn('sbEnsureAuth');
       const loadRecent = getFn('sbLoadRecentEvents');
+      const loadReports = getFn('sbLoadReports');
       const liveTicker = getFn('sbLiveTicker');
       if (ensureAuth) ensureAuth();
+
+      /* Pull every community report so strays reported by OTHER people appear
+         on this visitor's map. Without this the reports table was written but
+         never read, so the map was empty for everyone. */
+      if (loadReports) {
+        loadReports().then((rows) => {
+          if (!rows || !rows.length) return;
+          /* Match the id convention used in hydrate(), so a report this device
+             made locally and the same row from the cloud collapse into one
+             pin instead of doubling up. */
+          const merged = new Map(state.animals.map((a) => [a.id, a]));
+          let added = 0;
+          rows.forEach((raw) => {
+            const animal = normalizeAnimal(raw, 'report');
+            if (merged.has(animal.id)) return;
+            merged.set(animal.id, animal);
+            added += 1;
+          });
+          if (!added) return;
+          state.animals = Array.from(merged.values());
+          state.fitted = true; /* the opening fit already ran; keep the camera */
+          renderFeed();
+          renderMarkers();
+          renderStatusBar();
+          toast(added + ' community report' + (added === 1 ? '' : 's') + ' on the map.', 'info');
+        }).catch(() => {});
+      }
+
       if (loadRecent) {
         loadRecent(30).then((rows) => {
           if (!rows || !rows.length) return;

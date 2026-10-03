@@ -145,6 +145,53 @@
 .fta-btn--ghost { background: #f5ecea; color: #57423b; padding: 0 10px; }
 .fta-btn--ghost:hover { background: #efe6e4; color: #1e1b1a; }
 
+/* Directions is the single most valuable action on a pin: the whole point of
+   the map is "there is an animal there" -> "how do I walk to it". It used to
+   be an icon-only ghost link, which read as decoration next to Feed/Water.
+
+   Sizing moved off inline styles and in here so nothing can half-apply. The
+   text is pure white at 800 with a soft shadow: on a small pill inside a
+   popup the label was reading as washed out, and the shadow keeps it legible
+   against the blue without relying on the font weight alone. */
+.fta-btn--go {
+  background: #006194; color: #ffffff; padding: 0 16px;
+  width: 100%; justify-content: center; height: 40px; font-size: 13px;
+  font-weight: 800; letter-spacing: .01em;
+  text-shadow: 0 1px 2px rgba(0, 40, 70, .35);
+}
+.fta-btn--go:hover { background: #007bb9; }
+.fta-btn--go:active { background: #004a72; }
+.fta-btn--go .material-symbols-outlined {
+  font-size: 19px;
+  text-shadow: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Material Symbols safety net ------------------------------------- *
+ * Icons render through ligatures ("directions" -> an arrow), which only work
+ * with the font-feature settings below. This block sits BEFORE the Tailwind
+ * Play CDN in <head>, and the CDN appends its stylesheet to the end of head -
+ * so at equal specificity Tailwind wins and can clobber these. The `body`
+ * prefix raises specificity so this always wins regardless of load order.
+
+ * Without it, an icon that fails to resolve renders as a smeared ligature in
+ * the body font rather than a crisp glyph - which is exactly how the
+ * Directions arrow was showing up. */
+body .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
 /* -------------------------- avatars / sidebar --------------------------- */
 .fta-avatar[data-species="cat"] { background: linear-gradient(135deg, #ffe6da, #ffcfb9); }
 .fta-avatar[data-species="dog"] { background: linear-gradient(135deg, #e3f2d8, #c9e8bd); }
@@ -219,8 +266,8 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <!-- Scrollable animal feed (rendered from data/animals.json) -->
   <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-[84px] md:pb-space-xl flex flex-col gap-space-sm"></div>
   <div id="feed-empty" class="hidden px-space-md pb-[84px] md:pb-space-xl flex-col items-center gap-2 text-center">
-    <span class="material-symbols-outlined text-[32px] text-outline">search_off</span>
-    <p class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>
+    <span id="feed-empty-icon" class="material-symbols-outlined text-[32px] text-outline">search_off</span>
+    <p id="feed-empty-text" class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>
   </div>
 
 </aside>
@@ -271,43 +318,32 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
     </button>
   </div>
 
-  <!-- Zoom and base map controls (desktop only - mobile pinches to zoom) -->
-  <!-- The cluster is sized by the caption below ("Google Streets"), which is
-       wider than a 40px button. The buttons must therefore be w-full: an
-       explicit w-10 would defeat items-stretch, leaving the panel ~45px wider
-       than its buttons with a dead white gap down the right-hand side. -->
-  <div class="hidden md:flex absolute bottom-space-xl left-space-md z-10 flex flex-col items-stretch min-w-[76px] shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
-    <button id="zoom-in" type="button" title="Zoom in" class="w-full h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
-      <span class="material-symbols-outlined text-[20px]">add</span>
-    </button>
-    <div class="w-full h-[1px] bg-surface-container-high"></div>
-    <button id="zoom-out" type="button" title="Zoom out" class="w-full h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
-      <span class="material-symbols-outlined text-[20px]">remove</span>
-    </button>
-    <div class="w-full h-[1px] bg-surface-container-high"></div>
-    <button id="layer-btn" type="button" title="Switch base map" class="w-full h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
-      <span class="material-symbols-outlined text-[20px]">layers</span>
-    </button>
-    <div class="px-2 py-1.5 text-center border-t border-surface-container-high">
-      <span id="layer-label" class="font-label-sm text-[10px] text-on-surface-variant">Google Streets</span>
-    </div>
-  </div>
+  <!-- Zoom and base map controls (desktop only - mobile pinches to zoom)
 
-  <!-- Legend -->
-  <div class="hidden lg:flex absolute bottom-space-xl right-space-md z-10 flex-col gap-1.5 bg-surface-bright/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-md">
-    <span class="font-label-sm text-[10px] font-bold uppercase tracking-wider text-outline">Pin legend</span>
-    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
-      <span class="w-2.5 h-2.5 rounded-full bg-error"></span>Urgent - bowl empty
-    </span>
-    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
-      <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>Needs a refill
-    </span>
-    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
-      <span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>Fed and watered
-    </span>
-    <span class="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
-      <span class="material-symbols-outlined text-[14px] text-tertiary">roofing</span>Feeding station
-    </span>
+       Three separate problems are solved here:
+       1. The caption is now OUTSIDE the rounded cluster. Inside it, the
+          `overflow-hidden` + `rounded-xl` corners ate the ends of
+          "Google Streets" (the panel is as wide as that text).
+       2. The cluster is a fixed 44px with square 44px buttons again, so the
+          caption no longer dictates a comically wide panel.
+       3. The whole group is lifted to bottom-[64px], clearing Leaflet's own
+          bottomleft scale bar - they used to overlap ("20 m" sat on top of
+          the caption text). -->
+  <div class="hidden md:flex absolute bottom-[64px] left-space-md z-10 flex flex-col items-center gap-2">
+    <div class="flex flex-col items-stretch w-[44px] rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md shadow-lg border border-surface-container-highest">
+      <button id="zoom-in" type="button" title="Zoom in" class="h-11 w-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+        <span class="material-symbols-outlined text-[20px]">add</span>
+      </button>
+      <div class="w-full h-[1px] bg-surface-container-high"></div>
+      <button id="zoom-out" type="button" title="Zoom out" class="h-11 w-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+        <span class="material-symbols-outlined text-[20px]">remove</span>
+      </button>
+      <div class="w-full h-[1px] bg-surface-container-high"></div>
+      <button id="layer-btn" type="button" title="Switch between Google Streets and Google Satellite" class="h-11 w-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+        <span class="material-symbols-outlined text-[20px]">layers</span>
+      </button>
+    </div>
+    <span id="layer-label" class="px-2 py-1 rounded-full bg-surface-bright/95 backdrop-blur-md shadow-md border border-surface-container-highest font-label-sm text-[10px] font-semibold text-on-surface-variant text-center whitespace-nowrap">Google Streets</span>
   </div>
 
 </main>
@@ -333,7 +369,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 
 <!-- ======================= REPORT A STRAY MODAL ======================= -->
 <div id="report-modal" data-modal class="hidden fixed inset-0 z-[70] items-center justify-center p-3 sm:p-6 bg-inverse-surface/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="report-title">
-  <div class="fta-modal-panel w-full max-w-2xl bg-surface rounded-lg shadow-2xl border border-surface-container-highest">
+  <div class="fta-modal-panel w-full max-w-md bg-surface rounded-lg shadow-2xl border border-surface-container-highest">
     <div class="flex items-start justify-between gap-3 p-4 border-b border-surface-container-high sticky top-0 bg-surface z-10">
       <div>
         <h2 id="report-title" class="font-headline-sm text-headline-sm text-on-surface font-bold">Report a stray</h2>
@@ -345,89 +381,12 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
     </div>
 
     <form id="report-form" novalidate>
-      <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="p-4 flex flex-col gap-4">
+
+        <!-- Photo first: it is the single fastest way for another volunteer to
+             recognise the animal, so it is the first thing asked for. -->
         <div>
-          <label class="fta-label" for="report-name">Name (or leave it to us)</label>
-          <input id="report-name" class="fta-field" type="text" placeholder="Milo" autocomplete="off">
-        </div>
-        <div>
-          <label class="fta-label" for="report-species">Species</label>
-          <select id="report-species" class="fta-field">
-            <option value="cat">Cat</option>
-            <option value="dog">Dog</option>
-            <option value="rabbit">Rabbit</option>
-            <option value="bird">Bird</option>
-            <option value="guinea-pig">Guinea pig</option>
-          </select>
-        </div>
-        <div>
-          <label class="fta-label" for="report-breed">Breed / look</label>
-          <input id="report-breed" class="fta-field" type="text" placeholder="Orange tabby" autocomplete="off">
-        </div>
-        <div>
-          <label class="fta-label" for="report-color">Colour markings</label>
-          <input id="report-color" class="fta-field" type="text" placeholder="Ginger with white mittens" autocomplete="off">
-        </div>
-        <div>
-          <label class="fta-label" for="report-sex">Sex</label>
-          <select id="report-sex" class="fta-field">
-            <option value="unknown">Not sure</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-          </select>
-        </div>
-        <div>
-          <label class="fta-label" for="report-age">Age</label>
-          <select id="report-age" class="fta-field">
-            <option value="unknown">Not sure</option>
-            <option value="young">Young</option>
-            <option value="adult">Adult</option>
-            <option value="senior">Senior</option>
-          </select>
-        </div>
-        <div>
-          <label class="fta-label" for="report-health">Health check</label>
-          <select id="report-health" class="fta-field">
-            <option value="healthy">Looks healthy</option>
-            <option value="monitor">Needs monitoring</option>
-            <option value="treatment">Needs treatment</option>
-            <option value="critical">Critical - needs a vet now</option>
-          </select>
-        </div>
-        <div>
-          <label class="fta-label" for="report-sterilized">Ear-tipped / neutered</label>
-          <select id="report-sterilized" class="fta-field">
-            <option value="unsure">Not sure</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-        <div>
-          <label class="fta-label" for="report-food">Food situation</label>
-          <select id="report-food" class="fta-field">
-            <option value="ok">Bowl is stocked / just fed</option>
-            <option value="needs">Empty - refill needed</option>
-            <option value="urgent">Empty for a long time</option>
-          </select>
-        </div>
-        <div>
-          <label class="fta-label" for="report-water">Water situation</label>
-          <select id="report-water" class="fta-field">
-            <option value="ok">Fresh water</option>
-            <option value="needs">Low or dirty - top up</option>
-            <option value="urgent">Dry bowl for a long time</option>
-          </select>
-        </div>
-        <div class="sm:col-span-2">
-          <label class="fta-label" for="report-description">Short description</label>
-          <input id="report-description" class="fta-field" type="text" placeholder="Friendly ginger who naps on the bench cushions" autocomplete="off">
-        </div>
-        <div class="sm:col-span-2">
-          <label class="fta-label" for="report-notes">Handling notes for other volunteers</label>
-          <textarea id="report-notes" class="fta-field" rows="2" placeholder="Approach slowly, feed from a flat hand, do not touch the injured leg."></textarea>
-        </div>
-        <div class="sm:col-span-2">
-          <span class="fta-label">Photo (optional)</span>
+          <span class="fta-label">Photo</span>
           <div class="flex items-start gap-3">
             <div id="report-photo-preview" class="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container border border-surface-container-highest flex items-center justify-center text-outline">
               <span class="material-symbols-outlined text-[26px]">photo_camera</span>
@@ -444,16 +403,50 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
             </div>
           </div>
         </div>
+
+        <!-- The only field that must be answered: species drives the pin art
+             and the per-species food/water urgency thresholds. -->
         <div>
-          <label class="fta-label" for="report-reporter">Your name (for the log)</label>
-          <input id="report-reporter" class="fta-field" type="text" placeholder="Alex R." autocomplete="off">
+          <label class="fta-label" for="report-species">What kind of animal?</label>
+          <select id="report-species" class="fta-field">
+            <option value="cat">Cat</option>
+            <option value="dog">Dog</option>
+            <option value="rabbit">Rabbit</option>
+            <option value="bird">Bird</option>
+            <option value="guinea-pig">Guinea pig</option>
+          </select>
         </div>
-        <div class="sm:col-span-2">
-          <label class="fta-label" for="report-place">Landmark / description of the spot</label>
-          <input id="report-place" class="fta-field" type="text" placeholder="Bench 4, West Rose Garden" autocomplete="off">
+        <!-- NEEDS food/water, not "is it fed?" The map can't know this at report
+             time: levelMinutes() turns this answer into a lastFedAt /
+             lastWateredAt timestamp, and computeStatus() reads THAT to work out
+             ok/needs/urgent from then on. So these two ticks are the source of
+             the data, not a duplicate of it - asking "is it fed?" instead would
+             invert the meaning.
+
+             Unchecked = looks fed/watered (the common case). Ticked = needs
+             help now, which files it backdated so it surfaces as urgent. -->
+        <div>
+          <span class="fta-label">What does it need right now?</span>
+          <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low cursor-pointer select-none active:scale-[0.99] transition-transform">
+              <input id="report-needs-food" type="checkbox" class="w-4 h-4 accent-primary shrink-0">
+              <span class="material-symbols-outlined text-[18px] text-primary">restaurant</span>
+              <span class="font-body-sm text-body-sm text-on-surface">Needs food</span>
+            </label>
+            <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low cursor-pointer select-none active:scale-[0.99] transition-transform">
+              <input id="report-needs-water" type="checkbox" class="w-4 h-4 accent-primary shrink-0">
+              <span class="material-symbols-outlined text-[18px] text-primary">water_drop</span>
+              <span class="font-body-sm text-body-sm text-on-surface">Needs water</span>
+            </label>
+            <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low cursor-pointer select-none active:scale-[0.99] transition-transform">
+              <input id="report-health" type="checkbox" class="w-4 h-4 accent-primary shrink-0">
+              <span class="material-symbols-outlined text-[18px] text-primary">emergency</span>
+              <span class="font-body-sm text-body-sm text-on-surface">Needs medical help</span>
+            </label>
+          </div>
         </div>
 
-        <div class="sm:col-span-2 p-3 rounded-lg bg-surface-container border border-surface-container-high flex flex-col gap-2">
+        <div class="p-3 rounded-lg bg-surface-container border border-surface-container-high flex flex-col gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
               <span class="material-symbols-outlined text-[18px] text-primary">location_on</span>Pin the location
@@ -472,7 +465,18 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
           <p id="report-pick-hint" class="font-label-sm text-[11px] text-on-surface-variant">We pin your current location automatically. Press “Pick on map” if you saw the animal somewhere else.</p>
         </div>
 
-        <p id="report-error" class="hidden sm:col-span-2 p-2.5 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md"></p>
+        <div>
+          <label class="fta-label" for="report-description">Anything else? (optional)</label>
+          <textarea id="report-description" class="fta-field" rows="3"
+            placeholder="Name, colour, friendly or scared, limping or bleeding, where exactly..."></textarea>
+        </div>
+
+        <!-- Landmark is derived, not typed: placePickMarker() fills it with the
+             nearest station ("Dropped pin near Riverside Path") so the pin still
+             gets a useful label without another input to fill in. -->
+        <input id="report-place" type="hidden">
+
+        <p id="report-error" class="hidden p-2.5 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md"></p>
       </div>
 
       <div class="flex items-center justify-end gap-2 p-4 border-t border-surface-container-high sticky bottom-0 bg-surface">

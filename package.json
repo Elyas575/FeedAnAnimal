@@ -9,7 +9,7 @@
     "build-data": "node tools/build-data.js",
     "selftest": "node tools/selftest.js",
     "check": "node tools/check-markup.js && node tools/check-activity.js",
-    "test": "node tools/selftest.js && node tools/check-markup.js && node tools/check-activity.js && node tools/check-nav.js && node tools/check-community.js && node tools/check-forum.js",
+    "test": "node tools/selftest.js && node tools/test-report-markers.js && node tools/test-details-rows.js && node tools/check-markup.js && node tools/check-activity.js && node tools/check-nav.js && node tools/check-community.js && node tools/check-forum.js",
     "build": "node tools/build-data.js"
   },
   "dependencies": {

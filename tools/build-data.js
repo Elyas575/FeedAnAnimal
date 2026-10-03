@@ -44,8 +44,11 @@ const stations = doc.stations || [];
 const activity = doc.activity || [];
 
 /* ------------------------------- structure ------------------------------ */
-check(Array.isArray(doc.animals) && animals.length > 0, 'animals must be a non-empty array');
-check(Array.isArray(doc.stations) && stations.length > 0, 'stations must be a non-empty array');
+/* An EMPTY dataset is valid: a fresh install has no animals until a real
+   report comes in. Only a malformed one is an error, so check the shape
+   rather than the length. */
+check(Array.isArray(doc.animals), 'animals must be an array (it may be empty)');
+check(Array.isArray(doc.stations), 'stations must be an array (it may be empty)');
 check(Array.isArray(doc.activity), 'activity must be an array');
 check(catalog.length > 0, 'meta.speciesCatalog is required');
 check(typeof meta.city === 'string' && typeof meta.region === 'string', 'meta.city and meta.region are required');
@@ -158,11 +161,10 @@ animals.forEach((animal) => {
   }
 });
 
-check(animals.length === 48, 'expected 48 animals in total, found ' + animals.length);
-check((bySpecies.cat || 0) === 28, 'expected 28 cats, found ' + (bySpecies.cat || 0));
-check((bySpecies.dog || 0) === 16, 'expected 16 dogs, found ' + (bySpecies.dog || 0));
-check((bySpecies.rabbit || 0) + (bySpecies.bird || 0) + (bySpecies['guinea-pig'] || 0) === 4, 'expected 4 rescued small pets');
-check(needsHelp === 12, 'expected 12 animals needing help, found ' + needsHelp + ' (' + needing.join(', ') + ')');
+/* No hard-coded demo totals any more. The seed data was removed so the app
+   starts empty and fills up with real reports; asserting "48 animals" would
+   make a perfectly valid empty dataset look like a bug. Shape rules above
+   (ids, names, species, coordinates) still validate whatever IS there. */
 
 /* --------------------------------- output ------------------------------- */
 if (problems.length) {

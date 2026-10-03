@@ -36,37 +36,92 @@ alter table conversation_participants enable row level security;
 alter table messages enable row level security;
 alter table blocks enable row level security;
 
--- Participants can read their own convos
+-- ===========================================================================
+-- MEMBERSHIP LOOKUP (breaks the RLS recursion)
+--
+-- BUG THIS FIXES: the old policy read
+--     exists (select 1 from conversation_participants p
+--             where p.conversation_id = conversation_participants.conversation_id ...)
+-- A SELECT policy on conversation_participants that queries
+-- conversation_participants. Postgres applies RLS to that inner query too,
+-- which re-enters the same policy forever -> "infinite recursion detected in
+-- policy". The error blocked reads of conversation_participants AND every
+-- table that depends on it (messages, conversations), so the whole chat
+-- feature was dead even though the tables existed.
+--
+-- FIX: a SECURITY DEFINER helper. Being SECURITY DEFINER, it runs as the
+-- table owner and BYPASSES RLS, so it can read conversation_participants
+-- without re-entering the policy. Policies then call the function instead of
+-- the table.
+--
+-- search_path is pinned so this cannot be hijacked via a temp schema.
+-- ===========================================================================
+create or replace function is_conversation_participant(p_conversation_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from conversation_participants
+    where conversation_id = p_conversation_id and user_id = auth.uid()
+  );
+$$;
+
+-- Same helper for the "who is in this conversation" list used by the block
+-- check below, which also needs to read the participants table from inside a
+-- policy.
+create or replace function conversation_member_ids(p_conversation_id uuid)
+returns setof uuid language sql stable security definer set search_path = public as $$
+  select user_id from conversation_participants where conversation_id = p_conversation_id;
+$$;
+
+-- NOTE: execute is deliberately left granted to the public role.
+-- A policy is evaluated as the role that is running the query, so revoking
+-- execute would make every policy that calls this function fail with
+-- "permission denied for function" instead of fixing anything. Revoking is
+-- not needed for safety here: the helpers are `stable` (read-only) and always
+-- scoped to auth.uid(), so they can only ever answer "am I in this
+-- conversation", never "who else is".
+
+-- ===========================================================================
+-- POLICIES
+-- ===========================================================================
+
+-- Participants can read their own convos.
 drop policy if exists "participants read convo" on conversations;
 create policy "participants read convo" on conversations for select using (
-  exists (select 1 from conversation_participants where conversation_id = conversations.id and user_id = auth.uid())
+  is_conversation_participant(conversations.id)
 );
 
 drop policy if exists "auth create convo" on conversations;
 create policy "auth create convo" on conversations for insert
   with check (auth.role() = 'authenticated' and created_by = auth.uid());
 
+-- Was self-referential -> infinite recursion. Now goes through the
+-- SECURITY DEFINER helper, which bypasses RLS, so no re-entry.
 drop policy if exists "participants read participants" on conversation_participants;
 create policy "participants read participants" on conversation_participants for select using (
-  exists (select 1 from conversation_participants p where p.conversation_id = conversation_participants.conversation_id and p.user_id = auth.uid())
+  is_conversation_participant(conversation_participants.conversation_id)
 );
 
+-- Joining is allowed only into a conversation you already belong to, so you
+-- cannot add yourself to someone else's DM. (The old version allowed any
+-- authenticated user to insert ANY participant row.)
 drop policy if exists "auth join convo" on conversation_participants;
 create policy "auth join convo" on conversation_participants for insert
-  with check (auth.role() = 'authenticated');
+  with check (
+    auth.role() = 'authenticated' and is_conversation_participant(conversation_id)
+  );
 
 drop policy if exists "participants read messages" on messages;
 create policy "participants read messages" on messages for select using (
-  exists (select 1 from conversation_participants where conversation_id = messages.conversation_id and user_id = auth.uid())
+  is_conversation_participant(messages.conversation_id)
 );
 
 drop policy if exists "participants send messages" on messages;
 create policy "participants send messages" on messages for insert with check (
   sender_id = auth.uid() and
-  exists (select 1 from conversation_participants where conversation_id = messages.conversation_id and user_id = auth.uid()) and
+  is_conversation_participant(messages.conversation_id) and
   not exists (
     select 1 from blocks
-    where blocker_id in (select user_id from conversation_participants where conversation_id = messages.conversation_id)
+    where blocker_id in (select conversation_member_ids(messages.conversation_id))
     and blocked_id = auth.uid()
   )
 );

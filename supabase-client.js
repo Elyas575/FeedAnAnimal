@@ -23,6 +23,7 @@ try {
     window.sbLiveTicker = sbLiveTicker;
     window.sbUploadReportPhoto = sbUploadReportPhoto;
     window.sbSubmitReport = sbSubmitReport;
+    window.sbLoadReports = sbLoadReports;
     window.sbCompressImage = sbCompressImage;
     window.sbFormatBytes = sbFormatBytes;
     window.sbDisplayName = sbDisplayName;
@@ -487,11 +488,127 @@ async function sbUploadReportPhoto(file) {
   return sb.storage.from('animal-photos').getPublicUrl(key).data.publicUrl;
 }
 
-/* Insert a community report so the whole team sees it, not just this device. */
+/* Per-species urgency thresholds, mirroring meta.urgencyPolicy in
+   data/animals.json. Kept as a local copy (not fetched) because sbLoadReports
+   maps DB rows BEFORE index.js has loaded the dataset, and the values must
+   match levelMinutes() exactly or a cloud report and a local one would compute
+   different statuses from identical answers.
+
+   Returns the minutes to backdate lastFedAt/lastWateredAt by: 5 when it looks
+   fed (matching levelMinutes 'ok'), or urgentHours*60+120 when it does not
+   (matching levelMinutes 'urgent'). */
+function speciesRule(species) {
+  var HOURS = {
+    cat: { food: 14, water: 10 },
+    dog: { food: 16, water: 12 },
+    rabbit: { food: 14, water: 10 },
+    bird: { food: 12, water: 8 },
+    'guinea-pig': { food: 10, water: 8 }
+  };
+  var h = HOURS[species] || { food: 14, water: 10 };
+  return { food: h.food * 60 + 120, water: h.water * 60 + 120 };
+}
+
+/* Loads community reports so everyone sees every stray, not just the ones they
+   reported themselves.
+
+   This is the read half of sbSubmitReport(). Without it `reports` was
+   write-only: a report was inserted and then never read by anybody, so the map
+   stayed empty for every visitor.
+
+   The DB stores snake_case columns (location_label / photo_url) while the app
+   models an animal with location.label / photoUrl, so the row is mapped here
+   instead of leaking the column names into index.js.
+
+   Returns [] when Supabase is not configured or the table is missing, so the
+   app keeps working offline exactly as before. */
+async function sbLoadReports(limit = 200) {
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb.from('reports')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data || []).map(function (row) {
+      const lat = Number(row.lat);
+      const lng = Number(row.lng);
+      const label = row.location_label || 'Community report pin';
+      /* Undo the markers sbSubmitReport() writes, so the report's real needs survive
+         the round trip. Without this a starving stray arrives at every other
+         user looking freshly fed and watered - the map would show it as the
+         one animal nobody needs to help.
+
+         Order is load-bearing. sbSubmitReport() PREPENDS, so the last marker
+         written ends up FIRST in the string. They must therefore be stripped in
+         that same order (vet, then water, then food) - checking food first
+         silently lost the food/water flags whenever all three were set, and
+         leaked the raw markers into the description. */
+      const rawText = row.description || '';
+      const needsVet = rawText.indexOf('[NEEDS_VET]') === 0;
+      const afterVet = needsVet ? rawText.slice('[NEEDS_VET]'.length).trim() : rawText;
+      const needsWater = afterVet.indexOf('[NEEDS_WATER]') === 0;
+      const afterWater = needsWater ? afterVet.slice('[NEEDS_WATER]'.length).trim() : afterVet;
+      const needsFood = afterWater.indexOf('[NEEDS_FOOD]') === 0;
+      const description = (needsFood ? afterWater.slice('[NEEDS_FOOD]'.length).trim() : afterWater)
+        || 'Reported by a community volunteer.';
+      /* Backdate exactly like the local path (levelMinutes 'urgent' vs 'ok'),
+         so a cloud report and a local one compute the same status. */
+      const nowMs = Date.now();
+      const MIN = 60000;
+      const rule = speciesRule(row.species || 'cat');
+      return {
+        /* Stable id so the same report dedupes instead of pinning twice. */
+        id: 'report-' + String(row.id),
+        name: row.name || 'Unnamed stray',
+        species: row.species || 'cat',
+        breed: (row.species || 'cat') + ' (reported)',
+        description: description,
+        health: needsVet ? 'critical' : 'healthy',
+        lastFedAt: new Date(nowMs - (needsFood ? rule.food : 5) * MIN).toISOString(),
+        lastWateredAt: new Date(nowMs - (needsWater ? rule.water : 5) * MIN).toISOString(),
+        notes: 'Reported by the community - log what you see here.',
+        caretakers: ['Community'],
+        tags: ['community-report'],
+        photoUrl: row.photo_url || null,
+        reportedAt: row.created_at || new Date().toISOString(),
+        location: {
+          lat: isFinite(lat) ? lat : 0,
+          lng: isFinite(lng) ? lng : 0,
+          label: label,
+          area: 'Reported area'
+        },
+        source: 'report'
+      };
+    }).filter(function (animal) {
+      /* A report with no usable coordinates cannot be pinned; drop it rather
+         than dropping a pin at null island (0,0). */
+      return isFinite(animal.location.lat) && isFinite(animal.location.lng) &&
+        !(animal.location.lat === 0 && animal.location.lng === 0);
+    });
+  } catch (err) {
+    console.warn('[sb] load reports failed:', err.message);
+    return [];
+  }
+}
+
+/* Insert a community report so the whole team sees it, not just this device.
+   Returns the new row's id so the caller can adopt it, which keeps the local
+   pin and the cloud row the SAME animal instead of two pins for one report. */
 async function sbSubmitReport(report) {
   if (!sb) return false;
   try {
     const user = await sbEnsureAuth();
+    /* The reports table has no food/water/health columns, so these three
+       answers are encoded as markers in the description. Without this a
+       starving stray would reach every other user looking freshly fed.
+
+       Order is fixed and the markers are stripped again in sbLoadReports(). */
+    let description = report.description || '';
+    if (report.needsFood) description = '[NEEDS_FOOD] ' + description;
+    if (report.needsWater) description = '[NEEDS_WATER] ' + description;
+    if (report.needsVet) description = '[NEEDS_VET] ' + description;
+    description = description || null;
     const payload = {
       reporter_id: (user && !user.is_anonymous) ? user.id : null,
       name: report.name || null,
@@ -500,10 +617,10 @@ async function sbSubmitReport(report) {
       lng: Number.isFinite(report.lng) ? report.lng : null,
       location_label: report.place || null,
       photo_url: report.photoUrl || null,
-      description: report.description || null,
+      description: description,
       status: 'open',
     };
-    let result = await sb.from('reports').insert([payload]);
+    let result = await sb.from('reports').insert([payload]).select('id').single();
     // Older databases may not have every optional column yet - retry leaner.
     if (result.error && /column|schema cache/i.test(result.error.message || '')) {
       result = await sb.from('reports').insert([{
@@ -515,10 +632,12 @@ async function sbSubmitReport(report) {
         location_label: payload.location_label,
         photo_url: payload.photo_url,
         description: payload.description,
-      }]);
+      }]).select('id').single();
     }
     if (result.error) throw result.error;
-    return true;
+    /* The id, so the caller can use the same one sbLoadReports() will hand
+       back later. Falls back to true if the database returns no row. */
+    return (result.data && result.data.id) || true;
   } catch (err) {
     console.warn('[sb] report submit failed (kept locally):', err.message);
     return false;
