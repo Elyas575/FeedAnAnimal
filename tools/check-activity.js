@@ -518,21 +518,63 @@ check('the drawer credits the reporter', "detailRow('Reported'", js);
 check('the breed header drops unknown colour',
   'animal.breed, animal.color].filter((part) => !isUnknown(part))', js);
 
+/* --- modal close buttons are real controls ------------------------------ *
+ * The X used to be a bare 32px glyph in the title row with no border, so it
+ * read as decoration and collided with the "20m away" line below it. It needs
+ * a visible resting state, a hover state, an accessible name and shrink-0 so a
+ * long animal name can never squeeze it. */
+check('details close has an accessible name', 'aria-label="Close details"', js);
+check('details close has a resting border', 'border border-surface-container-highest bg-surface-container-low', js);
+check('details close has a hover state', 'hover:bg-surface-container hover:text-on-surface', js);
+check('details close has a pressed state', 'active:scale-90', js);
+check('details close cannot be squeezed by a long name', "class=\"shrink-0 -mt-1 -mr-1 w-9 h-9", js);
+check('the title column reserves room for the close button', 'flex-1 min-w-0 pr-10', js);
+rows.push([/w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-outline/.test(js) === false ? 'OK  ' : 'MISS',
+  'the old borderless 32px close button is gone']);
+check('the distance line truncates instead of wrapping', /<span class="truncate">' \+ esc\(animal\.location\.label\)/.test(js), js);
+check('the modal has room around the close button', 'shadow-2xl border border-surface-container-highest p-5', html);
+check('the report form close is styled too', 'aria-label="Close report form"', html);
+
 /* --- Directions must be obvious, not an icon --------------------------- *
  * It used to render as a bare arrow glyph in a ghost pill, sharing a row with
  * Feed/Water, so it read as decoration. "How do I get to this animal" is the
  * reason most people open a pin, so every entry point spells the word out and
  * uses the solid blue treatment. */
-check('directions button style exists', '.fta-btn--go {', html);
-/* Match on the declaration itself rather than "\n{", so the assertion holds
-   whether the file is checked out with LF or CRLF line endings. */
+/* index.js is served no-cache but the CSS lives in index.html, which browsers
+   may still hold. An inline colour ships WITH the markup, so the two can never
+   disagree and leave the label unreadable on blue. */
+rows.push([(js.match(/class="fta-btn fta-btn--go[^"]*" style="color:#ffffff"/g) || []).length >= 3 ? 'OK  ' : 'MISS',
+  'all three Directions anchors pin white inline']);
+check('the Directions icon also pins white inline',
+  (js.match(/material-symbols-outlined" style="color:#ffffff"/g) || []).length >= 3, js);
+check('directions button style exists', 'a.fta-btn--go {', html);
+/* Link colours get overridden constantly - Tailwind preflight targets bare
+   `a`, as do Leaflet and browser defaults - so the selector has to be element-
+   qualified or the white silently loses. Match the declaration itself rather
+   than "\n{", so this holds with LF or CRLF line endings. */
+check('directions selector is element-qualified', /a\.fta-btn--go\s*\{/.test(html), html);
 check('directions style is the solid tertiary blue',
-  /\.fta-btn--go\s*\{[^}]*background:\s*#006194;\s*color:\s*#ffffff;/.test(html), html);
+  /a\.fta-btn--go\s*\{[^}]*background:\s*#006194;[\s\S]*?color:\s*#ffffff;/.test(html), html);
 check('directions text is pure white and heavy', 'font-weight: 800', html);
-check('directions label has a shadow for legibility', 'text-shadow: 0 1px 2px', html);
-check('directions sizing is in CSS, not inline', /width: 100%; justify-content: center; height: 40px/.test(html), html);
-rows.push([js.indexOf('fta-btn--go" style=') === -1 ? 'OK  ' : 'MISS',
-  'no inline styles left on the Directions button (CSS owns it)']);
+/* A dark text-shadow behind 13px white glyphs is what made the label read as
+   translucent. Weight and size do that job instead. */
+check('directions has NO dark text shadow', /text-shadow:\s*0 1px 2px/.test(html) === false ? true : false, html);
+check('directions shadow is explicitly none', 'text-shadow: none;', html);
+check('the popup directions goes full width', 'a.fta-btn--go.is-block { width: 100%; }', html);
+/* The popup head must leave room for Leaflet's absolutely-positioned X, which
+   otherwise sits on top of the distance and renders "30m" as "30X". */
+check('the popup head reserves room for the close X',
+  /fta-popup__head\s*\{[^}]*padding-right:\s*26px/.test(html), html);
+check('the popup close X is a real circular control',
+  /leaflet-popup-close-button\s*\{[\s\S]*?border-radius:\s*9999px/.test(html), html);
+/* The details drawer once used its own Tailwind utilities including
+   hover:opacity-95, which faded the label on hover. */
+/* Match the attribute, not the prose: the word also appears in the comment
+   above the markup explaining why the utility was removed. */
+rows.push([/class="[^"]*hover:opacity-95[^"]*"/.test(js) === false ? 'OK  ' : 'MISS',
+  'no opacity fade on the Directions button']);
+rows.push([(js.match(/class="fta-btn fta-btn--go/g) || []).length >= 3 ? 'OK  ' : 'MISS',
+  'all three Directions buttons share one styling class']);
 /* The icon font renders via ligatures and needs these settings. The rule is
    `body`-prefixed because this <style> loads BEFORE the Tailwind CDN, which
    appends its sheet to the end of head and would otherwise win on order. */
@@ -548,7 +590,7 @@ rows.push([js.indexOf('>directions</span></a>') === -1 ? 'OK  ' : 'MISS',
 check('animal popup directions comes before the care actions',
   js.indexOf('fta-btn--go') < js.indexOf('data-action="feed"'), js);
 check('details modal leads with directions',
-  'bg-tertiary text-white font-label-md text-label-md font-extrabold', js);
+  js.indexOf("'<a class=\"fta-btn fta-btn--go\" target=\"_blank\" rel=\"noopener\" href=\"' + esc(directions2)") !== -1 ? true : false, js);
 
 /* --- food / water ticks feed the timestamps ----------------------------- *
  * levelMinutes() turns these two answers into lastFedAt / lastWateredAt.

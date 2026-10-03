@@ -721,12 +721,16 @@
         ' <button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" title="Copy coordinates" style="text-decoration:underline">Copy</button></p>' +
       /* Directions gets its OWN full-width row above the care actions. "Walk to
          this animal" is the reason someone opened the popup, so it should not
-         compete with Feed/Water for horizontal space on one row. Sizing and
-         colour come from .fta-btn--go in index.html - no inline styles here, so
-         the button can't end up half-styled. */
-      '<a class="fta-btn fta-btn--go" target="_blank" rel="noopener" href="' + esc(directions) + '" ' +
-        'title="Walking directions to this animal">' +
-        '<span class="material-symbols-outlined">directions</span>Directions</a>' +
+         compete with Feed/Water for horizontal space on one row.
+
+         The white is set inline as well as in CSS on purpose. This markup is
+         built in JS, and _headers lets the browser cache index.js for an hour
+         while index.html revalidates - so a user could get the new markup with
+         the previous stylesheet and see a blue button with unreadable text. An
+         inline colour ships with the markup, so the two can never disagree. */
+      '<a class="fta-btn fta-btn--go is-block" style="color:#ffffff" target="_blank" rel="noopener" ' +
+        'href="' + esc(directions) + '" title="Walking directions to this animal">' +
+        '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
       '<div class="fta-popup__actions">' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--primary">' +
           '<span class="material-symbols-outlined">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
@@ -751,9 +755,9 @@
       '<p class="fta-popup__notes">' + esc(station.notes) + '</p>' +
       '<p class="fta-popup__meta">Steward: ' + esc(station.caretaker) + ' • serviced ' + relativeTime(station.lastServicedAt) + '</p>' +
       /* Station popups get the same prominent, worded Directions button. */
-      '<a class="fta-btn fta-btn--go" target="_blank" rel="noopener" title="Walking directions to this station" ' +
+      '<a class="fta-btn fta-btn--go is-block" style="color:#ffffff" target="_blank" rel="noopener" ' +
         'href="https://www.google.com/maps/dir/?api=1&destination=' + station.location.lat + ',' + station.location.lng + '">' +
-        '<span class="material-symbols-outlined">directions</span>Directions</a>' +
+        '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
       '<div class="fta-popup__actions">' +
         '<button type="button" data-action="station-check" data-station="' + esc(station.id) + '" class="fta-btn fta-btn--primary">' +
           '<span class="material-symbols-outlined">checklist</span>Log a station check</button>' +
@@ -1772,24 +1776,31 @@
     const coord2 = Number(animal.location.lat).toFixed(6) + ', ' + Number(animal.location.lng).toFixed(6);
     const directions2 = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
 
+    /* Header. The close control used to be a bare 32px "x" crammed into the title
+         row, where it collided with the "20m away" line underneath and looked
+         like part of the content. It is now a proper 36px circular button with
+         a visible resting border, a hover state and a pressed state, pinned to
+         the header's corner with shrink-0 so a long name can never squeeze it.
+         The title column carries pr-10 to reserve that space. */
     host.innerHTML =
       '<div class="flex items-start gap-3">' +
         '<div class="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + '</div>' +
-        '<div class="flex-1 min-w-0">' +
-          '<div class="flex items-start justify-between gap-2">' +
-            '<div class="min-w-0">' +
-              '<h3 class="font-headline-md text-headline-md text-on-surface">' + esc(animal.name) + '</h3>' +
-              '<p class="font-body-sm text-body-sm text-on-surface-variant">' +
-          esc([animal.breed, animal.color].filter((part) => !isUnknown(part)).join(' • ') || speciesInfo(animal.species).singular) +
+        '<div class="flex-1 min-w-0 pr-10">' +
+          '<h3 class="font-headline-md text-headline-md text-on-surface">' + esc(animal.name) + '</h3>' +
+          '<p class="font-body-sm text-body-sm text-on-surface-variant">' +
+            esc([animal.breed, animal.color].filter((part) => !isUnknown(part)).join(' • ') || speciesInfo(animal.species).singular) +
           '</p>' +
-            '</div>' +
-            '<button type="button" data-close-modal="details-modal" class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-outline" title="Close">' +
-              '<span class="material-symbols-outlined text-[18px]">close</span></button>' +
-          '</div>' +
           '<p class="font-label-sm text-xs text-outline flex items-center gap-1 mt-1">' +
-            '<span class="material-symbols-outlined text-[14px] text-primary">pin_drop</span>' + esc(animal.location.label) +
-            '<span class="mx-1">•</span>' + formatDistance(row.status.distance) + ' away</p>' +
+            '<span class="material-symbols-outlined text-[14px] text-primary shrink-0">pin_drop</span>' +
+            '<span class="truncate">' + esc(animal.location.label) + '</span>' +
+            '<span class="mx-1 shrink-0">•</span><span class="shrink-0">' + formatDistance(row.status.distance) + ' away</span></p>' +
         '</div>' +
+        '<button type="button" data-close-modal="details-modal" ' +
+          'class="shrink-0 -mt-1 -mr-1 w-9 h-9 rounded-full flex items-center justify-center ' +
+          'border border-surface-container-highest bg-surface-container-low text-on-surface-variant ' +
+          'hover:bg-surface-container hover:text-on-surface active:scale-90 transition-all" ' +
+          'title="Close" aria-label="Close details">' +
+          '<span class="material-symbols-outlined text-[18px] leading-none">close</span></button>' +
       '</div>' +
 
       '<p class="mt-4 p-2.5 rounded-lg flex items-center gap-2 font-label-md text-label-md ' +
@@ -1852,13 +1863,14 @@
         historyHtml +
       '</div>' +
 
-      /* Directions leads this row, in solid blue with the word spelled out. It is the
-         reason most people open the profile, so it must not look like a
-         low-priority outline chip after four other buttons. */
+      /* Directions leads the row. It now uses the SAME .fta-btn--go class as the
+         map popups instead of hand-rolled Tailwind utilities - those included
+         `hover:opacity-95`, which faded the label on hover and was part of why
+         it kept reading as translucent. One class, one colour, everywhere. */
       '<div class="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-surface-container-high">' +
-        '<a href="' + esc(directions2) + '" target="_blank" rel="noopener" ' +
-          'class="h-11 px-5 rounded-full bg-tertiary text-white font-label-md text-label-md font-extrabold flex items-center gap-2 shadow-md hover:opacity-95 active:scale-95 transition-all">' +
-          '<span class="material-symbols-outlined text-[20px]">directions</span>Directions</a>' +
+        '<a class="fta-btn fta-btn--go" style="color:#ffffff" target="_blank" rel="noopener" href="' + esc(directions2) + '" ' +
+          'title="Walking directions to this animal">' +
+          '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1.5 shadow-sm active:scale-95 transition-all">' +
           '<span class="material-symbols-outlined text-[18px]">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
         '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +

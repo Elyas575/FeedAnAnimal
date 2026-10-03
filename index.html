@@ -98,13 +98,37 @@
 /* ------------------------------ popup card ------------------------------ */
 .fta-popup .leaflet-popup-content-wrapper { border-radius: 1.1rem; padding: 0; overflow: hidden; box-shadow: 0 18px 40px rgba(30, 27, 26, .24); }
 .fta-popup .leaflet-popup-content { margin: 0; width: 296px !important; }
-.fta-popup .leaflet-popup-close-button { color: #8b7269 !important; padding: 8px 8px 0 0 !important; font-size: 20px !important; z-index: 5; }
+/* A bare glyph with no background reads as decoration and can sit on top of the
+   distance text. Give it a real circular control: visible resting state, hover,
+   and a pressed state. */
+.fta-popup .leaflet-popup-close-button {
+  color: #57423b !important;
+  padding: 0 !important;
+  top: 6px !important; right: 6px !important;
+  width: 26px !important; height: 26px !important;
+  display: flex !important; align-items: center; justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 248, 246, .9);
+  border: 1px solid #e9e1df;
+  font-size: 18px !important; line-height: 1 !important;
+  text-decoration: none !important;
+  z-index: 5;
+  transition: background .15s ease, transform .15s ease;
+}
+.fta-popup .leaflet-popup-close-button:hover {
+  background: #efe6e4 !important; color: #1e1b1a !important;
+}
+.fta-popup .leaflet-popup-close-button:active { transform: scale(.9); }
 .fta-popup__card {
   padding: 13px; display: flex; flex-direction: column; gap: 8px; width: 296px;
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; color: #1e1b1a; background: #fff8f6;
   max-height: 62vh; overflow-y: auto;
 }
-.fta-popup__head { display: flex; align-items: center; gap: 6px; }
+/* Leaflet's close X sits absolutely in the top-right corner of the popup, and
+   .fta-popup__distance is pushed to that same corner by `margin-left: auto`.
+   They landed on top of each other ("30m" rendered as "30X"). The head now
+   reserves the X's space, and the X itself is styled as a real control. */
+.fta-popup__head { display: flex; align-items: center; gap: 6px; padding-right: 26px; }
 .fta-popup__dot { width: 9px; height: 9px; border-radius: 9999px; background: #006d30; }
 .fta-popup__dot.is-alert { background: #ba1a1a; animation: fta-blink 1.6s ease-in-out infinite; }
 @keyframes fta-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -149,20 +173,37 @@
    the map is "there is an animal there" -> "how do I walk to it". It used to
    be an icon-only ghost link, which read as decoration next to Feed/Water.
 
-   Sizing moved off inline styles and in here so nothing can half-apply. The
-   text is pure white at 800 with a soft shadow: on a small pill inside a
-   popup the label was reading as washed out, and the shadow keeps it legible
-   against the blue without relying on the font weight alone. */
-.fta-btn--go {
-  background: #006194; color: #ffffff; padding: 0 16px;
-  width: 100%; justify-content: center; height: 40px; font-size: 13px;
-  font-weight: 800; letter-spacing: .01em;
-  text-shadow: 0 1px 2px rgba(0, 40, 70, .35);
+   Sizing lives here rather than in inline styles so nothing half-applies.
+
+   Two things matter for legibility, and the first one used to be wrong:
+   - The selector is `a.fta-btn--go`, not `.fta-btn--go`. Link colours are the
+     most commonly overridden thing in a stylesheet (Leaflet, Tailwind preflight
+     and browser defaults all target bare `a`), so the extra element raises
+     specificity and white genuinely wins.
+   - NO dark text-shadow. One was added earlier to "lift" the label and it did
+     the opposite: a dark halo behind 13px white glyphs is what made the word
+     look translucent and hard to read. Weight + size do that job instead. */
+a.fta-btn--go {
+  background: #006194;
+  color: #ffffff;
+  padding: 0 16px;
+  justify-content: center;
+  height: 40px;
+  font-size: 13px; font-weight: 800; letter-spacing: .01em;
+  text-shadow: none;
 }
-.fta-btn--go:hover { background: #007bb9; }
-.fta-btn--go:active { background: #004a72; }
-.fta-btn--go .material-symbols-outlined {
+/* The map popup gives Directions its own full-width row (see popupHtml), so it
+   opts into the block layout. The details drawer keeps it inline, beside the
+   other actions - one class, two sizes, identical colours. */
+a.fta-btn--go.is-block { width: 100%; }
+a.fta-btn--go:hover { background: #007bb9; color: #ffffff; }
+a.fta-btn--go:active { background: #004a72; color: #ffffff; }
+a.fta-btn--go:visited { color: #ffffff; }
+/* The glyph is white too - without this it inherits, and any inherited colour
+   from the popup card wins over the button's own. */
+a.fta-btn--go .material-symbols-outlined {
   font-size: 19px;
+  color: #ffffff;
   text-shadow: none;
   -webkit-font-smoothing: antialiased;
 }
@@ -375,8 +416,10 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
         <h2 id="report-title" class="font-headline-sm text-headline-sm text-on-surface font-bold">Report a stray</h2>
         <p class="font-body-sm text-body-sm text-on-surface-variant">Everything you add here stays on this device and appears on the map instantly.</p>
       </div>
-      <button type="button" data-close-modal="report-modal" class="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-outline shrink-0" title="Close">
-        <span class="material-symbols-outlined text-[20px]">close</span>
+      <button type="button" data-close-modal="report-modal"
+        class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center border border-surface-container-highest bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:scale-90 transition-all"
+        title="Close" aria-label="Close report form">
+        <span class="material-symbols-outlined text-[18px] leading-none">close</span>
       </button>
     </div>
 
@@ -492,7 +535,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 
 <!-- ======================= ANIMAL DETAILS MODAL ======================= -->
 <div id="details-modal" data-modal class="hidden fixed inset-0 z-[75] items-center justify-center p-3 sm:p-6 bg-inverse-surface/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Animal details">
-  <div class="fta-modal-panel w-full max-w-xl bg-surface rounded-lg shadow-2xl border border-surface-container-highest p-4">
+  <div class="fta-modal-panel w-full max-w-xl bg-surface rounded-lg shadow-2xl border border-surface-container-highest p-5">
     <div id="details-content"></div>
   </div>
 </div>

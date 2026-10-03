@@ -22,7 +22,11 @@
   Cache-Control: no-cache, must-revalidate
 
 /index.js
-  Cache-Control: public, max-age=3600, must-revalidate
+  # The popup markup (including the Directions button) is built here, while
+  # index.html revalidates. Caching this for an hour lets a browser pair NEW
+  # markup with an OLD stylesheet, which is how the Directions label ended up
+  # unreadable. Must revalidate like the pages that reference it.
+  Cache-Control: no-cache, must-revalidate
 
 /supabase-client.js
   Cache-Control: public, max-age=3600, must-revalidate
