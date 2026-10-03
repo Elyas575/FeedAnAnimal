@@ -28,7 +28,7 @@
   Cache-Control: public, max-age=3600, must-revalidate
 
 /site-header.js
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: no-cache, must-revalidate
 
 /tailwind-theme.js
   Cache-Control: public, max-age=3600, must-revalidate

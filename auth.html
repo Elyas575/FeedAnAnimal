@@ -21,6 +21,9 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;col
 .toast.ok{background:#006d30}.toast.err{background:#ba1a1a}.toast.info{background:#006194}
   /* clear the shared fixed navbar */
   body.has-site-header{padding-top:68px}
+  /* keep the card above the mobile bottom tab bar */
+  @media (max-width:767px){body.has-site-header{padding-bottom:100px}}
+
 </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">

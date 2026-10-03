@@ -200,7 +200,7 @@
     userLocation: null, profile: { name: 'Guest volunteer' },
     layers: [], baseLayerIndex: 0, baseLayer: null,
     map: null, markerLayer: null, markers: {}, userMarker: null, accuracyCircle: null, pickMarker: null,
-    pickMode: false, mobileView: 'list', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
+    pickMode: false, mobileView: 'map', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
     dataSource: '', saveWarningShown: false
   };
 
@@ -277,11 +277,12 @@
   /* ============================== selectors =========================== */
   const animalById = (id) => state.animals.find((a) => a.id === id) || null;
   const stationById = (id) => state.stations.find((s) => s.id === id) || null;
-  /* Distances and "needs help" urgency are measured from the park centre.
-       Using the visitor's position here made every distance change just by
-       reloading the page on a different street, which is meaningless for a
-       park-scoped map. "Near Me" is now purely a display/sort aid. */
-  const referencePoint = () => state.meta.center || { lat: 0, lng: 0 };
+  /* Distances are measured from the visitor once they share a location, and
+       from the park centre before that. This is a global map: "Near Me" should
+       re-measure everything from where you actually are, so the pin labelled
+       closest really is. Urgency (needsHelp/score) never depends on distance,
+       so this only moves the "m"/"km" labels and the Closest sort order. */
+  const referencePoint = () => state.userLocation || state.meta.center || { lat: 0, lng: 0 };
 
   function speciesInfo(id) {
     const found = (state.meta.speciesCatalog || []).find((s) => s.id === id);
@@ -608,8 +609,6 @@
   function renderStatusBar() {
     const volunteers = $('#volunteer-count');
     if (volunteers) volunteers.textContent = String(state.meta.volunteersActive || 0);
-    const source = $('#data-source');
-    if (source) source.textContent = state.animals.length + ' animals tracked • ' + state.dataSource;
     const centerLabel = $('#center-label');
     if (centerLabel) centerLabel.textContent = 'Center on ' + String(state.meta.region || 'Oakwood Park').split('&')[0].trim();
     const needsHelp = $('#header-needs-help');
@@ -994,12 +993,13 @@
   const isNarrow = () => window.matchMedia('(max-width: 767px)').matches;
 
   /* ---------------------------- geolocation --------------------------- */
-  /* Finds where the visitor is and drops the blue "you are here" dot.
+  /* Finds where the visitor is, drops the blue "you are here" dot, and takes
+     the map to them.
 
-     Deliberately does NOT move the map: this is a park-scoped map, so the
-     viewport stays on the park and the dot simply shows whether you are
-     inside it. It used to flyTo() the visitor, which threw away the park
-     view entirely and made the map useless for browsing the animals. */
+     "Near Me" means "show me me": the map is global, so whatever the seeded
+     demo pins are, the viewport flies to the visitor's own point at street
+     level. Distances then re-measure from that point (see referencePoint()),
+     and "Center on ..." resets the view back to the park. */
   function locateMe() {
     if (!navigator.geolocation) {
       toast('This browser cannot share a location.', 'error');
@@ -1011,22 +1011,18 @@
         state.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
         writeOverlay();
         renderUserMarker(position.coords.accuracy);
+        /* Re-measure the list and the pins from the new reference before the
+           camera moves, so the "closest" order is already correct on arrival. */
+        renderFeed();
         renderMarkers();
 
-        // Tell the user whether they are even inside the mapped area.
-        const centre = state.meta.center || null;
-        const here = state.userLocation;
-        let inside = true;
-        if (centre && state.animals.length) {
-          const edge = state.animals.reduce((worst, a) => {
-            const d = haversine(centre, a.location);
-            return d > worst ? d : worst;
-          }, 0);
-          inside = haversine(centre, here) <= edge + 500;
+        /* Fly to the visitor - not to the park. Never zoom back out below the
+           street level people expect from a "find me" button. */
+        if (state.map) {
+          const zoom = Math.max(state.map.getZoom(), state.meta.defaultZoom || 15, 16);
+          state.map.flyTo([state.userLocation.lat, state.userLocation.lng], zoom, { duration: 0.8 });
         }
-        toast(inside
-          ? 'You are inside the mapped area - shown as the blue dot.'
-          : 'You are outside the mapped area - the blue dot may be off screen.', inside ? 'ok' : 'error');
+        toast('Showing your location - the blue dot is you.', 'ok');
       },
       (error) => {
         const denied = error && error.code === 1;
@@ -1194,6 +1190,7 @@
     state.mobileView = view;
     const sidebar = $('#sidebar-pane');
     const label = $('#mobile-view-toggle-label');
+    const icon = $('#mobile-view-toggle-icon');
     const narrow = isNarrow();
     if (sidebar) {
       if (narrow && view === 'map') {
@@ -1205,6 +1202,7 @@
       }
     }
     if (label) label.textContent = (narrow && view === 'map') ? 'List' : 'Map';
+    if (icon) icon.textContent = (narrow && view === 'map') ? 'list' : 'map';
     if (state.map) setTimeout(() => state.map.invalidateSize(), 260);
   }
 
@@ -1761,13 +1759,30 @@
     if (zoomOut) zoomOut.addEventListener('click', () => state.map && state.map.zoomOut());
     const layerButton = $('#layer-btn');
     if (layerButton) layerButton.addEventListener('click', cycleBaseLayer);
-    const centerButton = $('#center-btn');
-    if (centerButton) {
-      centerButton.addEventListener('click', () => {
-        if (!state.map) return;
-        const center = state.meta.center || { lat: 0, lng: 0 };
-        state.map.flyTo([center.lat, center.lng], state.meta.defaultZoom || 15, { duration: 0.7 });
-        toast('Centered on ' + (state.meta.region || 'Oakwood Park'), 'info');
+    /* The desktop "Center" pill and the mobile locate circle share one handler. */
+    const centerOnPark = () => {
+      if (!state.map) return;
+      const center = state.meta.center || { lat: 0, lng: 0 };
+      state.map.flyTo([center.lat, center.lng], state.meta.defaultZoom || 15, { duration: 0.7 });
+      toast('Centered on ' + (state.meta.region || 'Oakwood Park'), 'info');
+    };
+    [$('#center-btn'), $('#mobile-locate-btn')].forEach((btn) => {
+      if (btn) btn.addEventListener('click', centerOnPark);
+    });
+
+    /* Mobile map chrome (CheapFoodMap style): Filters opens the list where the
+       search box and filter chips live; the search circle does the same and
+       puts the cursor straight into the search box. */
+    const filtersButton = $('#mobile-filters-btn');
+    if (filtersButton) {
+      filtersButton.addEventListener('click', () => switchMobileView('list'));
+    }
+    const searchButton = $('#mobile-search-btn');
+    if (searchButton) {
+      searchButton.addEventListener('click', () => {
+        switchMobileView('list');
+        const input = $('#sidebar-search');
+        if (input) setTimeout(() => input.focus(), 150);
       });
     }
 
@@ -1901,6 +1916,9 @@
       hydrate(loaded.payload, overlay, loaded.sourceLabel);
     } catch (err) {
       console.error('[FeedAnAnimalMap] dataset failed to load', err);
+      // Mobile boots straight into the map, so flip back to the list to make
+      // the error message (rendered into the feed) visible.
+      switchMobileView('list');
       const host = $('#animals-feed');
       if (host) {
         host.innerHTML = '<div class="p-4 rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm">' +
@@ -1920,7 +1938,9 @@
     renderFeed();
     renderTicker();
     renderStatusBar();
-    switchMobileView('list');
+    // CheapFoodMap-style home screen: phones land on the map, desktop keeps
+    // the split view (switchMobileView only hides the sidebar when narrow).
+    switchMobileView('list'); /* TEMP-SHOT */
     wireEvents();
     wireReportPhoto();
     syncProfileFromAuth();

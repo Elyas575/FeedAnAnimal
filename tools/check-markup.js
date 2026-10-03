@@ -29,6 +29,13 @@ const declared = new Set();
 const idMatches = html.matchAll(/\sid="([A-Za-z0-9_-]+)"/g);
 for (const match of idMatches) declared.add(match[1]);
 
+/* site-header.js injects the shared header AND the mobile bottom tab bar
+   into index.html at runtime (the List/Map switch lives there now), so ids
+   declared in that script count as provided too. */
+const sharedHeader = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
+Array.from(sharedHeader.matchAll(/\sid="([A-Za-z0-9_-]+)"/g))
+  .forEach((m) => declared.add(m[1]));
+
 const missing = Array.from(wanted).filter((id) => !declared.has(id));
 if (missing.length) problems.push('index.html is missing ids used by index.js: ' + missing.join(', '));
 

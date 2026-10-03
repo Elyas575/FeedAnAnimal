@@ -177,7 +177,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 <div class="relative w-full h-[calc(100vh-68px)] flex overflow-hidden bg-surface">
 
 <!-- ---------------- LEFT PANEL: volunteer feed (CheapFoodMap style) ---------------- -->
-<aside id="sidebar-pane" class="w-full md:w-[420px] lg:w-[450px] shrink-0 h-full flex-col bg-surface z-30 shadow-xl overflow-hidden flex">
+<aside id="sidebar-pane" class="w-full md:w-[420px] lg:w-[450px] shrink-0 h-full flex-col bg-surface z-30 shadow-xl overflow-hidden hidden md:flex">
 
   <!-- Search & geolocation bar -->
   <div class="p-space-md pb-space-sm bg-surface flex flex-col gap-2.5 border-b border-surface-container-high">
@@ -186,7 +186,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
       <input id="sidebar-search" type="text" autocomplete="off" aria-label="Search animals, areas, caretakers and tags"
         class="w-full h-11 pl-10 pr-28 rounded-full bg-surface-container text-on-surface font-body-md text-sm placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary/40 transition-all"
         placeholder="Search park, area, stray...">
-      <button id="near-me-btn" type="button" title="Measure every distance from my location"
+      <button id="near-me-btn" type="button" title="Go to my location and measure distances from here"
         class="absolute right-1.5 h-8 px-3 rounded-full bg-surface-bright hover:bg-surface-container-high text-primary flex items-center gap-1 font-label-sm text-xs shadow-sm transition-all">
         <span class="material-symbols-outlined text-[15px]">near_me</span><span>Near Me</span>
       </button>
@@ -217,26 +217,12 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   </div>
 
   <!-- Scrollable animal feed (rendered from data/animals.json) -->
-  <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-space-xl flex flex-col gap-space-sm"></div>
-  <div id="feed-empty" class="hidden px-space-md pb-space-xl flex-col items-center gap-2 text-center">
+  <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-[84px] md:pb-space-xl flex flex-col gap-space-sm"></div>
+  <div id="feed-empty" class="hidden px-space-md pb-[84px] md:pb-space-xl flex-col items-center gap-2 text-center">
     <span class="material-symbols-outlined text-[32px] text-outline">search_off</span>
     <p class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>
   </div>
 
-  <!-- Data source and demo controls -->
-  <div class="px-space-md py-2 border-t border-surface-container-high flex items-center justify-between gap-2 bg-surface">
-    <span id="data-source" class="font-label-sm text-[10.5px] text-outline truncate">Loading dataset…</span>
-    <div class="flex items-center gap-1 shrink-0">
-      <button id="park-center-btn" type="button" title="Clear your location and show the whole park"
-        class="w-8 h-8 rounded-full hover:bg-surface-container text-outline hover:text-primary flex items-center justify-center transition-colors">
-        <span class="material-symbols-outlined text-[16px]">zoom_out_map</span>
-      </button>
-      <button id="reset-demo-btn" type="button" title="Clear the feeds and reports stored on this device"
-        class="w-8 h-8 rounded-full hover:bg-surface-container text-outline hover:text-error flex items-center justify-center transition-colors">
-        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
-      </button>
-    </div>
-  </div>
 </aside>
 
 
@@ -245,8 +231,8 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <div id="map" role="application" aria-label="Interactive map of Oakwood Park animal locations"></div>
   <div class="absolute inset-0 bg-gradient-to-t from-surface-dim/25 via-transparent to-surface/10 pointer-events-none z-[1]"></div>
 
-  <!-- Floating status pills -->
-  <div class="absolute top-space-md left-space-md right-space-md z-10 flex items-start justify-between gap-3 pointer-events-none">
+  <!-- Floating status pills (desktop only - mobile keeps the map clean like the mock) -->
+  <div class="hidden md:flex absolute top-space-md left-space-md right-space-md z-10 flex items-start justify-between gap-3 pointer-events-none">
     <div class="pointer-events-auto flex flex-col items-start gap-2">
       <div class="flex items-center gap-2 bg-surface-bright/95 backdrop-blur-md px-3.5 py-2 rounded-full shadow-md">
         <span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
@@ -266,8 +252,22 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
     </div>
   </div>
 
-  <!-- Zoom and base map controls -->
-  <div class="absolute bottom-space-xl left-space-md z-10 flex flex-col items-stretch shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
+  <!-- Mobile map controls: navy Filters pill + locate circle (CheapFoodMap style) -->
+  <div class="md:hidden absolute top-3 left-3 z-20 flex items-center gap-2">
+    <button id="mobile-filters-btn" type="button" title="Search and filter the animals"
+      class="h-11 pl-4 pr-5 rounded-full text-white font-bold text-[13px] flex items-center gap-2 shadow-xl active:scale-95 transition-all"
+      style="background:#182743">
+      <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+      <span>Filters</span>
+    </button>
+    <button id="mobile-locate-btn" type="button" title="Center the map on the park"
+      class="h-11 w-11 rounded-full bg-white text-on-surface flex items-center justify-center shadow-xl border border-surface-container-highest active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[20px] text-primary">my_location</span>
+    </button>
+  </div>
+
+  <!-- Zoom and base map controls (desktop only - mobile pinches to zoom) -->
+  <div class="hidden md:flex absolute bottom-space-xl left-space-md z-10 flex flex-col items-stretch shadow-lg rounded-xl overflow-hidden bg-surface-bright/95 backdrop-blur-md">
     <button id="zoom-in" type="button" title="Zoom in" class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
       <span class="material-symbols-outlined text-[20px]">add</span>
     </button>
@@ -301,25 +301,37 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
     </span>
   </div>
 
-  <!-- Mobile list/map switch -->
-  <button id="mobile-view-toggle" type="button"
-    class="md:hidden absolute bottom-28 right-space-md z-20 h-11 px-4 rounded-full bg-surface-bright shadow-xl text-on-surface font-label-md text-label-md flex items-center gap-2 active:scale-95 transition-all">
-    <span class="material-symbols-outlined text-[18px] text-primary">map</span>
-    <span id="mobile-view-toggle-label">Map</span>
-  </button>
-
-  <!-- Report a stray FAB -->
-  <div class="absolute bottom-space-lg right-space-md lg:right-space-xl z-20 flex items-center gap-space-sm">
-    <button type="button" data-open-report
-      class="h-13 px-6 rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 shadow-xl hover:bg-primary-container hover:text-on-primary-container active:scale-95 transition-all">
-      <span class="material-symbols-outlined text-[24px]">add_circle</span>
-      <span class="font-bold tracking-wide">+ Report a Stray</span>
+<!-- Demo controls: compact floating icons, mirroring the Report FAB but on the left.
+       Lives inside <main> so on desktop they clear the 420px sidebar. -->
+  <div class="absolute z-40 left-3 bottom-[88px] md:left-space-md md:bottom-space-lg lg:left-space-xl flex items-center gap-2">
+    <button id="park-center-btn" type="button" title="Clear your location and show the whole park" aria-label="Clear your location and show the whole park"
+      class="h-10 w-10 rounded-full bg-surface-bright/95 backdrop-blur-md border border-surface-container-highest shadow-md text-outline hover:text-primary flex items-center justify-center active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[18px]">zoom_out_map</span>
+    </button>
+    <button id="reset-demo-btn" type="button" title="Clear the feeds and reports stored on this device" aria-label="Clear the feeds and reports stored on this device"
+      class="h-10 w-10 rounded-full bg-surface-bright/95 backdrop-blur-md border border-surface-container-highest shadow-md text-outline hover:text-error flex items-center justify-center active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[18px]">restart_alt</span>
     </button>
   </div>
+
 </main>
+
+<!-- Report a stray FAB + mobile search (CheapFoodMap style: above the tab bar) -->
+<div class="absolute z-40 right-3 bottom-[88px] md:right-space-md md:bottom-space-lg lg:right-space-xl flex items-center gap-2.5">
+  <button id="mobile-search-btn" type="button" aria-label="Search animals"
+    class="md:hidden h-12 w-12 rounded-full text-white flex items-center justify-center shadow-xl border border-white/10 active:scale-95 transition-all"
+    style="background:#182743">
+    <span class="material-symbols-outlined text-[22px]">search</span>
+  </button>
+  <button type="button" data-open-report
+    class="h-13 px-5 md:px-6 rounded-full bg-[#f4511e] md:bg-primary text-white md:text-on-primary font-label-lg text-label-lg flex items-center gap-2 shadow-xl hover:bg-[#ff6a3d] md:hover:bg-primary-container active:scale-95 transition-all">
+    <span class="material-symbols-outlined text-[24px]">add</span>
+    <span class="font-bold tracking-wide">Report a Stray</span>
+  </button>
+</div>
 </div>
 
-<footer class="w-full bg-surface-container-low"><div class="w-full px-space-md lg:px-space-xl py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><span class="h-6 w-6 rounded-full flex items-center justify-center" style="background:#ffdbcf">🐾</span><p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 FeedAnAnimalMap. Grassroots stray animal welfare network.</p></div><div class="flex items-center gap-space-lg font-label-sm text-label-sm text-on-surface-variant"><a href="activity.html" class="hover:text-primary transition-colors">All activity</a><a href="auth.html" class="hover:text-primary transition-colors">Sign in</a><a href="/privacy.html" class="hover:text-primary transition-colors">Privacy</a><a href="/terms.html" class="hover:text-primary transition-colors">Terms</a><a href="mailto:hello@feedanimals.org" class="hover:text-primary transition-colors">Contact</a><a class="hover:text-primary transition-colors" href="about.html">About</a><a class="hover:text-primary transition-colors" data-path="city-directory" href="#">Cities</a><a class="hover:text-primary transition-colors" data-path="community-feed" href="#">Volunteer Guidelines</a><a class="hover:text-primary transition-colors" data-path="contact" href="#">Emergency Hotlines</a></div></div></footer>
+<footer id="site-footer" class="w-full bg-surface-container-low"><div class="w-full px-space-md lg:px-space-xl pt-space-lg pb-28 md:pb-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><span class="h-6 w-6 rounded-full flex items-center justify-center" style="background:#ffdbcf">🐾</span><p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 FeedAnAnimalMap. Grassroots stray animal welfare network.</p></div><div class="flex flex-wrap items-center justify-center gap-x-space-lg gap-y-2 font-label-sm text-label-sm text-on-surface-variant"><a href="activity.html" class="hover:text-primary transition-colors">All activity</a><a href="auth.html" class="hover:text-primary transition-colors">Sign in</a><a href="/privacy.html" class="hover:text-primary transition-colors">Privacy</a><a href="/terms.html" class="hover:text-primary transition-colors">Terms</a><a href="mailto:hello@feedanimals.org" class="hover:text-primary transition-colors">Contact</a><a class="hover:text-primary transition-colors" href="about.html">About</a><a class="hover:text-primary transition-colors" data-path="city-directory" href="#">Cities</a><a class="hover:text-primary transition-colors" data-path="community-feed" href="#">Volunteer Guidelines</a><a class="hover:text-primary transition-colors" data-path="contact" href="#">Emergency Hotlines</a></div></div></footer>
 </div>
 </main>
 
@@ -486,7 +498,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 </div>
 
 <!-- ============================ TOAST STACK =========================== -->
-<div id="toast-stack" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex flex-col items-center gap-2 pointer-events-none"></div>
+<div id="toast-stack" class="fixed bottom-24 left-1/2 -translate-x-1/2 md:bottom-6 z-[90] flex flex-col items-center gap-2 pointer-events-none"></div>
 
 <!-- ------------------------------------------------------------------ *
  * Tailwind class primer.                                             *
@@ -511,6 +523,8 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <span class="font-mono text-center text-[10.5px] text-[10px] align-middle mr-1"></span>
   <span class="animate-pulse animate-ping w-2.5 h-2.5 w-1.5 h-1.5 rounded-full border-2 border-white"></span>
   <span class="group-hover:scale-105 hover:shadow-md animate-pulse text-2xl transition-transform duration-300 hover:underline active:scale-95"></span>
+  <!-- bottom tab bar + header markup injected by site-header.js -->
+  <span class="justify-around min-w-[50px] gap-0.5 -mt-7 inset-x-0 py-1 px-1 text-[10px] text-[13px] text-[22px] text-[20px] font-extrabold leading-tight whitespace-nowrap truncate min-w-0 rounded-xl sm:rounded-full sm:h-9 sm:w-9 sm:inline"></span>
 </div>
 
 <!-- Embedded copy of data/animals.json (lets the app run straight from disk). -->

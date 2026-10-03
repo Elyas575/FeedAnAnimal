@@ -199,8 +199,8 @@ check('placePickMarker accepts options', 'function placePickMarker(lat, lng, opt
 check('placePickMarker takes a fromGps flag', 'opts.fromGps', js);
 check('a GPS pin updates state.userLocation', 'state.userLocation = { lat: lat, lng: lng };', js);
 check('a GPS pin re-renders the blue dot', 'renderUserMarker(opts.accuracy)', js);
-// A GPS pin must NOT be persisted as the map reference, and must never move
-// the viewport - the map is park-scoped.
+// A report-form GPS pin must NOT be persisted as the map reference, and must
+// never move the viewport - dropping a report pin is not "near me".
 const pinBlock = js.slice(js.indexOf('if (opts.fromGps)'), js.indexOf('if (opts.fromGps)') + 260);
 rows.push([pinBlock.indexOf('writeOverlay') === -1 ? 'OK  ' : 'MISS', 'a GPS pin does not persist as a map reference']);
 rows.push([/flyTo|setView/.test(pinBlock) === false ? 'OK  ' : 'MISS', 'a GPS pin never moves the viewport']);
@@ -221,21 +221,26 @@ rows.push([(js.match(/clearWatch\(watchId\)/g) || []).length >= 2 ? 'OK  ' : 'MI
 check('GPS caching is disabled for report pins', 'maximumAge: 0', js);
 check('locateMe also passes accuracy', 'renderUserMarker(position.coords.accuracy)', js);
 
-/* --- the map is park-scoped, never centred on the visitor ------------ *
- * A saved GPS point used to become both the startup reference AND the
- * distance origin, so the map jumped to the visitor and every distance
- * changed depending on where you were standing. */
+/* --- "Near Me" is global: it takes you to you ------------------------ *
+ * A saved GPS point must not become the STARTUP reference (the map still
+ * opens on the park, so distances stay stable across reloads), but once the
+ * visitor asks to be located, the map flies to them and every distance/sort
+ * re-measures from where they actually are. */
 rows.push([/state\.userLocation = overlay\.userLocation \|\| state\.meta\.center/.test(js) === false ? 'OK  ' : 'MISS',
   'a saved GPS point is not used as the map reference on load']);
-check('referencePoint is the park centre', 'const referencePoint = () => state.meta.center', js);
-rows.push([/referencePoint = \(\) => state\.userLocation/.test(js) === false ? 'OK  ' : 'MISS',
-  'distances are not measured from the visitor']);
-// locateMe must not fly the viewport anywhere.
+check('referencePoint prefers the visitor, then the park centre',
+  'const referencePoint = () => state.userLocation || state.meta.center', js);
+// locateMe must fly the viewport to the visitor, not leave them off screen.
 const locateBlock = js.slice(js.indexOf('function locateMe()'), js.indexOf('function useParkCenter()'));
-rows.push([/flyTo|setView/.test(locateBlock) === false ? 'OK  ' : 'MISS',
-  '"Near Me" does not move the map viewport']);
-check('"Near Me" reports whether you are in the area', 'You are inside the mapped area', js);
-check('"Near Me" warns when outside the area', 'You are outside the mapped area', js);
+rows.push([/flyTo|setView/.test(locateBlock) ? 'OK  ' : 'MISS',
+  '"Near Me" moves the map viewport to the visitor']);
+check('"Near Me" flies to the visitor, not the park',
+  'state.map.flyTo([state.userLocation.lat, state.userLocation.lng]', js);
+check('"Near Me" confirms where it took you', 'Showing your location', js);
+rows.push([/renderFeed\(\)/.test(locateBlock) ? 'OK  ' : 'MISS',
+  '"Near Me" re-measures the list from the visitor']);
+rows.push([/inside the mapped area|outside the mapped area/.test(js) === false ? 'OK  ' : 'MISS',
+  'the park inside/outside scolding is gone']);
 check('reset clears the stored location', 'state.userLocation = null;', js);
 check('reset re-frames the whole park', 'showing the whole', js);
 check('map opens on the park centre', '}).setView([center.lat, center.lng]', js);
