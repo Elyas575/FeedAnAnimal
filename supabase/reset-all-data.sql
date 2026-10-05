@@ -14,7 +14,9 @@
 --    Block 2: every auth account (email AND anonymous) -> profiles follow
 --             automatically (FK on delete cascade) and every open session
 --             is signed out on its next refresh
---    Block 3: uploaded report photos in the animal-photos bucket
+--    Block 3: uploaded report photos - NOT possible in SQL (Supabase blocks
+--             it by design); use the dashboard or tools/clear-storage.js,
+--             see Block 3 below
 --
 --  WHAT IT DOES NOT TOUCH
 --    * schema: tables, columns, RLS policies, RPCs, triggers all stay
@@ -71,12 +73,24 @@ restart identity cascade;
 delete from auth.users;
 
 -- ---------------------------------------------------------------------------
--- BLOCK 3 (optional): uploaded photos.
--- Storage files are rows in storage.objects, not in your tables - Block 1
--- does not touch them. If this statement fails on privileges, delete them by
--- hand instead: Dashboard -> Storage -> animal-photos -> select all -> Delete.
+-- BLOCK 3 (optional): uploaded photos - deliberately NOT a SQL statement.
+-- Supabase installs the storage.protect_delete() trigger on storage.objects,
+-- so "delete from storage.objects" always fails with:
+--   42501: Direct deletion from storage tables is not allowed.
+--          Use the Storage API instead.
+-- That is not a privileges problem and has no SQL workaround - and because
+-- the SQL editor runs this whole file as ONE transaction, that error rolls
+-- back Blocks 1+2 as well. Files must go through the Storage API. Pick one:
+--
+--   a) Dashboard: Storage -> animal-photos -> reports -> select all -> Delete.
+--   b) Storage API with the service key (same env as tools/seed-supabase.js):
+--        $env:SUPABASE_URL="https://xyz.supabase.co"
+--        $env:SUPABASE_SERVICE_KEY="eyJ...service_role..."
+--        node tools/clear-storage.js
+--
+-- Photos are cosmetic anyway: with `reports` emptied nothing links to them,
+-- so a from-scratch test passes even if you skip this block entirely.
 -- ---------------------------------------------------------------------------
-delete from storage.objects where bucket_id = 'animal-photos';
 
 -- ---------------------------------------------------------------------------
 -- Sanity check — every count must be 0 after a full reset.
