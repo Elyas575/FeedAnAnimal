@@ -1,7 +1,5 @@
-/*
-  Cloudflare Pages / Netlify header rules.
-  Long cache for immutable-ish assets, no-cache for HTML so deploys land instantly.
-*/
+# Cloudflare Pages / Netlify header rules.
+# Long cache for immutable-ish assets, no-cache for HTML so deploys land instantly.
 
 /*
   X-Frame-Options: DENY
