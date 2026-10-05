@@ -15,7 +15,7 @@ gone stale:
   `goHome` and `isSignedIn` are all defined and called. Step 7.0 is done -
   do not re-run the patch scripts, they are already applied and committed.
 - **git is CLEAN and level with origin.** `main` and `origin/main` are both at
-  `7034341`, 0 commits apart, and `git stash list` is empty.
+  `dbd76b1`, 0 commits apart, and `git stash list` is empty.
 - **The FK migration is only "maybe still needed".** `schema-core.sql` no longer
   declares `events.animal_id` as a foreign key (line 76 is plain `text`, with a
   comment saying so). That only proves the SCHEMA FILE is correct - it does not
@@ -23,10 +23,10 @@ gone stale:
   idempotent, so running it costs nothing and removes the doubt. Still do it.
 
 Chat is now substantially further along than this document records. A third
-migration was added and three real bugs were fixed (see the note at the end).
+migration was added and five real bugs were fixed (see the note at the end).
 
 Verified by running the suites just now:
-- `check-chat.js` 252/252, `simulate-chat.js` 88/88, `check-markup.js` pass
+- `check-chat.js` 261/261, `simulate-chat.js` 88/88, `check-markup.js` pass
 - `npm test` is NOT fully green: 4 pre-existing theme-class checks fail in
   `check-activity.js`. They are unrelated to chat and do not block launch.
 
@@ -43,9 +43,9 @@ Verified by running the suites just now:
      you clear your own unread badge. WITHOUT THIS THE BADGE WILL NEVER CLEAR,
      and the console says `mark read refused`. This is the bug you just hit.
    Both are idempotent - safe to run twice.
-2. **COMMIT** - 3 files are uncommitted: `index.js`, `supabase-client.js`,
-   `tools/check-chat.js`. These carry the chat fixes. `git add . && git commit`
-   && `git push origin main`.
+2. ~~**COMMIT**~~ -> DONE 2026-10-05. Working tree is clean and `main` is level
+   with `origin/main` at `dbd76b1`; every chat fix (including the read-cursor
+   poll) is pushed.
 3. **DEPLOY** - Cloudflare Pages, build empty, output `.`. This is the single
    biggest reason the site is not live.
 4. **SUPABASE SETTINGS** (10 min, do these or the test below misleads you):
@@ -188,11 +188,10 @@ DONE WHEN: no secrets in git, validators pass. -> YES.
       parses cleanly; `watchSession`, `goHome` and `isSignedIn` are defined and
       called. Committed in `7034341`. DO NOT re-run the patches - they are
       one-shot string edits, not idempotent transforms.
-- [ ] 7.1 git add .; git commit -m "chat: fix unread badge, newest-N paging,
-      report refused mark-read"; git push origin main
-      -> main is level with origin at `7034341`, but 3 files are still
-         uncommitted: `index.js`, `supabase-client.js`, `tools/check-chat.js`.
-         They carry every chat fix from this session. Commit them.
+- [X] 7.1 git add .; git commit; git push origin main
+      -> DONE 2026-10-05: working tree clean, `main` level with `origin/main`
+         at `dbd76b1`, 0 commits apart. All chat fixes are pushed, including
+         the read-cursor poll added for the one-tick bug.
 - [ ] 7.1a RUN BOTH MIGRATIONS (Supabase > SQL Editor > New Query > Run)
       -> `supabase/migration-drop-events-fk.sql`
       -> `supabase/migration-read-receipts.sql`
