@@ -49,12 +49,15 @@ Verified by running the suites just now:
    with `origin/main` at `dbd76b1`; every chat fix (including the read-cursor
    poll) is pushed.
 3. **DEPLOY** - the Cloudflare project is `feedananimal` (a Worker with Git
-   builds, deploy command `npx wrangler deploy`, build command empty).
-   First build failed: assets dir `.` uploaded `node_modules/workerd`
-   (128 MiB > 25 MiB limit). Fixed by committing `wrangler.jsonc` (assets
+   builds, build command `npm run build`, deploy command `npx wrangler deploy`).
+   Two failures fixed: (a) assets dir `.` tried to upload `node_modules/workerd`
+   (128 MiB > 25 MiB limit) - fixed with `wrangler.jsonc` (assets
    directory `.`, serves `404.html` for misses) + `.assetsignore`
-   (`node_modules/`, `.git/`, `tools/`, `supabase/`, `reference/`, `*.md`...),
-   verified with a local `wrangler deploy --dry-run`. After the push, open
+   (`node_modules/`, `.git/`, `tools/`, `supabase/`, `reference/`, `*.md`...);
+   (b) build a7a5678c died in the Deploy step because CI had no local wrangler
+   binary, so non-interactive `npx wrangler deploy` cancelled at its install
+   prompt - fixed by pinning `wrangler` 4.147.0 as a devDependency.
+   Both verified with a local `wrangler deploy --dry-run`. After the push, open
    Deployments and confirm the build is green, then open the workers.dev URL.
    This is the single biggest reason the site is not live.
 4. **SUPABASE SETTINGS** (10 min, do these or the test below misleads you):
