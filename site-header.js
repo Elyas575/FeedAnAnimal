@@ -165,6 +165,23 @@
     'transition:transform .15s ease}',
     '#site-bottom-nav .fta-bn-pill:active{transform:scale(.95)}',
     '#site-bottom-nav .fta-bn-pill .material-symbols-outlined{font-size:20px;color:#fff}',
+    /* ---- account card (profile + log out, opened from the signed-in chip) ---- */
+    '#site-top-header #fta-account-pop{position:absolute;top:calc(100% + 8px);right:16px;width:min(290px,calc(100vw - 32px));',
+    'background:#fff;border:1px solid #e9e1df;border-radius:16px;box-shadow:0 18px 48px rgba(30,27,26,.18);',
+    'padding:14px;z-index:60}',
+    '#site-top-header #fta-account-pop[hidden]{display:none}',
+    '#site-top-header .fta-account-id{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid #f1eae7}',
+    '#site-top-header .fta-account-avatar{width:40px;height:40px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff}',
+    '#site-top-header .fta-account-text{min-width:0}',
+    '#site-top-header .fta-account-name{display:block;font-size:15px;font-weight:800;color:#2e1c12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#site-top-header .fta-account-email{display:block;font-size:12.5px;color:#8b7269;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#site-top-header .fta-account-signout{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;',
+    'padding:10px 14px;border-radius:12px;border:1px solid #f0d9d2;background:#fff5f2;color:#ba1a1a;font-weight:800;font-size:14px;cursor:pointer}',
+    '#site-top-header .fta-account-signout:hover{background:#ffe9e3}',
+    '#site-top-header .fta-account-signout:disabled{opacity:.6;cursor:default}',
+    '#site-top-header .fta-account-signout .material-symbols-outlined{font-size:18px}',
+    '#site-top-header #fta-account-error{margin-top:8px;font-size:12px;color:#ba1a1a}',
+    '#site-top-header #fta-account-error[hidden]{display:none}',
     /* ---- footer: desktop only (hidden on mobile screens like the mock) ---- */
     '#site-footer{display:none}',
     '@media (min-width:768px){#site-footer{display:block}}',
@@ -246,6 +263,22 @@
         + '<a id="auth-link" href="auth.html" class="fta-signin h-10 px-4 rounded-full border border-surface-container-highest bg-white text-on-surface hover:bg-surface-container font-medium text-sm flex items-center justify-center transition-colors shadow-sm">'
           + '<span class="fta-signin-icon material-symbols-outlined text-[18px] mr-1 hidden sm:inline">person</span><span id="auth-link-label">Sign in</span>'
         + '</a>'
+        /* Account card behind the signed-in chip: avatar, name, email and
+           the Log out button. Hidden until the chip is clicked. */
+        + '<div id="fta-account-pop" hidden role="dialog" aria-label="Your account">'
+          + '<div class="fta-account-id">'
+            + '<span class="fta-account-avatar" id="fta-account-avatar">?</span>'
+            + '<span class="fta-account-text">'
+              + '<b class="fta-account-name" id="fta-account-name">Account</b>'
+              + '<small class="fta-account-email" id="fta-account-email"></small>'
+            + '</span>'
+          + '</div>'
+          + '<button type="button" id="fta-account-signout" class="fta-account-signout">'
+            + '<span class="material-symbols-outlined" aria-hidden="true">logout</span>'
+            + '<span>Log out</span>'
+          + '</button>'
+          + '<div id="fta-account-error" hidden></div>'
+        + '</div>'
       + '</div>'
       + '</div></header>';
   }
@@ -503,6 +536,135 @@
     window.addEventListener('fta:chat-opened', loadChatBell);
   }
 
+  /* ------------------------------------------------------------------ *
+   * Account card. The signed-in chip used to be a plain link to         *
+   * auth.html, which forwards signed-in visitors home - so there was no  *
+   * reachable sign-out anywhere on the map. Clicking the chip now opens  *
+   * a small card with the profile (avatar, name, email) and a Log out    *
+   * button. Signed out, the chip still links to auth.html as before.     *
+   * ------------------------------------------------------------------ */
+  function accountCardEl() {
+    return document.getElementById('fta-account-pop');
+  }
+
+  function closeAccountCard() {
+    var pop = accountCardEl();
+    if (pop) pop.setAttribute('hidden', '');
+  }
+
+  /* profiles.display_name > email prefix - the same name the chip shows. */
+  function accountNameOf(user) {
+    if (!user) return 'Account';
+    if (user.user_metadata && user.user_metadata.display_name) return user.user_metadata.display_name;
+    if (user.email) return user.email.split('@')[0];
+    return 'Volunteer';
+  }
+
+  function fillAccountCard(user) {
+    var name = accountNameOf(user);
+    var put = function (id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+    put('fta-account-name', name);
+    put('fta-account-email', (user && user.email) || '');
+    var avatar = document.getElementById('fta-account-avatar');
+    if (avatar) {
+      avatar.textContent = chatInitials(name);
+      avatar.style.background = chatHue((user && (user.email || user.id)) || '');
+    }
+    var err = document.getElementById('fta-account-error');
+    if (err) { err.textContent = ''; err.setAttribute('hidden', ''); }
+  }
+
+  /* Anchor the card under whichever chip opened it: the desktop and mobile
+     chips sit at different offsets, so the right edge is measured from the
+     chip, then clamped so the card never leaves the viewport. */
+  function openAccountCard(chip, user) {
+    var pop = accountCardEl();
+    if (!pop) return;
+    fillAccountCard(user);
+    pop.removeAttribute('hidden');
+    var header = document.getElementById('site-top-header');
+    if (header && chip && chip.getBoundingClientRect) {
+      var headerBox = header.getBoundingClientRect();
+      var chipBox = chip.getBoundingClientRect();
+      var width = pop.offsetWidth || 290;
+      var right = Math.round(headerBox.right - chipBox.right);
+      var maxRight = Math.max(8, (window.innerWidth || 1280) - width - 10);
+      pop.style.right = Math.min(Math.max(right, 8), maxRight) + 'px';
+    }
+  }
+
+  async function wireAccountCard() {
+    var chips = [];
+    ['auth-link', 'auth-link-m'].forEach(function (id) {
+      var link = document.getElementById(id);
+      if (link) chips.push(link);
+    });
+    if (!chips.length) return;
+    /* Anonymous sessions still show "Sign in": the card is for accounts
+       that can genuinely sign out and back in. */
+    var current = null;
+    var refresh = async function () {
+      try {
+        /* Deliberately NOT sbEnsureAuth(): it creates an anonymous session
+           when signed out, and the card must never change who is signed in. */
+        if (!window.sbAuth) return;
+        var user = await window.sbAuth.currentUser();
+        current = (user && !user.is_anonymous) ? user : null;
+      } catch (e) { /* the card is cosmetic - never block the page */ }
+    };
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function (event) {
+        if (!current) return;   /* signed out: follow the href to auth.html */
+        var pop = accountCardEl();
+        if (!pop) return;
+        event.preventDefault();
+        if (pop.hasAttribute('hidden')) openAccountCard(chip, current);
+        else closeAccountCard();
+      });
+    });
+    var pop = accountCardEl();
+    if (pop) {
+      var outBtn = document.getElementById('fta-account-signout');
+      if (outBtn) {
+        outBtn.addEventListener('click', async function () {
+          if (outBtn.disabled) return;
+          outBtn.disabled = true;
+          try {
+            if (window.sbAuth) await window.sbAuth.signOut();
+            location.reload();
+          } catch (e) {
+            outBtn.disabled = false;
+            var err = document.getElementById('fta-account-error');
+            if (err) {
+              err.textContent = 'Sign out failed: ' + ((e && e.message) || e);
+              err.removeAttribute('hidden');
+            }
+          }
+        });
+      }
+      /* Clicking anywhere else (or Escape) dismisses the card; clicks on
+         the chips toggle it, so they must not count as "anywhere else". */
+      document.addEventListener('click', function (event) {
+        if (pop.hasAttribute('hidden')) return;
+        if (pop.contains(event.target)) return;
+        for (var i = 0; i < chips.length; i++) {
+          if (chips[i].contains(event.target)) return;
+        }
+        closeAccountCard();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeAccountCard();
+      });
+    }
+    refresh();
+    if (window.sbAuth) {
+      try { window.sbAuth.onChange(refresh); } catch (e) {}
+    }
+  }
+
   function mount() {
     injectStyle();
     var slot = document.getElementById('site-header');
@@ -513,6 +675,7 @@
     injectBottomNav();
     wireAuthLink();
     wireChatBell();
+    wireAccountCard();
     refreshActive();
     refreshBottom();
     // Same-page hash switches (Cities, topic threads)

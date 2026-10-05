@@ -49,6 +49,29 @@ header.LINKS.forEach((l) => {
   console.log((okRow ? 'OK  ' : 'FAIL') + '  pill "' + l.id + '" is rendered');
 });
 
+/* The signed-in chip must open the account card (profile + Log out).
+   Without it there is no reachable sign-out on the map: auth.html forwards
+   signed-in visitors home before they can press its logout button. */
+console.log('\naccount card:');
+{
+  const src = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
+  const hdr = header.headerHtml();
+  const checks = [
+    ['card renders hidden by default', hdr.indexOf('id="fta-account-pop" hidden') !== -1],
+    ['card has avatar, name and email slots',
+      hdr.indexOf('id="fta-account-avatar"') !== -1 &&
+      hdr.indexOf('id="fta-account-name"') !== -1 &&
+      hdr.indexOf('id="fta-account-email"') !== -1],
+    ['card has a Log out button', hdr.indexOf('id="fta-account-signout"') !== -1],
+    ['sign out goes through the Supabase client', src.indexOf('sbAuth.signOut') !== -1],
+    ['signed-out chips still reach auth.html', hdr.indexOf('href="auth.html"') !== -1],
+  ];
+  checks.forEach(([label, okRow]) => {
+    if (!okRow) failed++;
+    console.log((okRow ? 'OK  ' : 'FAIL') + '  ' + label);
+  });
+}
+
 /* The navbar renders its icons as a FONT (ligatures like 'location_on'
    become glyphs only if this stylesheet loads). Two failure modes have
    bitten us here:
