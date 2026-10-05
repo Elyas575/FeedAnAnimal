@@ -14,8 +14,9 @@ gone stale:
 - **auth.html is FIXED.** The inline script parses cleanly and `watchSession`,
   `goHome` and `isSignedIn` are all defined and called. Step 7.0 is done -
   do not re-run the patch scripts, they are already applied and committed.
-- **git is CLEAN and level with origin.** `main` and `origin/main` are both at
-  `dbd76b1`, 0 commits apart, and `git stash list` is empty.
+- **git is CLEAN and level with origin.** `main` and `origin/main` were both at
+  `dbd76b1` at audit time; the deploy fixes since then (items 2-3) are pushed
+  too, and `git stash list` is empty.
 - **The FK migration is only "maybe still needed".** `schema-core.sql` no longer
   declares `events.animal_id` as a foreign key (line 76 is plain `text`, with a
   comment saying so). That only proves the SCHEMA FILE is correct - it does not
@@ -46,20 +47,25 @@ Verified by running the suites just now:
      and the console says `mark read refused`. This is the bug you just hit.
    Both are idempotent - safe to run twice.
 2. ~~**COMMIT**~~ -> DONE 2026-10-05. Working tree is clean and `main` is level
-   with `origin/main` at `dbd76b1`; every chat fix (including the read-cursor
-   poll) is pushed.
-3. **DEPLOY** - the Cloudflare project is `feedananimal` (a Worker with Git
-   builds, build command `npm run build`, deploy command `npx wrangler deploy`).
-   Two failures fixed: (a) assets dir `.` tried to upload `node_modules/workerd`
-   (128 MiB > 25 MiB limit) - fixed with `wrangler.jsonc` (assets
-   directory `.`, serves `404.html` for misses) + `.assetsignore`
-   (`node_modules/`, `.git/`, `tools/`, `supabase/`, `reference/`, `*.md`...);
-   (b) build a7a5678c died in the Deploy step because CI had no local wrangler
-   binary, so non-interactive `npx wrangler deploy` cancelled at its install
-   prompt - fixed by pinning `wrangler` 4.147.0 as a devDependency.
-   Both verified with a local `wrangler deploy --dry-run`. After the push, open
-   Deployments and confirm the build is green, then open the workers.dev URL.
-   This is the single biggest reason the site is not live.
+   with `origin/main`; every chat fix (including the read-cursor poll) and
+   every deploy fix are pushed.
+3. ~~**DEPLOY**~~ -> DONE 2026-10-05. Live at
+   https://feedananimal.elyaasqadi.workers.dev (Cloudflare project
+   `feedananimal`, a Worker with Git builds, build `npm run build`, deploy
+   `npx wrangler deploy`). Five failures fixed in order: (a) assets dir `.`
+   tried to upload `node_modules/workerd` (128 MiB > 25 MiB limit) ->
+   `.assetsignore` + `wrangler.jsonc` (assets directory `.`, serves
+   `404.html` for misses); (b) CI had no local wrangler binary, so
+   non-interactive `npx wrangler deploy` cancelled at its install prompt ->
+   pinned `wrangler` 4.147.0 as a devDependency; (c) npm allow-scripts
+   warnings -> `allowScripts` allowlist (esbuild, workerd); (d) the API
+   rejected `_headers`' C-style comment block [code 100324] -> `_headers`
+   supports only `#` comments, converted; (e) a leftover duplicate `/*` block
+   double-sent X-Frame-Options / X-Content-Type-Options (`nosniff, nosniff`
+   fails the spec's exact-match check, silently disabling it) -> removed.
+   Verified live: security headers single-valued, `/privacy.html` 307 ->
+   `/privacy` -> 200 (pretty URLs), unknown paths serve 404.html with status
+   404, custom `_headers` rules active.
 4. **SUPABASE SETTINGS** (10 min, do these or the test below misleads you):
    - Auth > Providers > Email: turn **Confirm email OFF** (instant test accounts)
    - Database > Publications > supabase_realtime: ensure **events AND messages**
@@ -210,24 +216,28 @@ DONE WHEN: no secrets in git, validators pass. -> YES.
       Both are idempotent. The second is REQUIRED for the unread badge to
       clear at all - without the UPDATE policy every attempt is rejected and
       the console prints `mark read refused`.
-- [ ] 7.2 dash.cloudflare.com > Pages > Connect GitHub > Build empty, Output . -> https://feedanimals.pages.dev works
-      -> NOT DONE. Checked 2026-10-04: `feedanimals.pages.dev` does not resolve
-         ("DNS name does not exist"). No Pages project exists yet. This is the
-         single biggest reason the site is not live.
-- [ ] 7.3 Pages > Custom domains > Add feedanimals.com + www.feedanimals.com
-      -> blocked by 7.2 (no Pages project to attach to yet)
+- [X] 7.2 Cloudflare project -> DONE 2026-10-05, but NOT as written: Cloudflare
+      Pages was replaced by a Worker (`feedananimal`) with Git builds, since
+      wrangler is the validated toolchain here. Live at
+      https://feedananimal.elyaasqadi.workers.dev (full failure chain in item
+      3 of "DO THESE ... NEXT" above). `feedanimals.pages.dev` intentionally
+      does not exist - do NOT create a Pages project.
+- [ ] 7.3 dash.cloudflare.com > Workers & Pages > feedananimal > Settings >
+      Domains & Routes > Add feedanimals.com + www.feedanimals.com
+      -> BLOCKED BY 7.4: the domain must first be on Cloudflare nameservers
+      (zone active), then attach it to the Worker as a custom domain.
 - [ ] 7.4 Copy 2 Cloudflare nameservers -> Namecheap > feedanimals.com > Nameservers > Custom DNS paste -> Save (do NOT use CNAME @ on Namecheap)
       -> NOT DONE. feedanimals.com currently resolves to 13.248.169.48 /
          76.223.54.146 (registrar parking). No Cloudflare nameservers yet.
 - [ ] 7.5 Wait 10-30 min, Cloudflare SSL=Full Strict, Always HTTPS=ON
       -> blocked by 7.4
 - [ ] 7.6 Supabase Auth > URL Config: Site URL=https://feedanimals.com, Redirects add https://www.feedanimals.com/*, https://feedanimals.pages.dev/*, http://localhost:3000/*
-      -> do this one as soon as 7.2/7.4 land, otherwise magic-link logins
+      -> do this one as soon as 7.3/7.4 land, otherwise magic-link logins
          bounce to the Site URL instead of the map. This is the step that makes
          the auth.html fix in 7.0 actually work end to end.
 - [ ] 7.7 Update SB_URL/SB_ANON, push, auto-redeploy, open https://feedanimals.com lock icon
       -> nothing to update. supabase-client.js already holds the live project
-         URL + publishable anon key, and Cloudflare Pages redeploys on push.
+         URL + publishable anon key, and the Cloudflare Worker redeploys on push.
 DONE WHEN: 48 pins, shared feed, report photo, 2-user DM, https lock. MVP LIVE.
       -> adjust: 0 pins is the current intent (see 3.4), and DMs are skipped
          (Phase 5). Real DONE WHEN = site loads on the https domain, sign-in
