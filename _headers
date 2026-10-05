@@ -63,7 +63,3 @@
 
 /*.svg
   Cache-Control: public, max-age=86400
-
-/*
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
