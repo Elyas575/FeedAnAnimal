@@ -61,10 +61,20 @@ create table if not exists stations (
 );
 
 -- 4. Events = replaces localStorage log (feed/water/check/vet/report)
+--
+--    animal_id and station_id are PLAIN text, deliberately not foreign keys.
+--    They were originally `references animals(id)`, but the animals table is
+--    intentionally empty now (see cleanup-seed-data.sql) because the map grows
+--    from real community reports instead of the 48 seeded animals. With the FK
+--    in place every shared write was rejected by Postgres - the feed looked
+--    like it worked (localStorage first) but never reached the database, and
+--    Phase 5 chat could find no caretaker at all.
+--    Run supabase/migration-drop-events-fk.sql if you are upgrading an
+--    existing database that still has the constraint.
 create table if not exists events (
   id uuid primary key default gen_random_uuid(),
-  animal_id text references animals(id) on delete set null,
-  station_id text references stations(id) on delete set null,
+  animal_id text,
+  station_id text,
   kind text not null check (kind in ('feed','water','check','vet','report','rescue','medicine','station')),
   actor_id uuid references profiles(id) on delete set null,
   actor_name text,

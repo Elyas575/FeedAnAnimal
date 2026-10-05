@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messages — FeedAnAnimalMap</title>
+<meta name="description" content="Your conversations with other volunteers about the animals you look after.">
+<meta name="robots" content="noindex,follow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#fff8f6;color:#1e1b1a;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 120px}
+body.has-site-header{padding-top:var(--site-header-h,68px)}
+h1{font-size:24px;margin:0 0 4px;font-weight:800;letter-spacing:-.01em}
+.sub{font-size:14px;color:#8b7269;margin:0 0 20px}
+
+.row{display:flex;gap:12px;align-items:center;width:100%;text-align:left;
+  padding:12px;border:1px solid #efe6e4;border-radius:18px;background:#fff;margin-bottom:10px;
+  border:1px solid #efe6e4;font-family:inherit;cursor:pointer;transition:box-shadow .15s}
+.row:hover{box-shadow:0 6px 18px rgba(30,27,26,.06)}
+.row.unread{background:#fff4ec;border-color:#f3d9c8}
+.avatar{width:44px;height:44px;border-radius:14px;flex-shrink:0;overflow:hidden;position:relative;
+  display:inline-flex;align-items:center;justify-content:center}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+.initials{font-size:15px;font-weight:800;color:#fff;z-index:1}
+.meta{flex:1;min-width:0}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.who{font-weight:800;font-size:15px;color:#1e1b1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.when{font-size:11px;color:#8b7269;flex-shrink:0}
+.preview{font-size:13px;color:#57423b;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:2px}
+.preview.mine{color:#8b7269}
+.badge{background:#a03b0e;color:#fff;font-size:11px;font-weight:800;border-radius:999px;
+  min-width:22px;height:22px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.about-tag{font-size:11px;color:#a03b0e;background:#ffdbcf;border-radius:999px;padding:2px 8px;
+  display:inline-block;margin-top:4px;font-weight:700}
+.none{text-align:center;color:#8b7269;font-size:14px;padding:48px 12px;line-height:1.7}
+.none a{color:#a03b0e;font-weight:700}
+</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-theme.js"></script>
+</head>
+<body>
+<div id="site-header"></div>
+<div class="wrap">
+
+  <h1>Messages</h1>
+  <p class="sub">Conversations with other volunteers, newest first.</p>
+
+  <div id="list"></div>
+  <div id="empty" class="none hidden"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="inbox.js"></script>
+<script src="site-header.js"></script>
+</body>
+</html>

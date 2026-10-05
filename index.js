@@ -201,7 +201,13 @@
     layers: [], baseLayerIndex: 0, baseLayer: null,
     map: null, markerLayer: null, markers: {}, userMarker: null, accuracyCircle: null, pickMarker: null,
     pickMode: false, mobileView: 'map', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
-    dataSource: '', saveWarningShown: false
+    dataSource: '', saveWarningShown: false,
+    /* Phase 5 chat. conversationId + peer identify the open thread; seenIds
+       dedupes realtime echoes of our own sends (we render the row we get
+       back from the insert, and realtime then delivers the same row again).
+       channel is the realtime subscription and MUST be released on close or
+       it keeps delivering into a detached node. */
+    chat: { conversationId: null, peer: null, peerName: '', peerReadAt: null, blocked: false, channel: null, seenIds: {}, rows: [], animalName: '', myId: null }
   };
 
   async function loadDataset() {
@@ -556,6 +562,21 @@
       '<div class="flex items-center gap-2 pt-2 border-t border-surface-container-high/60">' +
         '<button type="button" data-action="' + action.kind + '" data-id="' + esc(animal.id) + '" class="flex-1 h-9 rounded-full ' + ACTION_STYLES[action.style] + ' font-label-sm text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">' +
           '<span class="material-symbols-outlined text-[16px]">' + action.icon + '</span><span>' + esc(action.label) + '</span>' +
+        '</button>' +
+        /* Chat sits next to the primary action because "who looked after this
+           last?" is the next question after "is it fed?", and the answer is
+           only reachable from the details drawer otherwise - two taps and a
+           scroll for what is a one-tap conversation.
+
+           The button is always rendered rather than conditionally: whether a
+           caretaker EXISTS is a per-animal database question (only volunteers
+           with a real account leave an actor_id), and answering it for all 48
+           cards up front would mean 48 queries on every render. openChat()
+           already handles every outcome in plain language - nobody has signed
+           in yet, sign in first, or it is your own log - so a click is never
+           a dead end. */
+        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" title="Message whoever cared for ' + esc(animal.name) + '" aria-label="Message whoever cared for ' + esc(animal.name) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
+          '<span class="material-symbols-outlined text-[18px]">chat</span>' +
         '</button>' +
         '<button type="button" data-action="' + secondary.kind + '" data-id="' + esc(animal.id) + '" title="' + secondary.title + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">' + secondary.icon + '</span>' +
@@ -1431,12 +1452,35 @@
     document.body.style.overflow = 'hidden';
   }
 
+  /* Releases the DM realtime subscription. Called from BOTH closeModal and
+     closeAllModals, because Escape and backdrop clicks bypass closeModal -
+     a channel left open would keep firing into a detached log element for
+     the rest of the session and re-subscribe on top of each reopen. */
+  function stopChat() {
+    if (state.chat.channel) {
+      try {
+        const client = (typeof window !== 'undefined' && window.sb) ? window.sb : null;
+        if (client && client.removeChannel) client.removeChannel(state.chat.channel);
+      } catch (e) { /* channel already gone */ }
+      state.chat.channel = null;
+    }
+    state.chat.conversationId = null;
+    state.chat.peer = null;
+    state.chat.peerName = '';
+    state.chat.peerReadAt = null;
+    state.chat.blocked = false;
+    state.chat.seenIds = {};
+    state.chat.rows = [];
+    state.chat.animalName = '';
+  }
+
   function closeModal(id) {
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     document.body.style.overflow = '';
+    if (id === 'chat-modal') stopChat();
     if (id === 'report-modal') {
       state.pickMode = false;
       if (state.pickMarker && state.map) state.map.removeLayer(state.pickMarker);
@@ -1451,6 +1495,7 @@
     });
     document.body.style.overflow = '';
     state.pickMode = false;
+    stopChat();
   }
   /* ====================== "report a stray" workflow =================== */
   /* Turns the volunteer's quick answer about a bowl into dataset minutes. */
@@ -1879,10 +1924,605 @@
           '<span class="material-symbols-outlined text-[18px]">medical_services</span>Vet visit</button>' +
         '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">my_location</span>Show on map</button>' +
+        /* Phase 5. DMs to whoever most recently cared for this animal. The
+           button is always present - openChat() resolves the caretaker and
+           explains the outcome ("nobody has signed in yet", "sign in
+           first"), so the volunteer is never left guessing why a control
+           is missing. */
+        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
+          '<span class="material-symbols-outlined text-[18px]">chat</span>Message caretaker</button>' +
       '</div>';
 
     openModal('details-modal');
     setSelected(animal.id, false);
+  }
+
+  /* ============================ chat DMs ============================= *
+   * Phase 5. Lets two volunteers talk about one animal without ever
+   * publishing their names or addresses to anyone else - the thread is
+   * readable only by its two participants (schema-chat.sql RLS).
+   *
+   * The flow is always the same: open an animal -> find the most recent
+   * volunteer who cared for it -> open/create the thread for that pair ->
+   * render it and subscribe. The animal id is the context key, so the
+   * same two people discussing a different animal get a different thread.
+   * ------------------------------------------------------------------ */
+  const CHAT_MAX = 2000;
+
+  /* How many messages a thread loads on open. sbListMessages orders
+     ASCENDING, so this is the OLDEST slice, not the newest - which is what
+     you want for a "read the whole thing" thread, and 200 is far beyond
+     what any real conversation about one animal reaches. */
+  const CHAT_LIMIT = 200;
+
+  function chatFn(name) {
+    try {
+      if (typeof window !== 'undefined' && typeof window[name] === 'function') return window[name];
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  /* LinkedIn-style delivery state, derived from one number.
+
+     A message is SENT as soon as the insert succeeds - there is no delivery
+     receipt in this schema, and inventing one would be a lie. It is READ
+     once the OTHER participant's own read cursor is at or past the
+     message's timestamp. That cursor is the same column the unread badge
+     counts from, so a tick can never claim "read" while the badge still
+     says unread: they are two readings of one fact.
+
+     `peerReadAt` is deliberately a parameter rather than a read of
+     state.chat, so this stays a pure function the tests can drive. */
+  function chatReceipt(row, peerReadAt) {
+    const sentAt = Date.parse(row && row.created_at);
+    if (!isFinite(sentAt)) return '';
+    const seen = Date.parse(peerReadAt || '');
+    /* No cursor yet means nobody has ever opened the thread, so the honest
+       answer is "sent", never "read". */
+    const read = isFinite(seen) && seen >= sentAt;
+    return '<span class="chat-tick ' + (read ? 'chat-tick--read' : '') + '"'
+      + ' title="' + (read ? 'Read' : 'Sent') + '"'
+      + ' aria-label="' + (read ? 'Read' : 'Sent') + '">'
+      + '<span class="material-symbols-outlined" aria-hidden="true">' +
+        (read ? 'done_all' : 'done') + '</span></span>';
+  }
+
+  /* LinkedIn-style thread renderer.
+   *
+   * LinkedIn does NOT use filled bubbles. Each message is plain body text on
+   * the panel surface, headed by the sender's name and the time, with a
+   * hairline rule and an uppercase label separating days. Bubbles were
+   * fighting the design: a coloured pill per line makes a long note read as a
+   * stack of fragments, and the saturated fill pulled the eye away from the
+   * words, which are the actual content.
+   *
+   * The structure that earns the "professional" read:
+   *   - one header per GROUP, not per line (avatar + name + time)
+   *   - continuation lines indent under it and carry no header at all
+   *   - generous leading and full measure, nothing squeezed into 78%
+   *   - a real rule for days, not a chip floating in the flow
+   *
+   * `grouped` means "this continues the message above", so the group has
+   * already introduced its sender and needs no header of its own.
+   * `peerReadAt` is the other volunteer's read cursor, used for the tick. */
+  function chatBubble(row, mine, grouped, endsGroup, peerReadAt) {
+    /* Header once per group: avatar, name, time. Repeating the name on every
+       line is exactly what makes a transcript look like a transcript. */
+    const header = grouped ? '' :
+      '<div class="flex items-center gap-2 mb-1.5">' +
+        personAvatarHtml(row.senderName || 'Volunteer', null, 'w-7 h-7 shrink-0') +
+        '<span class="font-label-md text-[12px] font-bold text-on-surface truncate">' +
+          esc(mine ? 'You' : (row.senderName || 'Volunteer')) + '</span>' +
+        '<span class="font-label-sm text-[11px] text-outline shrink-0">' +
+          esc(chatTime(row.created_at)) + '</span>' +
+      '</div>';
+
+    /* The message itself: full measure, comfortable leading, no fill. */
+    const body = '<div class="font-body-sm text-body-sm text-on-surface break-words">' +
+      '<span class="whitespace-pre-wrap">' + esc(row.body) + '</span></div>';
+
+    /* Read tick, once per group, right-aligned under my own messages. Only
+       ever on mine - what the other person did or did not read is not
+       something I can claim to know. */
+    const receipt = endsGroup && mine
+      ? '<div class="flex justify-end mt-1">' + chatReceipt(row, peerReadAt) + '</div>'
+      : '';
+
+    /* Continuations indent under the header so the thread keeps one clean
+       left edge; a group opener aligns with it. Both sides share that
+       column, which is what makes it read as one conversation rather than
+       two interleaved sides. */
+    const indent = grouped ? 'pl-9' : '';
+    const groupGap = grouped ? 'mt-1.5' : 'mt-4';
+
+    return '<div class="' + groupGap + '">' + header +
+      '<div class="' + indent + '">' + body + receipt + '</div>' +
+    '</div>';
+  }
+
+  /* Chat timestamps, not "5m ago" everywhere. Inside a live thread the exact
+     time is what a volunteer needs ("did I send that before or after the
+     feed?"), and it stays readable for a message from last week where
+     "5d ago" would be ambiguous. */
+  function chatTime(iso) {
+    const at = Date.parse(iso);
+    if (!isFinite(at)) return '';
+    const mins = Math.round((Date.now() - at) / MINUTE);
+    if (mins < 1) return 'just now';
+    const clock = new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    if (mins < 60) return clock;
+    const today = new Date();
+    const sameDay = new Date(at).toDateString() === today.toDateString();
+    if (sameDay) return 'Today ' + clock;
+    return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + clock;
+  }
+
+  function chatScrollToEnd(force) {
+    const log = $('#chat-log');
+    if (!log) return;
+    /* Only stick to the bottom when the volunteer is already at (or near)
+       it. Someone reading back through yesterday's messages must not be
+       yanked to the end by an incoming one. The first paint passes force
+       so a reopened thread always starts at the newest message. */
+    if (!force) {
+      const distance = log.scrollHeight - log.scrollTop - log.clientHeight;
+      if (distance > 140) return;
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+
+  /* "Today" / "Yesterday" / "Sat, 22 Feb" - the divider between days.
+
+     Messenger-style threads get long, and "which day was that?" is the
+     first question when scrolling back. The date is a local calendar
+     comparison, not a 24h window: at 23:58 the reply is Yesterday even
+     though it is four minutes old. */
+  function chatDayLabel(iso) {
+    const at = Date.parse(iso);
+    if (!isFinite(at)) return '';
+    const day = new Date(at);
+    const today = new Date();
+    const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const diff = Math.round((startOf(today) - startOf(day)) / 86400000);
+    if (diff <= 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    if (diff < 7) return day.toLocaleDateString(undefined, { weekday: 'long' });
+    return day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      (day.getFullYear() === today.getFullYear() ? '' : ' ' + day.getFullYear());
+  }
+
+  /* Does this row continue the previous one? Same sender, close in time.
+     Conversations come in bursts ("on my way" / "ok" / "thank you"), and
+     without this every line would carry its own avatar and timestamp. */
+  function isGroupedWith(previous, row) {
+    if (!previous || !row) return false;
+    if ((previous.sender_id || null) !== (row.sender_id || null)) return false;
+    const a = Date.parse(previous.created_at);
+    const b = Date.parse(row.created_at);
+    if (!isFinite(a) || !isFinite(b)) return false;
+    return Math.abs(b - a) < 5 * MINUTE;
+  }
+
+  /* Renders the whole thread from state rather than appending one node at a
+     time. Grouping is a property of the SEQUENCE, so the last row can change
+     the shape of the one before it (it decides who owns the avatar and the
+     timestamp). Re-rendering is cheap at 100 rows and removes a whole class
+     of stale-tail bugs. */
+  /* Builds the thread markup from state, newest at the bottom.
+
+     Re-rendering the whole log (rather than appending a node) is deliberate:
+     grouping is a property of the SEQUENCE, so a new message can change the
+     shape of the one before it (it decides who owns the avatar and the
+     timestamp). It is cheap at 100 rows and removes a class of stale-tail
+     bugs that only show up days later in a long thread. */
+  function renderChat() {
+    const log = chatLogInner();
+    if (!log) return;
+    const rows = state.chat.rows;
+    if (!rows || !rows.length) {
+      chatEmptyLog('No messages yet. Say hello - a quick &ldquo;is ' +
+        esc(state.chat.animalName || 'this animal') + ' still around?&rdquo; is usually enough.');
+      return;
+    }
+
+    let lastDay = null;
+    const html = [];
+    rows.forEach((row, i) => {
+      /* A day divider is inserted whenever the calendar day changes, so
+         "Today" / "Yesterday" / a date always separates the two days. */
+      const day = chatDayLabel(row.created_at);
+      if (day && day !== lastDay) {
+        html.push(chatDayDividerHtml(day));
+        lastDay = day;
+      }
+
+      const previous = rows[i - 1];
+      const next = rows[i + 1];
+      /* A day boundary is also a hard grouping boundary: the first message
+         after a divider starts a new block even if it is seconds after the
+         last one from yesterday, so the avatar does not float down the log. */
+      const newDayBefore = !previous || chatDayLabel(previous.created_at) !== day;
+      const newDayAfter = !next || chatDayLabel(next.created_at) !== day;
+      const grouped = !newDayBefore && isGroupedWith(previous, row);
+      /* The avatar and timestamp belong to the message that ENDS a group. */
+      const endsGroup = newDayAfter || !isGroupedWith(row, next);
+      const mine = row.sender_id === state.chat.myId;
+      html.push(chatBubble(row, mine, grouped, endsGroup, state.chat.peerReadAt));
+    });
+
+    log.innerHTML = html.join('');
+    chatScrollToEnd();
+  }
+
+  /* LinkedIn's date rule: a full-width hairline with the date sitting ON the
+     line, centred. A filled chip floating in the flow reads as a message;
+     a rule with a label reads as a section break, which is what it is.
+     The line runs edge to edge so the date is unambiguously a divider and
+     not a message that happens to be centred. */
+  function chatDayDividerHtml(label) {
+    return '<div class="flex items-center gap-3 py-4 first:pt-1" role="separator" aria-label="' + esc(label) + '">'
+      + '<span class="h-px flex-1 bg-surface-container-highest"></span>'
+      + '<span class="font-label-sm text-[11px] font-semibold uppercase tracking-wide text-outline shrink-0">'
+        + esc(label) + '</span>'
+      + '<span class="h-px flex-1 bg-surface-container-highest"></span>'
+      + '</div>';
+  }
+
+  /* Appends one message, ignoring any we have already put on screen.
+
+     This is the single dedupe point for three cases: our own send (the
+     insert response renders it, then realtime echoes the same row), a
+     second realtime event for the same row, and a row replayed after a
+     reload. Keyed on the row id, which is the only stable identity. */
+  function appendChatRow(row) {
+    if (!row || !row.body) return;
+    if (row.id) {
+      if (state.chat.seenIds[row.id]) return;
+      state.chat.seenIds[row.id] = true;
+    }
+    /* Name is stamped here rather than at each call site so an incoming
+       realtime row and our own insert response are labelled identically. */
+    if (!row.senderName) {
+      row.senderName = row.sender_id === state.chat.myId ? 'You' : state.chat.peerName;
+    }
+    /* A realtime row can arrive out of order against a page load, so keep
+       the thread in chronological order - grouping depends on sequence. */
+    const at = Date.parse(row.created_at);
+    if (isFinite(at)) {
+      let i = state.chat.rows.length;
+      while (i > 0 && Date.parse(state.chat.rows[i - 1].created_at) > at) i -= 1;
+      state.chat.rows.splice(i, 0, row);
+    } else {
+      state.chat.rows.push(row);
+    }
+    renderChat();
+  }
+
+  /* Hides the composer and explains why. Used both for "sign in first"
+     and for "there is nobody to message yet", so the volunteer is never
+     left with a composer that fails on send. */
+  function chatGate(text) {
+    const gate = $('#chat-gate');
+    const gateText = $('#chat-gate-text');
+    const form = $('#chat-form');
+    if (gateText) gateText.innerHTML = text;
+    if (gate) gate.classList.remove('hidden');
+    if (form) form.classList.add('hidden');
+  }
+
+  function chatShowComposer() {
+    const gate = $('#chat-gate');
+    const form = $('#chat-form');
+    if (gate) gate.classList.add('hidden');
+    if (form) form.classList.remove('hidden');
+    const input = $('#chat-input');
+    if (input) {
+      input.disabled = false;
+      input.value = '';
+    }
+  }
+
+  /* The scroll container and the flow container are different elements on
+     purpose: the outer one scrolls, the inner one holds the messages and
+     carries mt-auto so a short thread rests on the floor of the panel.
+     Falling back to #chat-log keeps the empty/loading states working even
+     if the wrapper is ever missing. */
+  function chatLogInner() {
+    return $('#chat-log-inner') || $('#chat-log');
+  }
+
+  function chatEmptyLog(text) {
+    const log = chatLogInner();
+    if (log) log.innerHTML = '<p class="font-body-sm text-body-sm text-on-surface-variant text-center py-6">' + text + '</p>';
+  }
+
+  /* Opens a thread for one animal.
+   *
+   * `conversationId` is the whole point of the second parameter. The inbox
+   * and the header popover already KNOW which thread the volunteer tapped,
+   * and they hand that id over. Re-deriving it from `sbCaretakerFor()` here
+   * used to be the only way in - and it is wrong: that lookup returns
+   * whoever fed the animal most recently, which is frequently a THIRD
+   * volunteer, so get_or_create_dm silently opened a different (empty)
+   * conversation. The volunteer tapped "Lala" and landed in a blank thread.
+   * When the id is known we open exactly that thread and never guess. */
+  /* THE one place a thread is marked read.
+
+     Reading happens on three paths and all three used to be separate,
+     partial, or missing:
+       1. opening the thread          - fired once, at the very end of
+         openChat(), so any early return skipped it entirely
+       2. a message arriving while the thread is open - never marked at
+         all, so the badge climbed back the moment you were looking at it
+       3. returning to the tab         - not handled
+
+     The cursor is the NEWEST SERVER timestamp actually on screen, never the
+     browser clock. Writing the local time is what made the badge immortal
+     on any device whose clock runs fast: the unread test compares that
+     value against server `created_at`, so every message stayed "newer than
+     when I read it". Passing the newest row we have seen keeps both sides
+     in the same clock, and leaves anything that arrives later correctly
+     unread.
+
+     Never rejects: a failed mark must not break the thread, it only means
+     the badge is briefly stale.
+
+     A STALE supabase-client.js looks exactly like a broken badge. index.js
+     and site-header.js are no-cache, so they refresh on every load, but the
+     data layer they call into was cached for an hour - so this function asks
+     for window.sbMarkConversationRead, gets undefined back from an old copy
+     that never defined it, and the badge survives being read with no other
+     error anywhere on the page. That is why the guard below shouts. */
+  function markThreadRead() {
+    const conversation = state.chat.conversationId;
+    if (!conversation) return;
+    const markRead = chatFn('sbMarkConversationRead');
+    if (!markRead) {
+      console.warn('[chat] sbMarkConversationRead missing - hard-reload (Ctrl+Shift+R); ' +
+        'the unread badge cannot clear until supabase-client.js refreshes.');
+      return;
+    }
+
+    /* The newest row in state is the newest thing the volunteer has seen. */
+    const rows = state.chat.rows || [];
+    const newest = rows.length ? rows[rows.length - 1] : null;
+    const upTo = newest ? newest.created_at : null;
+
+    Promise.resolve(markRead(conversation, upTo)).then(() => {
+      /* Ask the header to repaint so the badge drops without waiting for
+         its next poll. */
+      try { window.dispatchEvent(new Event('fta:chat-opened')); } catch (e) { /* older browsers */ }
+    }).catch(() => { /* badge stays stale; nothing else breaks */ });
+  }
+
+  /* A message just landed. If the thread is open AND the tab is in front,
+     the volunteer is looking straight at it, so it is read by definition.
+     The tab check matters: a backgrounded tab does not count as reading,
+     which is what stops the badge clearing itself while nobody is there. */
+  function onIncomingChatRow() {
+    if (!state.chat.conversationId) return;
+    /* A message that lands in a background tab has NOT been read, no matter
+       how long the thread has been open. Honouring document.hidden is what
+       keeps the badge honest: it clears when the volunteer is actually
+       looking, and survives until they come back. */
+    const hidden = typeof document !== 'undefined' &&
+      (document.hidden === true || document.visibilityState === 'hidden');
+    if (!hidden) markThreadRead();
+  }
+
+  /* Coming back to the tab counts as catching up: the messages that arrived
+     while it was in the background are on screen now, so the badge should
+     drop the moment the volunteer returns rather than on the next poll. */
+  function onTabVisible() {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    if (state.chat.conversationId) markThreadRead();
+  }
+
+  async function openChat(animalId, conversationId) {
+    const animal = animalById(animalId);
+    stopChat();
+    state.chat.animalName = animal ? animal.name : '';
+
+    openModal('chat-modal');
+    chatEmptyLog('Loading messages...');
+
+    const requireEmail = chatFn('sbRequireEmail');
+    const openDm = chatFn('sbOpenDm');
+    const caretakerFor = chatFn('sbCaretakerFor');
+    if (!openDm || !caretakerFor) {
+      chatEmptyLog('');
+      chatGate('Messaging is not available yet. It turns on once the chat tables are running.');
+      return;
+    }
+
+    const me = requireEmail ? await requireEmail() : null;
+    if (me) state.chat.myId = me.id;
+
+    let conversation = conversationId || null;
+    let peerName = null;
+    let peerId = null;
+    let peerReadAt = null;
+
+    if (conversation) {
+      /* Known thread: the peer comes out of the participants list, so the
+         header names whoever is actually on the other side. */
+      const peers = chatFn('sbDmPeers');
+      const listed = peers ? await peers(conversation, me ? me.id : null) : [];
+      if (listed.length) {
+        peerId = listed[0].userId;
+        peerName = listed[0].name;
+        peerReadAt = listed[0].lastReadAt || null;
+      } else {
+        peerName = 'Volunteer';
+      }
+    } else {
+      /* No thread yet, so find someone to start one with. Caretaker first:
+         if nobody has a real account for this animal yet, say so instead of
+         opening a composer that would fail on send. */
+      const caretaker = await caretakerFor(animal ? animal.id : animalId, me ? me.id : null);
+      if (!caretaker) {
+        chatEmptyLog('');
+        chatGate('Nobody has signed in to care for ' + esc(state.chat.animalName || 'this animal') +
+          ' yet, so there is nobody to message. Log a feed or a vet check first - then you can talk to whoever did it.');
+        return;
+      }
+
+      if (!me) {
+        /* An anonymous session cannot be replied to, so chat asks for a real
+           account (step 5.2). Logging a feed still works without one. */
+        chatEmptyLog('');
+        chatGate('Messaging needs a real account so ' + esc(caretaker.name) +
+          ' can reply to you. <a href="auth.html" class="text-primary font-semibold hover:underline">Sign in</a> - ' +
+          'logging a feed still works without one.');
+        return;
+      }
+
+      conversation = await openDm(caretaker.userId, animal ? animal.id : animalId, null);
+
+      if (conversation && conversation.error === 'self') {
+        chatEmptyLog('');
+        chatGate('Those are your own care logs, so there is nobody else to message about them.');
+        return;
+      }
+      if (conversation && conversation.error === 'signin') {
+        chatEmptyLog('');
+        chatGate('Messaging needs a real account. <a href="auth.html" class="text-primary font-semibold hover:underline">Sign in</a> to message ' + esc(caretaker.name) + '.');
+        return;
+      }
+      if (!conversation) {
+        chatEmptyLog('');
+        /* The RPC can fail for a reason the volunteer cannot act on (a schema
+           problem like the animal_id foreign key, which is exactly what
+           "Try again in a moment" used to hide). Point at the console, where
+           the real reason is logged, instead of implying retrying will help. */
+        chatGate('That conversation could not be opened. Check the browser console (F12) for the reason - if it mentions a foreign key, run <code class="font-mono">supabase/migration-drop-events-fk.sql</code>.');
+        return;
+      }
+      peerId = caretaker.userId;
+      peerName = caretaker.name;
+      peerReadAt = null;
+    }
+
+    state.chat.conversationId = conversation;
+    state.chat.peer = peerId;
+    state.chat.peerName = peerName;
+    state.chat.peerReadAt = peerReadAt;
+
+    /* Stamp the sender's display name onto each row so the thread header and
+       the grouping logic have a name to work with. `messages` only stores
+       sender_id, and a name lookup per bubble would be a query each. */
+    const nameFor = (senderId) => (senderId === me.id ? 'You' : state.chat.peerName);
+
+    const withEl = $('#chat-with');
+    if (withEl) {
+      withEl.textContent = state.chat.peerName + (state.chat.animalName ? ' · about ' + state.chat.animalName : '');
+    }
+    /* Avatar in the thread header, matching the inbox and the popover. */
+    const avatarEl = $('#chat-avatar');
+    if (avatarEl) avatarEl.innerHTML = personAvatarHtml(state.chat.peerName, null, 'w-9 h-9');
+    const blockBtn = $('#chat-block');
+    if (blockBtn) blockBtn.textContent = 'Block';
+
+    chatShowComposer();
+
+    /* Both sides of the conversation, oldest first, so the thread reads top
+       to bottom. sbListMessages already orders ascending; the client-side
+       sort makes the order independent of the query and keeps a realtime
+       row that arrived early from rendering out of sequence. */
+    const listMessages = chatFn('sbListMessages');
+    const rows = listMessages ? await listMessages(conversation, CHAT_LIMIT) : null;
+    state.chat.rows = (rows || [])
+      .map((row) => Object.assign({}, row, { senderName: nameFor(row.sender_id) }))
+      .sort((a, b) => (Date.parse(a.created_at) || 0) - (Date.parse(b.created_at) || 0));
+    state.chat.rows.forEach((row) => { if (row.id) state.chat.seenIds[row.id] = true; });
+    renderChat();
+    chatScrollToEnd(true);
+
+    /* Opening a thread IS reading it, so advance the cursor to the newest
+       message on screen. This used to sit at the very end of openChat,
+       behind several early returns, so several perfectly normal openings
+       never cleared the badge. */
+    markThreadRead();
+
+    const subscribe = chatFn('sbSubscribeDm');
+    if (subscribe) {
+      state.chat.channel = subscribe(conversation, (row) => {
+        appendChatRow(row);
+        /* Reading what just arrived is the whole point of having the thread
+           open, so the badge is cleared here too. Without this the badge
+           climbed back the instant a reply landed, which is exactly the
+           "still shows unread after I read it" complaint. */
+        onIncomingChatRow();
+      });
+    }
+  }
+
+  async function sendChatMessage() {
+    if (state.chat.blocked) {
+      toast('Unblock this volunteer before sending.', 'info');
+      return;
+    }
+    const input = $('#chat-input');
+    const body = String((input && input.value) || '').trim().slice(0, CHAT_MAX);
+    if (!body || !state.chat.conversationId) return;
+
+    const sendMessage = chatFn('sbSendMessage');
+    if (!sendMessage) { toast('Messaging is not available yet.', 'error'); return; }
+
+    const sendBtn = $('#chat-send');
+    if (sendBtn) sendBtn.disabled = true;
+    let result = null;
+    try {
+      result = await sendMessage(state.chat.conversationId, body);
+    } catch (e) {
+      result = { error: 'failed' };
+    }
+    if (sendBtn) sendBtn.disabled = false;
+    if (input) input.value = '';
+
+    if (!result) { toast('Message not sent - could not reach the server.', 'error'); return; }
+    if (result.error === 'blocked') {
+      toast('You blocked ' + state.chat.peerName + ', so they cannot be messaged.', 'info');
+      return;
+    }
+    if (result.error === 'signin') { toast('Sign in to send messages.', 'info'); return; }
+    if (result.error) { toast('Message not sent - please try again.', 'error'); return; }
+
+    /* Render from the insert response instead of waiting for the realtime
+       echo, so sending feels instant on a slow connection. seenIds stops
+       the echo duplicating it. */
+    if (result && result.id) appendChatRow(result);
+  }
+
+  async function toggleChatBlock() {
+    if (!state.chat.peer) return;
+    const name = state.chat.peerName || 'this volunteer';
+    const next = !state.chat.blocked;
+    const setBlock = chatFn('sbSetBlock');
+    if (!setBlock) { toast('Blocking is not available yet.', 'error'); return; }
+
+    if (next) {
+      const ok = window.confirm('Block ' + name + '?\n\nThey will not be able to send you messages. You can unblock them at any time.');
+      if (!ok) return;
+    }
+
+    const btn = $('#chat-block');
+    if (btn) btn.disabled = true;
+    let res = null;
+    try {
+      res = await setBlock(state.chat.peer, next);
+    } catch (e) {
+      res = { error: 'failed' };
+    }
+    if (btn) btn.disabled = false;
+
+    if (!res || res.error) {
+      toast('Could not update the block - please try again.', 'error');
+      return;
+    }
+    state.chat.blocked = next;
+    if (btn) btn.textContent = next ? 'Unblock' : 'Block';
+    toast(next ? 'You blocked ' + name + '.' : 'You unblocked ' + name + '.', 'ok');
   }
   /* The Sign in button label is now handled by site-header.js on every page,
      so index.js does not need its own copy. */
@@ -1955,6 +2595,13 @@
       revealAnimal(id);
       return;
     }
+    /* Phase 5: open the DM thread for this animal's most recent caretaker.
+       The details modal stays open underneath - the chat modal sits above
+       it, so the animal context is still visible behind the thread. */
+    if (action === 'message') {
+      openChat(id);
+      return;
+    }
     if (action === 'details') {
       if (state.map) state.map.closePopup();
       openDetails(id);
@@ -2023,6 +2670,52 @@
       const modal = target.closest('[data-modal]');
       if (modal && target === modal) closeModal(modal.id);
     });
+
+    /* ---- chat (Phase 5) ------------------------------------------------ *
+       Bound once here rather than per-open, because the chat markup lives
+       in index.html and never gets replaced - only its contents change. */
+    const chatForm = $('#chat-form');
+    if (chatForm) {
+      chatForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        sendChatMessage();
+      });
+    }
+    const chatInput = $('#chat-input');
+    if (chatInput) {
+      /* Enter sends, Shift+Enter breaks the line - the convention every
+         chat UI uses, and the hint under the composer says so. */
+      chatInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendChatMessage();
+        }
+      });
+      /* Grow with the content, between the textarea's min-height (two rows,
+         LinkedIn's default) and the max-h-32 cap in the stylesheet, then
+         scroll. Resetting to 'auto' first is what makes scrollHeight
+         measurable - without it the box can only ever grow, never shrink
+         back after deleting text. */
+      chatInput.addEventListener('input', () => {
+        const MIN = 44;
+        const MAX = 128;
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(Math.max(chatInput.scrollHeight, MIN), MAX) + 'px';
+      });
+    }
+    const chatBlock = $('#chat-block');
+    if (chatBlock) chatBlock.addEventListener('click', toggleChatBlock);
+
+    /* Returning to the tab catches the thread up. Bound once here rather
+       than per-open, because the listener is about the DOCUMENT, not the
+       modal - and it must survive the modal closing so the inbox badge is
+       already correct by the time the volunteer taps through to it. */
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('visibilitychange', onTabVisible);
+      if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('focus', onTabVisible);
+      }
+    }
 
     const search = $('#sidebar-search');
     if (search) {
@@ -2144,6 +2837,28 @@
       const params = new URLSearchParams(hash);
       const animalId = params.get('animal');
       const stationId = params.get('station');
+      /* inbox.html and the desktop chat popover both hand a thread to the
+         map as #chat=<animalId>. It goes through openChat() like the button
+         does, so there is exactly one way a thread is ever opened. */
+      const chatId = params.get('chat');
+      if (chatId) {
+        /* The id the thread is ABOUT is optional; the conversation id is the
+           one that matters. Carrying it means tapping a row in the inbox
+           opens THAT exact conversation instead of re-deriving the peer
+           from "who fed this animal most recently", which is a different
+           person half the time and produced a blank thread. */
+        const conversationId = params.get('conversation') || null;
+        const target = animalById(chatId);
+        if (target && state.map) {
+          state.map.setView([target.location.lat, target.location.lng], 16, { animate: true });
+        }
+        openChat(chatId, conversationId);
+        /* Consume the hash. Leaving it in place means tapping the SAME row
+           again navigates to the URL we are already on, which fires no
+           hashchange and reopens nothing. */
+        try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) { /* older browsers */ }
+        return;
+      }
       if (animalId && animalById(animalId)) {
         const animal = animalById(animalId);
         if (state.map) {
@@ -2329,6 +3044,19 @@
       personAvatarHtml: personAvatarHtml,
       animalThumbHtml: animalThumbHtml,
       layerSubdomains: layerSubdomains,
+      /* Phase 5 chat: the bubble renderer is pure, so check-chat.js can
+         assert escaping and left/right alignment without a DOM. */
+      chatBubble: chatBubble,
+      chatTime: chatTime,
+      chatDayLabel: chatDayLabel,
+      chatReceipt: chatReceipt,
+      isGroupedWith: isGroupedWith,
+      chatValidate: (raw) => {
+        const text = String(raw === null || raw === undefined ? '' : raw).trim();
+        if (!text) return 'Write a message first.';
+        if (text.length > CHAT_MAX) return 'Keep messages under ' + CHAT_MAX + ' characters.';
+        return null;
+      },
       setPolicy: (policy) => {
         POLICY = Object.assign({ default: { food: { okHours: 8, urgentHours: 14 }, water: { okHours: 6, urgentHours: 10 } } }, policy || {});
       }

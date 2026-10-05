@@ -34,6 +34,16 @@ try {
     window.sbForumReplies = sbForumReplies;
     window.sbForumCreateReply = sbForumCreateReply;
     window.sbForumToggleLike = sbForumToggleLike;
+    window.sbRequireEmail = sbRequireEmail;
+    window.sbCaretakerFor = sbCaretakerFor;
+    window.sbOpenDm = sbOpenDm;
+    window.sbListMessages = sbListMessages;
+    window.sbSendMessage = sbSendMessage;
+    window.sbDmPeers = sbDmPeers;
+    window.sbSetBlock = sbSetBlock;
+    window.sbSubscribeDm = sbSubscribeDm;
+    window.sbInbox = sbInbox;
+    window.sbMarkConversationRead = sbMarkConversationRead;
   }
 } catch (e) { /* ignore */ }
 
@@ -179,6 +189,389 @@ async function sbMyRank() {
     return (data && data[0]) || null;
   } catch (err) {
     console.warn('[sb] my_rank unavailable:', err.message);
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * INBOX (Phase 5.7)
+ *
+ * Every conversation the signed-in volunteer is part of, newest first,
+ * with the peer, the animal it is about, the last message and an unread
+ * count. This is what the header badge and the inbox page both read, so
+ * the two can never disagree.
+ *
+ * All three tables are already RLS-scoped to participants, so a plain
+ * select only ever returns the caller's own conversations - no policy
+ * change is needed for the read path.
+ * ------------------------------------------------------------------ */
+async function sbInbox(limit) {
+  if (!sb) return [];
+  const me = await sbRequireEmail();
+  if (!me) return [];
+
+  try {
+    /* Step 1: my conversations, newest activity first. `created_at` is the
+       only ordering column conversations has, so threads are re-sorted on
+       the last message below - that is what "recent" means to a volunteer. */
+    const { data: convos, error: cerr } = await sb.from('conversations')
+      .select('id, animal_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit || 50);
+    if (cerr) throw cerr;
+    if (!convos || !convos.length) return [];
+
+    const ids = convos.map((c) => c.id);
+
+    /* Step 2: the other person in each thread. Participant rows are
+       readable by members, so this stays inside RLS. */
+    const { data: parts, error: perr } = await sb.from('conversation_participants')
+      .select('conversation_id, user_id, last_read_at')
+      .in('conversation_id', ids);
+    if (perr) throw perr;
+
+    const peerOf = {};
+    const readOf = {};
+    const allPeers = [];
+    (parts || []).forEach((p) => {
+      if (p.user_id === me.id) readOf[p.conversation_id] = p.last_read_at;
+      else { peerOf[p.conversation_id] = p.user_id; allPeers.push(p.user_id); }
+    });
+
+    /* Step 3: names in ONE query. profiles is publicly readable. */
+    const names = {};
+    if (allPeers.length) {
+      const { data: profiles } = await sb.from('profiles')
+        .select('id, display_name')
+        .in('id', allPeers);
+      (profiles || []).forEach((p) => { names[p.id] = p.display_name; });
+    }
+
+    /* Step 4: last message + unread per thread. Fetching the recent slice
+       of each conversation is cheaper and far more robust than a per-thread
+       aggregate query, and 50 threads x 1 row is trivial at this scale. */
+    const lastOf = {};
+    const unreadOf = {};
+    await Promise.all(ids.map(async (cid) => {
+      const { data: msgs } = await sb.from('messages')
+        .select('id, sender_id, body, created_at')
+        .eq('conversation_id', cid)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(25);
+      const rows = msgs || [];
+      if (rows.length) lastOf[cid] = rows[0];
+      /* Unread = someone else's messages newer than my last_read_at. My own
+         messages never count, so sending does not mark the thread unread. */
+      const since = Date.parse(readOf[cid] || '') || 0;
+      unreadOf[cid] = rows.filter((m) =>
+        m.sender_id !== me.id && Date.parse(m.created_at) > since).length;
+    }));
+
+    /* Step 5: animal names, so a row says "about Milo" not "about report-x". */
+    const animalIds = convos.map((c) => c.animal_id).filter(Boolean);
+    const animalNames = {};
+    if (animalIds.length) {
+      /* Reports use ids of the form 'report-<uuid>' and live in `reports`,
+         not `animals`, so both are read and matched by suffix. */
+      const seedIds = animalIds.filter((a) => a.indexOf('report-') !== 0);
+      if (seedIds.length) {
+        const { data: animals } = await sb.from('animals')
+          .select('id, name').in('id', seedIds);
+        (animals || []).forEach((a) => { animalNames[a.id] = a.name; });
+      }
+      const reportUuids = animalIds
+        .filter((a) => a.indexOf('report-') === 0)
+        .map((a) => a.slice('report-'.length));
+      if (reportUuids.length) {
+        const { data: reports } = await sb.from('reports')
+          .select('id, name').in('id', reportUuids);
+        (reports || []).forEach((r) => {
+          animalNames['report-' + r.id] = r.name || 'Reported stray';
+        });
+      }
+    }
+
+    return convos.map((c) => {
+      const peerId = peerOf[c.id] || null;
+      const last = lastOf[c.id] || null;
+      return {
+        id: c.id,
+        animalId: c.animal_id || null,
+        animalName: animalNames[c.animal_id] || null,
+        peerId: peerId,
+        peerName: peerId ? (names[peerId] || 'Volunteer') : null,
+        lastBody: last ? last.body : '',
+        lastAt: last ? last.created_at : c.created_at,
+        lastMine: last ? last.sender_id === me.id : false,
+        unread: unreadOf[c.id] || 0,
+      };
+    }).sort((a, b) => (Date.parse(b.lastAt) || 0) - (Date.parse(a.lastAt) || 0));
+  } catch (err) {
+    console.warn('[sb] inbox unavailable:', err.message);
+    return [];
+  }
+}
+
+/* Clears the unread badge for one thread. Reads a row only ever visible to
+   its owner (user_id = auth.uid()), so a forged id cannot touch anyone
+   else's state. Returns true on success. */
+/* Clears the unread badge for one thread. Reads a row only ever visible to
+    its owner (user_id = auth.uid()), so a forged id cannot touch anyone
+    else's state. Returns true on success.
+
+    `upToIso` MUST be the newest message timestamp the client actually saw,
+    which is a value the SERVER wrote. The obvious implementation -
+    `new Date().toISOString()` - stamps the cursor with the browser clock,
+    and the unread test compares that against server `created_at`. Any device
+    whose clock runs even slightly fast then leaves every message sorting
+    after its own read cursor, so the badge climbs forever and never clears.
+    Taking the newest observed server timestamp makes both sides directly
+    comparable, and a message that lands mid-request is not swallowed: it is
+    newer than the cursor we wrote, so it correctly stays unread. */
+async function sbMarkConversationRead(conversationId, upToIso) {
+  if (!sb || !conversationId) return false;
+  const me = await sbRequireEmail();
+  if (!me) return false;
+  /* With no observed timestamp there is nothing to mark, so leave the
+     cursor alone - that is both safe and correct for an empty thread. */
+  const stamp = String(upToIso || '');
+  if (!stamp || !isFinite(Date.parse(stamp))) return true;
+  try {
+    const { error } = await sb.from('conversation_participants')
+      .update({ last_read_at: stamp })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', me.id);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.warn('[sb] mark read failed:', err.message);
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Chat DMs (see supabase/schema-chat.sql)
+ *
+ * Unlike the forum, chat cannot fall back to localStorage: a message
+ * is only useful if the OTHER volunteer receives it. So these wrappers
+ * never fake success - they return null when the chat tables are not
+ * installed yet and { error: 'signin' } when the visitor has no real
+ * account, and index.js surfaces both states to the user.
+ *
+ * Why a real account is required (step 5.2): an anonymous session is a
+ * throwaway id. It can log a feed, but it cannot be replied to and it
+ * disappears on sign-out, which would leave orphan conversations other
+ * people can see and never answer. Feeds stay anonymous on purpose;
+ * only chat asks for an email.
+ * ------------------------------------------------------------------ */
+
+/* The signed-in volunteer with a real address, or null. The caller
+   decides whether that is fatal (chat) or fine (feeds). */
+async function sbRequireEmail() {
+  if (!sb) return null;
+  try {
+    const { data } = await sb.auth.getSession();
+    const user = data && data.session && data.session.user;
+    if (!user || user.is_anonymous || !user.email) return null;
+    return user;
+  } catch (e) { return null; }
+}
+
+/* The most recent volunteer who has cared for this animal, newest first.
+   Step 5.3 needs a user id to DM, and the events table is the only
+   place one exists - the caretakers on the animal record are display
+   names from the seed data, not accounts.
+
+   Returns { userId, name } or null. Events with a null actor_id
+   (anonymous feeders) are skipped: there is nobody to reply to.
+   `excludeId` is the current volunteer so you never DM yourself - the
+   RPC rejects that anyway, but failing early gives a readable message
+   instead of a raw database error. */
+async function sbCaretakerFor(animalId, excludeId) {
+  if (!sb || !animalId) return null;
+  try {
+    const { data, error } = await sb.from('events')
+      .select('actor_id, actor_name, created_at')
+      .eq('animal_id', animalId)
+      .not('actor_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (error) throw error;
+    const rows = data || [];
+    for (let i = 0; i < rows.length; i++) {
+      if (excludeId && rows[i].actor_id === excludeId) continue;
+      return { userId: rows[i].actor_id, name: rows[i].actor_name || 'Volunteer' };
+    }
+    return null;
+  } catch (err) {
+    console.warn('[sb] caretaker lookup failed:', err.message);
+    return null;
+  }
+}
+
+/* Find the existing 1-to-1 thread about this animal, or open one.
+   The RPC is SECURITY DEFINER, so it can match the two participants
+   without re-entering the RLS policy that used to recurse.
+   Returns the conversation id, { error: 'signin' }, or null. */
+async function sbOpenDm(otherUserId, animalId, reportId) {
+  if (!sb) return null;
+  const user = await sbRequireEmail();
+  if (!user) return { error: 'signin' };
+  if (!otherUserId || otherUserId === user.id) return { error: 'self' };
+  try {
+    const { data, error } = await sb.rpc('get_or_create_dm', {
+      other_user: otherUserId,
+      p_animal_id: animalId || null,
+      p_report_id: reportId || null,
+    });
+    if (error) throw error;
+    return data || null;
+  } catch (err) {
+    console.warn('[sb] open DM failed:', err.message);
+    return null;
+  }
+}
+
+/* Oldest-first so the thread reads top to bottom. Deleted rows are
+   filtered out in the query rather than rendered as tombstones. */
+async function sbListMessages(conversationId, limit) {
+  if (!sb || !conversationId) return null;
+  try {
+    const { data, error } = await sb.from('messages')
+      .select('id, conversation_id, sender_id, body, created_at, is_deleted')
+      .eq('conversation_id', conversationId)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true })
+      .limit(limit || 100);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('[sb] list messages failed:', err.message);
+    return null;
+  }
+}
+
+/* sender_id is NOT optional here (step 5.4).
+
+   The "participants send messages" policy checks
+   sender_id = auth.uid(), so an insert that leaves it null is rejected
+   by the database even though the column itself is nullable. The
+   chat-snippets.js reference version omits it, which is why every send
+   written from that snippet fails. */
+async function sbSendMessage(conversationId, body) {
+  if (!sb) return null;
+  const user = await sbRequireEmail();
+  if (!user) return { error: 'signin' };
+  const clean = String(body || '').trim().slice(0, 2000);
+  if (!clean) return { error: 'empty' };
+  try {
+    const { data, error } = await sb.from('messages')
+      .insert([{ conversation_id: conversationId, sender_id: user.id, body: clean }])
+      .select('id, conversation_id, sender_id, body, created_at, is_deleted')
+      .single();
+    if (error) throw error;
+    return data || true;
+  } catch (err) {
+    /* The block check lives in the same INSERT policy, so a blocked
+       sender gets an RLS error indistinguishable from any other. Say so
+       plainly rather than showing a failure they cannot act on. */
+    if (/row-level security|violates/i.test(err.message || '')) {
+      return { error: 'blocked' };
+    }
+    console.warn('[sb] send message failed:', err.message);
+    return { error: 'failed' };
+  }
+}
+
+/* Everyone you share a conversation with, so the thread header can name
+   them. Participant rows are readable by members, so this stays inside
+   RLS. Returns [{ userId, name }]. */
+async function sbDmPeers(conversationId, myId) {
+  if (!sb || !conversationId) return [];
+  try {
+    const { data, error } = await sb.from('conversation_participants')
+      .select('user_id, last_read_at')
+      .eq('conversation_id', conversationId);
+    if (error) throw error;
+    const others = (data || []).filter((row) => row.user_id && row.user_id !== myId);
+    if (!others.length) return [];
+    const ids = others.map((row) => row.user_id);
+
+    /* profiles is publicly readable (schema-core.sql), so every name
+       comes from one query instead of one per participant. */
+    const { data: profiles, error: perr } = await sb.from('profiles')
+      .select('id, display_name')
+      .in('id', ids);
+    if (perr) throw perr;
+    const names = {};
+    (profiles || []).forEach((p) => { names[p.id] = p.display_name; });
+    /* lastReadAt is carried through, not dropped: it is the ONLY evidence a
+       message was actually read (the double tick), and it is the same column
+       the unread badge counts from - so one query answers both questions and
+       they can never disagree. */
+    return others.map((row) => ({
+      userId: row.user_id,
+      name: names[row.user_id] || 'Volunteer',
+      lastReadAt: row.last_read_at || null,
+    }));
+  } catch (err) {
+    console.warn('[sb] DM peers failed:', err.message);
+    return [];
+  }
+}
+
+/* Block or unblock a volunteer (step 5.5).
+
+   blocks has a single "own blocks" policy covering all commands for
+   blocker_id = auth.uid(), so one wrapper does both directions: insert
+   (via upsert, so blocking twice cannot throw duplicate-key) to block,
+   delete to unblock. Deleting the row also re-enables sending straight
+   away, because the INSERT policy on messages re-checks for a block on
+   every send. */
+async function sbSetBlock(otherUserId, blocked) {
+  if (!sb) return null;
+  const user = await sbRequireEmail();
+  if (!user) return { error: 'signin' };
+  if (!otherUserId || otherUserId === user.id) return { error: 'self' };
+  try {
+    if (blocked) {
+      const { error } = await sb.from('blocks')
+        .upsert({ blocker_id: user.id, blocked_id: otherUserId },
+          { onConflict: 'blocker_id,blocked_id' });
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('blocks').delete()
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', otherUserId);
+      if (error) throw error;
+    }
+    return { blocked: !!blocked };
+  } catch (err) {
+    console.warn('[sb] block failed:', err.message);
+    return { error: 'failed' };
+  }
+}
+
+/* Live append (step 5.4). Requires messages to be in the
+   supabase_realtime publication (step 2.8). Returns the channel so the
+   caller can unsubscribe when the modal closes - a leaked channel keeps
+   delivering into a detached DOM node for the life of the page. */
+function sbSubscribeDm(conversationId, onMsg) {
+  if (!sb || !conversationId) return null;
+  try {
+    return sb.channel('dm:' + conversationId)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+        filter: 'conversation_id=eq.' + conversationId
+      }, (payload) => {
+        if (onMsg) {
+          try { onMsg(payload.new); } catch (e) { console.warn('[sb] DM handler failed', e.message); }
+        }
+      })
+      .subscribe();
+  } catch (err) {
+    console.warn('[sb] DM subscribe failed:', err.message);
     return null;
   }
 }

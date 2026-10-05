@@ -19,11 +19,16 @@
     { id: 'cities',      label: 'Cities',      icon: 'public',       href: 'index.html#cities' },
     { id: 'community',   label: 'Community',   icon: 'chat_bubble',  href: 'community.html' },
     { id: 'activity',    label: 'Activity',    icon: 'history',      href: 'activity.html' },
+    /* Chats is the LinkedIn-style Messaging entry: a button (not a link) that
+       toggles the thread popover. The popover's "See all" hands off to the
+       full inbox page. data-nav="inbox" keeps the active pill working when
+       the volunteer IS on inbox.html. */
+    { id: 'inbox',       label: 'Chats',       icon: 'forum',        href: 'inbox.html', chatButton: true },
     { id: 'about',       label: 'About',       icon: 'info',         href: 'about.html' },
   ];
 
-  var ACTIVE = 'bg-primary-fixed/50 text-primary border-primary/30 shadow-sm';
-  var IDLE = 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container';
+  var NAV_ON = 'fta-nav-on';
+  var NAV_OFF = 'fta-nav-off';
 
   /* Mobile-only bottom tab bar (CheapFoodMap style). Two tabs left of the
      elevated centre pill, two on the right. The centre pill itself is built
@@ -33,7 +38,11 @@
     { id: 'cities',    label: 'Cities',    icon: 'public',      href: 'index.html#cities' },
     { id: 'community', label: 'Community', icon: 'chat_bubble',  href: 'community.html' },
     { id: 'activity',  label: 'Activity',  icon: 'history',      href: 'activity.html' },
-    { id: 'about',     label: 'About',     icon: 'info',         href: 'about.html' },
+    /* Chats replaces About here. On a phone the bottom bar is the only
+       persistent nav, and a volunteer with a waiting reply should not have
+       to find a thread through a footer link. About stays in the desktop
+       nav and the page footers. */
+    { id: 'inbox',     label: 'Chats',     icon: 'forum',        href: 'inbox.html', badge: true },
   ];
 
   var BOTTOM_ACCENT = '#f4511e';  /* vivid action orange, from the mock */
@@ -49,11 +58,51 @@
    * ------------------------------------------------------------------ */
   var CHROME_CSS = [
     /* ---- top header ---- */
+    '#site-top-header #fta-chat-pop{position:absolute;top:calc(100% + 8px);right:16px;width:min(340px,calc(100vw - 32px));',
+    'background:#fff;border:1px solid #e9e1df;border-radius:16px;box-shadow:0 18px 48px rgba(30,27,26,.18);',
+    'padding:10px;z-index:60}',
     '#site-top-header{position:fixed;top:0;left:0;right:0;z-index:50;',
     'background:rgba(255,255,255,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);',
     'border-bottom:1px solid #e9e1df;box-shadow:0 1px 2px rgba(30,27,26,.05)}',
     /* Single source of truth for the bar height, so a page that has to pad
        itself (about.html, 404.html, ...) can never drift from the real bar. */
+    /* ---- LinkedIn-style desktop nav items --------------------------------
+       Icon sits ABOVE the label, like LinkedIn's Home / My Network / Jobs /
+       Messaging row. Each item is a column flexbox with room for an unread
+       pill pinned to the icon's top-right (the Chats button uses it). */
+    '#site-nav .fta-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;',
+    'gap:2px;min-width:60px;padding:6px 8px;border-radius:8px;line-height:1.2;position:relative;text-decoration:none}',
+    '#site-nav .fta-nav-item .material-symbols-outlined{font-size:22px;line-height:1}',
+    '#site-nav .fta-nav-item .fta-nav-label{font-size:11px;white-space:nowrap}',
+    '#site-nav button.fta-nav-item{background:none;border:0;cursor:pointer;font:inherit}',
+    '#site-nav [data-chat-badge]{position:absolute;top:2px;right:8px;z-index:1}',
+    '#site-nav .fta-nav-item.fta-nav-on{color:#1e1b1a;font-weight:700}',
+    '#site-nav .fta-nav-item.fta-nav-on .material-symbols-outlined{color:#a03b0e}',
+    '#site-nav .fta-nav-item.fta-nav-off{color:#8b7269;font-weight:500}',
+    '#site-nav .fta-nav-item.fta-nav-off .material-symbols-outlined{color:#8b7269}',
+    '#site-nav .fta-nav-item.fta-nav-off:hover{color:#1e1b1a;background:#f5ecea}',
+    '#site-nav .fta-nav-item.fta-nav-off:hover .material-symbols-outlined{color:#1e1b1a}',
+    /* ---- unread badge -------------------------------------------------
+       One CSS class drives the desktop popover pill AND the mobile tab
+       dot, so the two can never show different numbers. */
+    '.fta-chat-badge{position:absolute;top:2px;left:50%;margin-left:4px;',
+    'min-width:17px;height:17px;padding:0 4px;border-radius:999px;',
+    'background:#a03b0e;color:#fff;font-size:10px;font-weight:800;line-height:17px;',
+    'text-align:center;box-shadow:0 0 0 2px #fff}',
+    '.fta-chat-badge[hidden]{display:none}',
+
+    /* ---- desktop chat popover (LinkedIn-style) ---------------------- */
+    '#fta-chat-pop[hidden]{display:none}',
+    '#fta-chat-pop .fta-cp-head{display:flex;align-items:center;justify-content:space-between;',
+    'padding:12px 14px;border-bottom:1px solid #efe6e4;font-weight:800;font-size:15px}',
+    '#fta-chat-pop .fta-cp-list{max-height:min(420px,60vh);overflow-y:auto}',
+    '#fta-chat-pop .fta-cp-row{display:flex;gap:10px;align-items:center;width:100%;text-align:left;',
+    'padding:10px 14px;border:0;border-bottom:1px solid #f5efee;background:#fff;',
+    'cursor:pointer;font-family:inherit;transition:background .12s}',
+    '#fta-chat-pop .fta-cp-row:hover{background:#fdf4f0}',
+    '#fta-chat-pop .fta-cp-row.unread{background:#fff4ec}',
+    '#fta-chat-pop .fta-cp-empty{padding:22px 14px;text-align:center;color:#8b7269;font-size:13px;line-height:1.6}',
+
     ':root{--site-header-h:68px}',
     /* The navbar is injected into <body>, so it inherits whatever typography
        each page set there. The map page renders at Tailwind's 1.5 while
@@ -146,17 +195,32 @@
     return file.replace('.html', '');
   }
 
+  function navItemHtml(l, active) {
+    var on = l.id === active;
+    /* The Chats entry IS the message bell: a button that toggles the
+       LinkedIn-style thread popover. It keeps data-nav="inbox" so the
+       active pill still lights when the volunteer is on inbox.html. */
+    if (l.chatButton) {
+      return '<button type="button" id="fta-chat-btn" data-nav="' + esc(l.id) + '"'
+        + ' aria-haspopup="true" aria-expanded="false"'
+        + ' aria-label="Messages" title="Messages"'
+        + (on ? ' aria-current="page"' : '')
+        + ' class="fta-nav-item ' + (on ? NAV_ON : NAV_OFF) + '">'
+        + '<span class="material-symbols-outlined">' + esc(l.icon) + '</span>'
+        + '<span class="fta-nav-label">' + esc(l.label) + '</span>'
+        + '<span class="fta-chat-badge" data-chat-badge="desktop" hidden></span>'
+        + '</button>';
+    }
+    return '<a href="' + esc(l.href) + '" data-nav="' + esc(l.id) + '"'
+      + (on ? ' aria-current="page"' : '')
+      + ' class="fta-nav-item ' + (on ? NAV_ON : NAV_OFF) + '">'
+      + '<span class="material-symbols-outlined">' + esc(l.icon) + '</span>'
+      + '<span class="fta-nav-label">' + esc(l.label) + '</span></a>';
+  }
+
   function headerHtml() {
     var active = currentId();
-    var links = LINKS.map(function (l) {
-      var on = l.id === active;
-      return '<a href="' + esc(l.href) + '" data-nav="' + esc(l.id) + '"'
-        + (on ? ' aria-current="page"' : '')
-        + ' class="px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm transition-all '
-        + (on ? 'font-semibold border ' + ACTIVE : IDLE) + '">'
-        + '<span class="material-symbols-outlined text-[18px] ' + (on ? 'text-primary' : 'text-outline') + '">' + esc(l.icon) + '</span>'
-        + '<span>' + esc(l.label) + '</span></a>';
-    }).join('');
+    var links = LINKS.map(function (l) { return navItemHtml(l, active); }).join('');
 
     return '<header id="site-top-header" class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-surface-container-highest shadow-sm">'
       + '<div class="fta-hd-inner h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4">'
@@ -166,8 +230,16 @@
           + '<span class="fta-brand text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none min-w-0 truncate whitespace-nowrap">FeedAnAnimalMap</span>'
         + '</a>'
       + '</div>'
-      + '<nav class="hidden md:flex items-center gap-1.5">' + links + '</nav>'
+      + '<nav id="site-nav" class="hidden md:flex items-center gap-1">' + links + '</nav>'
       + '<div class="fta-hd-right flex items-center gap-2.5 shrink-0">'
+        /* The thread popover lives one level up so it anchors under the
+           Chats nav button, not inside a separate bell wrapper. */
+        + '<div id="fta-chat-pop" hidden role="dialog" aria-label="Your conversations">'
+            + '<div class="fta-cp-head"><span>Messages</span>'
+              + '<a href="inbox.html" class="text-xs font-bold" style="color:#a03b0e">See all</a>'
+            + '</div>'
+            + '<div class="fta-cp-list" id="fta-chat-list"></div>'
+          + '</div>'
         + '<button type="button" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" title="Support Animal Relief">'
           + '<span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="fta-support-label hidden sm:inline">Support</span>'
         + '</button>'
@@ -188,10 +260,12 @@
     var on = l.id === active;
     return '<a href="' + esc(l.href) + '" data-bnav="' + esc(l.id) + '"'
       + (on ? ' aria-current="page"' : '')
-      + ' class="fta-bn-tab flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl transition-colors"'
+      + ' class="fta-bn-tab flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl transition-colors relative"'
       + ' style="color:' + (on ? BOTTOM_ACCENT : BOTTOM_IDLE) + '">'
       + '<span class="material-symbols-outlined text-[22px]">' + esc(l.icon) + '</span>'
-      + '<span class="fta-bn-label text-[10px] font-bold tracking-tight whitespace-nowrap">' + esc(l.label) + '</span></a>';
+      + '<span class="fta-bn-label text-[10px] font-bold tracking-tight whitespace-nowrap">' + esc(l.label) + '</span>'
+      + (l.badge ? '<span class="fta-chat-badge" data-chat-badge="mobile" hidden></span>' : '')
+      + '</a>';
   }
 
   /* The elevated orange centre pill: List/Map switch on the map page,
@@ -273,6 +347,162 @@
     setTimeout(refresh, 2000);
   }
 
+  /* ------------------------------------------------------------------ *
+   * Unread badge + desktop popover.
+   *
+   * Reads the SAME sbInbox() the inbox page reads, so the pill, the
+   * popover list and inbox.html can never disagree about what is unread.
+   * Everything degrades silently: without Supabase, or without the chat
+   * tables, the bell simply has no badge.
+   * ------------------------------------------------------------------ */
+  var CHAT_HUES = ['#a03b0e', '#7c4a21', '#4b6b3a', '#2f6f6a', '#3b5a8a', '#6b3a7a', '#8a5a2b', '#5a6b2f'];
+
+  function chatHue(name) {
+    var src = String(name == null ? '' : name), h = 0;
+    for (var i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) >>> 0;
+    return CHAT_HUES[h % CHAT_HUES.length];
+  }
+
+  function chatInitials(name) {
+    var parts = String(name == null ? '' : name).trim().split(/[\s._-]+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function chatAgo(iso) {
+    var at = Date.parse(iso);
+    if (!isFinite(at)) return '';
+    var mins = Math.round((Date.now() - at) / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return mins + 'm';
+    if (mins < 1440) return Math.round(mins / 60) + 'h';
+    var d = Math.round(mins / 1440);
+    if (d < 7) return d + 'd';
+    return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  function chatPopRow(t) {
+    var who = t.peerName || 'Volunteer';
+    var preview = t.lastBody ? (t.lastMine ? 'You: ' + t.lastBody : t.lastBody) : 'No messages yet';
+    return '<button type="button" class="fta-cp-row' + (t.unread ? ' unread' : '') + '"'
+      + ' data-animal="' + esc(t.animalId || '') + '"'
+      /* The conversation id travels too. Without it the map has to guess the
+         other person from the animal's care log, which names whoever fed it
+         LAST - so tapping "Lala" could open a blank thread with a third
+         volunteer. This row already knows; carry it. */
+      + ' data-conversation="' + esc(t.id || '') + '">'
+      + '<span class="relative w-9 h-9 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"'
+        + ' style="background:' + esc(chatHue(who)) + '">'
+        + '<span style="color:#fff;font-size:13px;font-weight:800">' + esc(chatInitials(who)) + '</span></span>'
+      + '<span style="flex:1;min-width:0">'
+        + '<span style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">'
+          + '<b style="font-size:13.5px;color:#1e1b1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(who) + '</b>'
+          + '<span style="font-size:10.5px;color:#8b7269;flex-shrink:0">' + esc(chatAgo(t.lastAt)) + '</span>'
+        + '</span>'
+        + '<span style="display:block;font-size:12px;color:#57423b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+          + esc(preview) + '</span>'
+        + (t.animalName ? '<span style="font-size:10.5px;color:#a03b0e;font-weight:700">about ' + esc(t.animalName) + '</span>' : '')
+      + '</span>'
+      + (t.unread ? '<span class="fta-chat-badge" style="position:static;box-shadow:none">' + (t.unread > 99 ? '99+' : t.unread) + '</span>' : '')
+    + '</button>';
+  }
+
+  /* Both badges are written from one count, so the desktop pill and the
+     mobile tab can never show different numbers. */
+  function paintBadges(count) {
+    var n = Number(count) || 0;
+    var nodes = document.querySelectorAll('[data-chat-badge]');
+    Array.prototype.forEach.call(nodes, function (el) {
+      el.textContent = n > 99 ? '99+' : String(n);
+      if (n > 0) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
+    });
+  }
+
+  function closeChatPop() {
+    var pop = document.getElementById('fta-chat-pop');
+    var btn = document.getElementById('fta-chat-btn');
+    if (pop) pop.setAttribute('hidden', '');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  async function loadChatBell() {
+    var inbox = window.sbInbox;
+    if (typeof inbox !== 'function') return;
+    var rows = [];
+    try { rows = (await inbox(8)) || []; } catch (e) { rows = []; }
+
+    var unread = rows.reduce(function (sum, t) { return sum + (Number(t.unread) || 0); }, 0);
+    paintBadges(unread);
+
+    var list = document.getElementById('fta-chat-list');
+    if (!list) return;
+    if (!rows.length) {
+      list.innerHTML = '<div class="fta-cp-empty">No messages yet.<br>Open an animal on the map and tap the chat button.</div>';
+      return;
+    }
+    list.innerHTML = rows.slice(0, 6).map(chatPopRow).join('');
+  }
+
+  function wireChatBell() {
+    var btn = document.getElementById('fta-chat-btn');
+    var pop = document.getElementById('fta-chat-pop');
+    if (!btn || !pop) return;
+
+    btn.addEventListener('click', function (event) {
+      event.stopPropagation();
+      var open = pop.hasAttribute('hidden');
+      if (open) {
+        pop.removeAttribute('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        loadChatBell();
+      } else {
+        closeChatPop();
+      }
+    });
+
+    /* Click anywhere else closes it, and Escape always closes it - the two
+       behaviours a popover is expected to have. The button contains spans,
+       so the guard tests containment, not identity: clicking the icon
+       itself must not count as "anywhere else". */
+    document.addEventListener('click', function (event) {
+      if (pop.hasAttribute('hidden')) return;
+      if (!pop.contains(event.target) && !btn.contains(event.target)) closeChatPop();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !pop.hasAttribute('hidden')) closeChatPop();
+    });
+
+    pop.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!target || typeof target.closest !== 'function') return;
+      var row = target.closest('[data-conversation]');
+      if (!row) return;
+      /* Hand the thread to the map, which owns the composer. Both ids go:
+         the animal centres the pin, the conversation opens THIS thread. */
+      var animal = row.getAttribute('data-animal') || '';
+      var conversation = row.getAttribute('data-conversation') || '';
+      var href = 'index.html';
+      if (conversation) {
+        href += '#chat=' + encodeURIComponent(animal || conversation) +
+          '&conversation=' + encodeURIComponent(conversation);
+      } else if (animal) {
+        href += '#chat=' + encodeURIComponent(animal);
+      }
+      window.location.href = href;
+    });
+
+    /* Badge on load, then roughly every minute. Deliberately not realtime:
+       a volunteer is not watching the bell, and polling keeps the socket
+       budget for the open thread itself. */
+    loadChatBell();
+    setTimeout(loadChatBell, 2000);
+    setInterval(loadChatBell, 60000);
+
+    /* Opening a thread from the inbox clears its badge on the way out. */
+    window.addEventListener('fta:chat-opened', loadChatBell);
+  }
+
   function mount() {
     injectStyle();
     var slot = document.getElementById('site-header');
@@ -282,6 +512,7 @@
     }
     injectBottomNav();
     wireAuthLink();
+    wireChatBell();
     refreshActive();
     refreshBottom();
     // Same-page hash switches (Cities, topic threads)
@@ -290,31 +521,33 @@
     window.addEventListener('hashchange', refreshBottom);
   }
 
-  /* Re-apply the active pill after in-page hash navigation. */
+  /* Re-apply the active state after in-page hash navigation. Covers both
+     links and the Chats button, which carries data-nav="inbox". */
   function refreshActive() {
     var active = currentId();
-    var items = document.querySelectorAll('nav a[data-nav]');
+    var items = document.querySelectorAll('#site-nav [data-nav]');
     if (!items.length) return;
     Array.prototype.forEach.call(items, function (a) {
       var on = a.getAttribute('data-nav') === active;
       if (on) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
-      var icon = a.querySelector('.material-symbols-outlined');
-      a.className = 'px-4 py-1.5 rounded-full flex items-center gap-1.5 text-sm transition-all '
-        + (on ? 'font-semibold border ' + ACTIVE : IDLE);
-      if (icon) icon.className = 'material-symbols-outlined text-[18px] ' + (on ? 'text-primary' : 'text-outline');
+      a.classList.remove(NAV_ON, NAV_OFF);
+      a.classList.add(on ? NAV_ON : NAV_OFF);
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
-  } else {
-    mount();
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mount);
+    } else {
+      mount();
+    }
   }
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { LINKS: LINKS, BOTTOM_TABS: BOTTOM_TABS, headerHtml: headerHtml,
       bottomNavHtml: bottomNavHtml, currentId: currentId, refreshActive: refreshActive,
-      refreshBottom: refreshBottom };
+      refreshBottom: refreshBottom, chatPopRow: chatPopRow, paintBadges: paintBadges,
+      chatInitials: chatInitials, chatHue: chatHue, chatAgo: chatAgo };
   }
 })();

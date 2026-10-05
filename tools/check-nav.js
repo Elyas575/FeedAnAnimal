@@ -34,6 +34,7 @@ t('/about.html', '', 'about');
 t('/community.html', '', 'community');
 t('/community.html', '#leaderboard', 'community');
 t('/activity.html', '', 'activity');
+t('/inbox.html', '', 'inbox');
 t('/auth.html', '', 'auth');
 t('/privacy.html', '', 'privacy');
 t('/terms.html', '', 'terms');
@@ -57,7 +58,7 @@ header.LINKS.forEach((l) => {
    Both read as 'a different navbar', so this stays green forever. */
 const GOOD_AXES = 'opsz,wght,FILL,GRAD';
 const NAV_PAGES = ['index.html', 'community.html', 'activity.html', 'auth.html',
-  'about.html', 'privacy.html', 'terms.html', '404.html'];
+  'about.html', 'privacy.html', 'terms.html', '404.html', 'inbox.html'];
 let fontFailed = 0;
 NAV_PAGES.forEach((file) => {
   const h = fs.readFileSync(path.join(ROOT, file), 'utf8');

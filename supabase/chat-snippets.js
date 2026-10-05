@@ -29,10 +29,21 @@ async function sbListMessages(conversationId, limit = 50) {
 }
 
 async function sbSendMessage(conversationId, body) {
+  const user = await sbRequireEmail();
+  if (!user) return { error: 'signin' };
   const clean = String(body || '').trim().slice(0, 2000);
-  if (!clean) return;
-  const { error } = await sb.from('messages').insert([{ conversation_id: conversationId, body: clean }]);
-  if (error) throw error;
+  if (!clean) return { error: 'empty' };
+  /* sender_id is REQUIRED even though the column is nullable: the
+     "participants send messages" RLS policy checks
+     sender_id = auth.uid(). Omitting it makes every send fail with an
+     RLS error that looks nothing like a missing column.
+     The working version lives in supabase-client.js as sbSendMessage. */
+  const { data, error } = await sb.from('messages')
+    .insert([{ conversation_id: conversationId, sender_id: user.id, body: clean }])
+    .select()
+    .single();
+  if (error) return { error: 'failed' };
+  return data;
 }
 
 function sbSubscribeDm(conversationId, onMsg) {

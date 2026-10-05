@@ -87,10 +87,34 @@ if (/confirm|verify|confirmation/i.test(msg)) return msg + ' — check your inbo
 return msg;
 }
 function email(){ return ($('auth-email').value || '').trim(); }
+/* A volunteer only counts as signed in with a real account. Anonymous
+   sessions are created silently for forum posting (sbEnsureAuth), and those
+   visitors still need this page, so is_anonymous must not redirect home. */
+function isSignedIn(u){ return !!u && !u.is_anonymous; }
+/* Every successful sign-in ends on the map. location.replace() rather than a
+   plain href assignment, so the browser Back button skips auth.html instead of
+   bouncing the volunteer back to a form they already completed. */
+var leaving = false;
+function goHome(delay){
+  if (leaving) return;
+  leaving = true;
+  setTimeout(function(){ window.location.replace('index.html'); }, delay || 0);
+}
+/* The magic link and the Google button both return to this same page with the
+   session in the URL. Supabase consumes it and fires onAuthStateChange, and that
+   is what finally sends the volunteer home. */
+function watchSession(){
+  try { window.sbAuth.onChange(function(u){ if (isSignedIn(u)) goHome(); }); }
+  catch(e){}
+}
 async function showUser(){
 try {
 var u = await window.sbAuth.currentUser();
-if (u) { status('Signed in as ' + (u.email || u.id), true); $('btn-logout').classList.remove('hidden'); }
+if (isSignedIn(u)) {
+  status('Signed in as ' + (u.email || u.id), true);
+  $('btn-logout').classList.remove('hidden');
+  goHome(700);   /* already signed in — no reason to stay on this form */
+}
 } catch(e){}
 }
 $('btn-google').onclick = async function(){
@@ -110,9 +134,17 @@ setBusy(true);
 try {
 toast('Creating your account...', 'info');
 await window.sbAuth.signUpWithPassword(email(), $('auth-password').value, $('auth-name').value);
-status('Account created! Check your email for the confirm link, click it, then press Login.', true);
-toast('Account created! Check your email, then Login.', 'ok');
-showUser();
+/* Email confirmation ON -> signUp returns no session, so the volunteer has
+   to click the confirm link first and stays here. Confirmation OFF -> they
+   are already signed in, so the map is the only sensible next screen. */
+if (isSignedIn(await window.sbAuth.currentUser())) {
+  status('Account created! Taking you to the map…', true);
+  toast('Welcome to FeedAnAnimalMap!', 'ok');
+  goHome(800);
+} else {
+  status('Account created! Check your email for the confirm link, click it, then press Login.', true);
+  toast('Account created! Check your email, then Login.', 'ok');
+}
 } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
 setBusy(false);
 };
@@ -121,13 +153,16 @@ setBusy(true);
 try {
 toast('Logging you in...', 'info');
 await window.sbAuth.signInWithPassword(email(), $('auth-password').value);
-status('Logged in! Back to map...', true);
+status('Logged in! Taking you to the map…', true);
 toast('Welcome back!', 'ok');
-setTimeout(function(){ location.href = 'index.html'; }, 800);
+goHome(800);
 } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
 setBusy(false);
 };
 $('btn-logout').onclick = async function(){ await window.sbAuth.signOut(); location.reload(); };
+/* Covers the magic-link and Google round trips: those come back here first. */
+watchSession();
+/* Covers a volunteer who is already signed in and opens this page again. */
 showUser();
 })();
 </script>

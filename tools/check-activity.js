@@ -461,7 +461,7 @@ const BUDGET = 110 * 1024;
 /* --- Phase 6: deploy surface (MVP blocker) ---------------------------- *
  * A broken internal link is a 404 in production, so assert every local
  * href/src in every shipped page actually exists on disk. */
-const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', 'community.html', '404.html'];
+const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', 'community.html', '404.html', 'inbox.html'];
 // The shared navbar must exist on EVERY shipped page.
 rows.push([fs.existsSync(path.join(ROOT, 'site-header.js')) ? 'OK  ' : 'MISS', 'deploy file present: site-header.js']);
 pages.forEach((file) => {

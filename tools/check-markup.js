@@ -95,6 +95,8 @@ const globals = new Set([
   'Promise', 'Error', 'RegExp', 'fetch', 'setTimeout', 'clearTimeout', 'setInterval',
   'clearInterval', 'parseInt', 'parseFloat', 'isFinite', 'isNaN', 'require', 'console',
   'URLSearchParams', 'URL', 'FormData', 'Blob', 'File',
+  // browser constructors — DOM-side only, never defined in the file itself
+  'Event', 'CustomEvent', 'MutationObserver',
   // reserved keywords — never user-defined names, so the call-site regex may match them
   'if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'new', 'do', 'else',
   'async', 'await', 'try', 'finally', 'delete', 'void', 'in', 'of', 'instanceof', 'yield',

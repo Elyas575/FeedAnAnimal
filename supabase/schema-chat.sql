@@ -1,9 +1,21 @@
 -- FeedTheAnimalsMap CHAT schema (DMs)
 -- Paste into Supabase SQL Editor AFTER schema-core.sql > Run
 
+-- animal_id is PLAIN text, deliberately NOT a foreign key to animals(id).
+--
+-- It was `references animals(id)` originally, and that silently broke every
+-- DM: the animals table is intentionally empty (cleanup-seed-data.sql) because
+-- the map now grows from real community reports, and a reported stray's id is
+-- 'report-<uuid>' - which never exists in `animals`. So the insert inside
+-- get_or_create_dm was rejected by Postgres and the UI showed the generic
+-- "That conversation could not be opened."
+--
+-- Same reasoning as supabase/migration-drop-events-fk.sql for the events
+-- table. If you are upgrading a database that still has the constraint, run
+-- that migration too - it also drops conversations_animal_id_fkey.
 create table if not exists conversations (
   id uuid primary key default gen_random_uuid(),
-  animal_id text references animals(id) on delete set null,
+  animal_id text,
   report_id uuid references reports(id) on delete set null,
   created_by uuid references profiles(id) on delete set null,
   created_at timestamptz default now()
@@ -109,6 +121,14 @@ create policy "auth join convo" on conversation_participants for insert
   with check (
     auth.role() = 'authenticated' and is_conversation_participant(conversation_id)
   );
+
+-- Advancing your OWN read cursor. The table had only SELECT and INSERT, so
+-- without this the unread badge in the inbox could be counted but never
+-- cleared - it would climb forever. Scoped to user_id = auth.uid(), so a
+-- volunteer cannot mark somebody else's conversation read.
+drop policy if exists "participants mark read" on conversation_participants;
+create policy "participants mark read" on conversation_participants for update
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "participants read messages" on messages;
 create policy "participants read messages" on messages for select using (

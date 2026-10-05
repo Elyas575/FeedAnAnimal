@@ -26,10 +26,24 @@
   # index.html revalidates. Caching this for an hour lets a browser pair NEW
   # markup with an OLD stylesheet, which is how the Directions label ended up
   # unreadable. Must revalidate like the pages that reference it.
+  # Phase 5 raised this further: the chat modal markup lives in index.html but
+  # its rendering, wiring and teardown live here, so a stale index.js against
+  # fresh markup means dead buttons with no console error.
   Cache-Control: no-cache, must-revalidate
 
 /supabase-client.js
-  Cache-Control: public, max-age=3600, must-revalidate
+  # Same reasoning as /index.js, one layer down. index.js and site-header.js
+  # are no-cache, so both revalidate every load - but this file is what they
+  # call into, and a stale copy pairs FRESH callers with OLD data helpers.
+  # That is precisely the reported bug: index.js asked for
+  # window.sbMarkConversationRead, the hour-old cached client did not define
+  # it, chatFn() returned null, and markThreadRead() returned early - so the
+  # unread badge never cleared. It looked like a read-state bug and was a
+  # caching bug. It only reproduced in one browser because each browser keeps
+  # its own HTTP cache, so Firefox served the stale copy while Brave refetched.
+  # must-revalidate means an already-stale entry is revalidated on next load,
+  # so this also repairs caches that were poisoned before the fix.
+  Cache-Control: no-cache, must-revalidate
 
 /site-header.js
   Cache-Control: no-cache, must-revalidate
