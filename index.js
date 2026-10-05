@@ -2288,7 +2288,16 @@
     const newest = rows.length ? rows[rows.length - 1] : null;
     const upTo = newest ? newest.created_at : null;
 
-    Promise.resolve(markRead(conversation, upTo)).then(() => {
+    /* The cursor is the newest message we LOADED, never a server-side
+       "latest": on a long thread the newest rows are not on screen yet. */
+    Promise.resolve(markRead(conversation, upTo)).then((ok) => {
+      /* false = the database refused (usually the missing UPDATE policy).
+         Repainting anyway re-read the unchanged row and showed the same
+         count, so a stuck badge looked identical to a working one. */
+      if (ok === false) {
+        console.warn('[chat] mark read refused - run supabase/migration-read-receipts.sql');
+        return;
+      }
       /* Ask the header to repaint so the badge drops without waiting for
          its next poll. */
       try { window.dispatchEvent(new Event('fta:chat-opened')); } catch (e) { /* older browsers */ }

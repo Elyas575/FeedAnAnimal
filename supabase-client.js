@@ -314,11 +314,8 @@ async function sbInbox(limit) {
 }
 
 /* Clears the unread badge for one thread. Reads a row only ever visible to
-   its owner (user_id = auth.uid()), so a forged id cannot touch anyone
-   else's state. Returns true on success. */
-/* Clears the unread badge for one thread. Reads a row only ever visible to
     its owner (user_id = auth.uid()), so a forged id cannot touch anyone
-    else's state. Returns true on success.
+    else's state. Returns true on success, false when the server refused.
 
     `upToIso` MUST be the newest message timestamp the client actually saw,
     which is a value the SERVER wrote. The obvious implementation -
@@ -433,8 +430,17 @@ async function sbOpenDm(otherUserId, animalId, reportId) {
   }
 }
 
-/* Oldest-first so the thread reads top to bottom. Deleted rows are
-   filtered out in the query rather than rendered as tombstones. */
+/* The NEWEST `limit` messages, returned oldest-first so the thread reads top
+   to bottom. Deleted rows are filtered out in the query rather than rendered
+   as tombstones.
+
+   Newest-first in the QUERY, then reversed here. Ordering ascending and
+   applying .limit() returns the OLDEST `limit` rows, not the newest - so on a
+   thread longer than the limit the volunteer never saw the latest messages,
+   and markThreadRead() stamped a cursor from the middle of the conversation.
+   Every message after that point stayed permanently unread, which is a badge
+   that survives reading the thread. Reversing a bounded newest-first page is
+   the only way to get "the most recent N, in reading order". */
 async function sbListMessages(conversationId, limit) {
   if (!sb || !conversationId) return null;
   try {
@@ -442,10 +448,10 @@ async function sbListMessages(conversationId, limit) {
       .select('id, conversation_id, sender_id, body, created_at, is_deleted')
       .eq('conversation_id', conversationId)
       .eq('is_deleted', false)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(limit || 100);
     if (error) throw error;
-    return data || [];
+    return (data || []).slice().reverse();
   } catch (err) {
     console.warn('[sb] list messages failed:', err.message);
     return null;

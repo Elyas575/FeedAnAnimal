@@ -5,39 +5,58 @@ Check each box. Tell me PHASE + STEP + F12 error if stuck.
 
 ---
 
-## AUDIT 2026-10-04 - where you actually are
+## AUDIT 2026-10-05 - re-verified against the working tree
 
-Phases 0-6 are finished. The app is built, tested and wired to a live database.
-Phase 7 (go live) is the only phase left, and nothing in it has been started.
-You are not behind - you are one phase from done.
+Phases 0-6 are done. Phase 7 (go live) is the only phase left.
+Re-audited the repo rather than trusting the 10-04 notes. Three of them had
+gone stale:
 
-Verified: `npm test` exit 0 (26 + 92 + 44 checks green), all 12 Supabase tables
-exist, anon key is live in supabase-client.js, no secrets in git history.
+- **auth.html is FIXED.** The inline script parses cleanly and `watchSession`,
+  `goHome` and `isSignedIn` are all defined and called. Step 7.0 is done -
+  do not re-run the patch scripts, they are already applied and committed.
+- **git is CLEAN and level with origin.** `main` and `origin/main` are both at
+  `7034341`, 0 commits apart, and `git stash list` is empty.
+- **The FK migration is only "maybe still needed".** `schema-core.sql` no longer
+  declares `events.animal_id` as a foreign key (line 76 is plain `text`, with a
+  comment saying so). That only proves the SCHEMA FILE is correct - it does not
+  prove your live DATABASE was altered. `migration-drop-events-fk.sql` is
+  idempotent, so running it costs nothing and removes the doubt. Still do it.
+
+Chat is now substantially further along than this document records. A third
+migration was added and three real bugs were fixed (see the note at the end).
+
+Verified by running the suites just now:
+- `check-chat.js` 252/252, `simulate-chat.js` 88/88, `check-markup.js` pass
+- `npm test` is NOT fully green: 4 pre-existing theme-class checks fail in
+  `check-activity.js`. They are unrelated to chat and do not block launch.
 
 ## DO THESE 5 THINGS NEXT (in this order)
 
-1. **RUN THE FK MIGRATION** - `supabase/migration-drop-events-fk.sql` in the
-   Supabase SQL Editor. Without this, EVERY shared write silently fails:
-   `events.animal_id` references `animals(id)`, but `animals` was emptied by
-   cleanup-seed-data.sql, so logging a feed for "milo" is rejected by Postgres.
-   The feed looks like it worked (it saves to localStorage first) but never
-   reaches the database - and chat cannot work at all, because it looks up
-   recent `events` rows to find a caretaker. Run this FIRST; nothing else in
-   Phase 4/5 is testable until it is done.
-2. **auth.html is FIXED** - both patch scripts have been run and the inline
-   script parses cleanly. `watchSession`, `goHome` and `isSignedIn` are all
-   defined and called. Confirm in the browser: open auth.html, console clean,
-   buttons work.
-3. **COMMIT** - `git add .` then commit.
-4. **DEPLOY** - Cloudflare Pages, build empty, output `.`. `feedanimals.pages.dev`
-   does not resolve yet, so no site is live.
-5. **SUPABASE SETTINGS** (10 min, do these or the test below misleads you):
+1. **RUN BOTH MIGRATIONS** in the Supabase SQL Editor, in this order:
+   - `supabase/migration-drop-events-fk.sql` - without this, every shared
+     write is rejected: `events.animal_id` references `animals(id)`, but
+     `animals` was emptied by cleanup-seed-data.sql, so logging a feed for
+     "milo" never reaches the database (it saves to localStorage first, so it
+     LOOKS like it worked). Chat cannot work either, because it looks up
+     recent `events` rows to find a caretaker.
+   - `supabase/migration-read-receipts.sql` - adds the UPDATE policy that lets
+     you clear your own unread badge. WITHOUT THIS THE BADGE WILL NEVER CLEAR,
+     and the console says `mark read refused`. This is the bug you just hit.
+   Both are idempotent - safe to run twice.
+2. **COMMIT** - 3 files are uncommitted: `index.js`, `supabase-client.js`,
+   `tools/check-chat.js`. These carry the chat fixes. `git add . && git commit`
+   && `git push origin main`.
+3. **DEPLOY** - Cloudflare Pages, build empty, output `.`. This is the single
+   biggest reason the site is not live.
+4. **SUPABASE SETTINGS** (10 min, do these or the test below misleads you):
    - Auth > Providers > Email: turn **Confirm email OFF** (instant test accounts)
    - Database > Publications > supabase_realtime: ensure **events AND messages**
      are both listed (messages is what makes DMs appear without a refresh)
    - Authentication > URL Config: Site URL = your real domain, and add the
      domain + pages.dev + localhost to Redirects, or magic-link logins bounce
      to the wrong page
+5. **TWO-BROWSER TEST** - the only step that cannot be done from a terminal.
+   See "THE ONE TEST THAT PROVES IT" at the end of this file.
 6. **DECIDE: seed or stay empty** - animals/stations are 0 rows on purpose (you
    ran cleanup-seed-data.sql). The map is genuinely empty until a real person
    reports a stray. That is fine to launch, but be deliberate about it.
@@ -164,13 +183,22 @@ composer. That is correct behaviour, not a limitation to work around.
          placeholders ("eyJ...service_role..."), no real keys. Clean.
 DONE WHEN: no secrets in git, validators pass. -> YES.
 
-## PHASE 7 - Go live (20 min) - NOT STARTED. This is your whole remaining list.
-- [ ] 7.0 FIRST: fix auth.html. Run `node tools/patch-auth-redirect.js`, open
-      auth.html, confirm no ReferenceError, then `git add . && git commit`.
-      Right now the working tree is dirty and the sign-in page is broken.
-- [ ] 7.1 git add .; git commit -m "mvp ready"; git push origin main
-      -> main is pushed and level with origin, but auth.html + the patch script
-         are still uncommitted. Do this right after 7.0.
+## PHASE 7 - Go live (20 min) - PARTLY DONE. This is your whole remaining list.
+- [X] 7.0 fix auth.html. Both patch scripts were applied and the inline script
+      parses cleanly; `watchSession`, `goHome` and `isSignedIn` are defined and
+      called. Committed in `7034341`. DO NOT re-run the patches - they are
+      one-shot string edits, not idempotent transforms.
+- [ ] 7.1 git add .; git commit -m "chat: fix unread badge, newest-N paging,
+      report refused mark-read"; git push origin main
+      -> main is level with origin at `7034341`, but 3 files are still
+         uncommitted: `index.js`, `supabase-client.js`, `tools/check-chat.js`.
+         They carry every chat fix from this session. Commit them.
+- [ ] 7.1a RUN BOTH MIGRATIONS (Supabase > SQL Editor > New Query > Run)
+      -> `supabase/migration-drop-events-fk.sql`
+      -> `supabase/migration-read-receipts.sql`
+      Both are idempotent. The second is REQUIRED for the unread badge to
+      clear at all - without the UPDATE policy every attempt is rejected and
+      the console prints `mark read refused`.
 - [ ] 7.2 dash.cloudflare.com > Pages > Connect GitHub > Build empty, Output . -> https://feedanimals.pages.dev works
       -> NOT DONE. Checked 2026-10-04: `feedanimals.pages.dev` does not resolve
          ("DNS name does not exist"). No Pages project exists yet. This is the
@@ -193,6 +221,62 @@ DONE WHEN: 48 pins, shared feed, report photo, 2-user DM, https lock. MVP LIVE.
       -> adjust: 0 pins is the current intent (see 3.4), and DMs are skipped
          (Phase 5). Real DONE WHEN = site loads on the https domain, sign-in
          works, and a feed logged in one browser shows in the other.
+## CHAT - where it actually stands (2026-10-05)
+
+Much further along than "needs a live eyeball". Built and unit-tested: exact
+conversation selection, oldest-first rendering, mobile full-screen sheet,
+LinkedIn-style thread (plain text, one header per group, read ticks), and
+accurate unread clearing. `check-chat.js` is 252 checks, `simulate-chat.js` 88.
+
+FOUR real bugs were found and fixed this session. Each looked like "the badge
+lies to me" and none was caused by the one before it:
+
+1. **Stale cached `supabase-client.js`.** `_headers` served it `max-age=3600`
+   while `index.js`/`site-header.js` were `no-cache`. A browser holding the old
+   copy ran a FRESH caller against an OLD data layer:
+   `window.sbMarkConversationRead` came back undefined, the mark silently
+   returned, and the badge survived being read. It appeared in Firefox but not
+   Brave purely because each browser keeps its own HTTP cache. Fixed to
+   `no-cache, must-revalidate`.
+2. **The thread loaded the OLDEST messages.** `.order(ascending).limit(200)`
+   returns the oldest 200, not the newest - so on a long thread the newest
+   messages were never loaded and the read cursor was stamped from the middle
+   of the conversation. Now pages newest-first, then reverses for display.
+3. **A refused write was painted over as a success.** `markThreadRead()` ignored
+   the boolean from `sbMarkConversationRead`, so when the database rejected the
+   update (the missing UPDATE policy) it still repainted, re-read the unchanged
+   row and showed the same count - with nothing in the console. Now reported
+   instead of hidden.
+4. **A duplicated doc-comment block** left in `supabase-client.js`.
+
+WHY THIS MATTERS FOR LAUNCH: bugs 1-3 are exactly why the unread badge would
+not clear. Bug 3 HIDES the real cause, which is the missing RLS policy in
+`migration-read-receipts.sql`. That is why 7.1a is a hard blocker, not a
+formality.
+
+## THE ONE TEST THAT PROVES IT
+
+Cannot be done from a terminal. Two browsers, two real accounts, after deploy
+and after 7.1a. Keep F12 open on both.
+
+1. Sign in as A in one browser, as B in another (same site, same project).
+2. B reports a stray, or opens an existing thread with A and sends "hey".
+3. A must see the Chats badge go to 1 within ~60s.
+4. A opens the thread. The badge must drop to 0 IMMEDIATELY.
+   - Still there + console says `mark read refused`
+     = migration 7.1a not run.
+   - Still there + console says `sbMarkConversationRead is missing`
+     = hard-reload (Ctrl+Shift+R), stale script.
+5. A replies. B sees ONE tick. B opens the thread. A's tick becomes TWO.
+6. A reloads. The badge must STILL be 0 - proves it persisted to the database.
+
+If step 4 is the only thing failing, send me that exact console line.
+
+NOTE ON MULTIPLE THREADS WITH ONE PERSON: `get_or_create_dm` keys the thread on
+the report id, so every "Unnamed stray" report creates its OWN conversation with
+the same volunteer. Three reports = three separate threads = three unread
+counts. That is correct behaviour, but it is why a badge can show 4 after you
+read one thread: 1 in the thread you opened, 3 in threads you have not.
 
 ## OPERATE
 - Monitor Supabase Database Usage alert 400MB, Storage 800MB.

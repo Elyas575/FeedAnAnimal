@@ -467,8 +467,22 @@ ok('returning to the tab catches the thread up',
   /addEventListener\('visibilitychange', onTabVisible\)/.test(js));
 ok('focus also catches the thread up',
   /addEventListener\('focus', onTabVisible\)/.test(js));
-ok('marking read asks the header to repaint',
-  /function markThreadRead[\s\S]{0,900}fta:chat-opened/.test(js));
+/* Scope the window to the function BODY, so the assertion survives comments
+   and doc blocks growing around it. A fixed 900-char span silently started
+   failing the moment the explanation above grew, which reads as "the repaint
+   is gone" when the code is fine. Strip comments, then look inside the
+   braces only. */
+const markBody = (function () {
+  const start = js.indexOf('function markThreadRead');
+  const open = js.indexOf('{', start);
+  let depth = 0;
+  for (let i = open; i < js.length; i += 1) {
+    if (js[i] === '{') depth += 1;
+    else if (js[i] === '}') { depth -= 1; if (depth === 0) return js.slice(open, i + 1); }
+  }
+  return js.slice(open);
+})();
+ok('marking read asks the header to repaint', /dispatchEvent\(new Event\('fta:chat-opened'\)\)/.test(markBody));
 ok('a failed mark does not break the thread',
   /\.catch\(\(\) => \{ \/\* badge stays stale/.test(js));
 
@@ -489,6 +503,29 @@ ok('supabase-client.js is not served from a long-lived cache',
   /no-cache/.test(clientRule) && !/max-age=(?!0\b)\d{3,}/.test(clientRule));
 ok('the stale-client case is reported instead of silently skipped',
   /if \(!markRead\) \{\s*\n\s*console\.warn/.test(js));
+
+/* Two more reasons the count survives reading, both invisible.
+
+   (a) sbListMessages ordered ascending THEN limited, which returns the OLDEST
+       `limit` rows. On a long thread the newest messages were never loaded,
+       the cursor was stamped from the middle of the conversation, and every
+       later message stayed unread forever. The query must page newest-first
+       and reverse for display.
+
+   (b) markThreadRead() repainted the header even when the database REFUSED
+       the update. sbMarkConversationRead returns false on a permission error
+       (the missing UPDATE policy), the repaint re-read the unchanged row and
+       showed the same count, so the badge looked stuck with nothing in the
+       console. A refusal must be reported, not painted over. */
+const listFn = /async function sbListMessages[\s\S]*?\n\}/.exec(client);
+ok('the message query pages the NEWEST messages first',
+  listFn && /order\('created_at', \{ ascending: false \}\)/.test(listFn[0]));
+ok('the newest-first page is reversed for reading order',
+  listFn && /\.slice\(\)\.reverse\(\)/.test(listFn[0]));
+ok('a refused mark is reported, not repainted as a success',
+  /markRead\(conversation, upTo\)\)\.then\(\(ok\) => \{[\s\S]*?if \(ok === false\)/.test(markBody));
+ok('a refused mark points at the read-receipts migration',
+  /ok === false[\s\S]{0,700}?migration-read-receipts\.sql/.test(markBody));
 /* The SQL side. A database created before the mark-read policy cannot
    clear its badge at all, and the failure is invisible in the UI - which
    is the single most likely reason a volunteer still sees a stuck count. */
