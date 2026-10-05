@@ -207,7 +207,7 @@
        back from the insert, and realtime then delivers the same row again).
        channel is the realtime subscription and MUST be released on close or
        it keeps delivering into a detached node. */
-    chat: { conversationId: null, peer: null, peerName: '', peerReadAt: null, blocked: false, channel: null, seenIds: {}, rows: [], animalName: '', myId: null }
+    chat: { conversationId: null, peer: null, peerName: '', peerReadAt: null, blocked: false, channel: null, seenIds: {}, rows: [], animalName: '', myId: null, readTimer: null }
   };
 
   async function loadDataset() {
@@ -1457,6 +1457,13 @@
      a channel left open would keep firing into a detached log element for
      the rest of the session and re-subscribe on top of each reopen. */
   function stopChat() {
+    /* The read-cursor poll must die with the thread. Left running it would
+       keep querying a conversation nobody is looking at, and the handle would
+       leak one interval per thread opened. */
+    if (state.chat.readTimer) {
+      clearInterval(state.chat.readTimer);
+      state.chat.readTimer = null;
+    }
     if (state.chat.channel) {
       try {
         const client = (typeof window !== 'undefined' && window.sb) ? window.sb : null;
@@ -2304,6 +2311,37 @@
     }).catch(() => { /* badge stays stale; nothing else breaks */ });
   }
 
+  /* Re-read the OTHER volunteer's read cursor.
+
+     THE BUG THIS FIXES: the tick showed a single "sent" check forever. The
+     cursor was fetched once, when the thread was opened, and then cached in
+     state.chat.peerReadAt for the life of the modal. Opening the thread on
+     your own screen bumps YOUR cursor in the database - it does nothing to
+     the OTHER participant's row. So the peer reading your message changed a
+     column this client had already read and would never read again, and the
+     tick stayed at one until you closed and reopened the thread.
+
+     A receipt is a live fact about somebody else's session, so it has to be
+     polled, not snapshotted. Cheap: one indexed 2-row read, and only while a
+     thread is actually open. Re-renders only when the value really moved, so
+     this does not fight the realtime appends or reset the scroll position. */
+  async function refreshPeerReadAt() {
+    const conversation = state.chat.conversationId;
+    if (!conversation) return;
+    const peers = chatFn('sbDmPeers');
+    if (!peers) return;
+    try {
+      const listed = await peers(conversation, state.chat.myId);
+      const fresh = (listed && listed[0] && listed[0].lastReadAt) || null;
+      /* String compare, not Date: both sides are ISO strings from the same
+         column, and equal text means nothing changed. Re-rendering on an
+         unchanged value would fight the live append path. */
+      if ((fresh || '') === (state.chat.peerReadAt || '')) return;
+      state.chat.peerReadAt = fresh;
+      renderChat();
+    } catch (e) { /* the tick simply stays where it was */ }
+  }
+
   /* A message just landed. If the thread is open AND the tab is in front,
      the volunteer is looking straight at it, so it is read by definition.
      The tab check matters: a backgrounded tab does not count as reading,
@@ -2325,6 +2363,10 @@
   function onTabVisible() {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     if (state.chat.conversationId) markThreadRead();
+    /* Same reasoning for the peer's cursor: the volunteer was away, so the
+       interval may have been throttled or skipped entirely. Catch up on the
+       receipt the moment they look again. */
+    refreshPeerReadAt();
   }
 
   async function openChat(animalId, conversationId) {
@@ -2464,6 +2506,14 @@
         onIncomingChatRow();
       });
     }
+
+    /* Poll the peer's read cursor while the thread is open, so a message they
+       read turns one tick into two without the volunteer reloading. Also
+       fires once immediately so reopening a thread shows the true state
+       instead of waiting out the first interval. */
+    clearInterval(state.chat.readTimer);
+    refreshPeerReadAt();
+    state.chat.readTimer = setInterval(refreshPeerReadAt, 8000);
   }
 
   async function sendChatMessage() {

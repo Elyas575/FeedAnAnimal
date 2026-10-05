@@ -226,10 +226,10 @@ DONE WHEN: 48 pins, shared feed, report photo, 2-user DM, https lock. MVP LIVE.
 Much further along than "needs a live eyeball". Built and unit-tested: exact
 conversation selection, oldest-first rendering, mobile full-screen sheet,
 LinkedIn-style thread (plain text, one header per group, read ticks), and
-accurate unread clearing. `check-chat.js` is 252 checks, `simulate-chat.js` 88.
+accurate unread clearing. `check-chat.js` is 261 checks, `simulate-chat.js` 88.
 
-FOUR real bugs were found and fixed this session. Each looked like "the badge
-lies to me" and none was caused by the one before it:
+FIVE real bugs were found and fixed. Each looked like "the badge lies to me"
+and none was caused by the one before it:
 
 1. **Stale cached `supabase-client.js`.** `_headers` served it `max-age=3600`
    while `index.js`/`site-header.js` were `no-cache`. A browser holding the old
@@ -248,11 +248,21 @@ lies to me" and none was caused by the one before it:
    row and showed the same count - with nothing in the console. Now reported
    instead of hidden.
 4. **A duplicated doc-comment block** left in `supabase-client.js`.
+5. **The read tick never turned into two.** `state.chat.peerReadAt` was fetched
+   ONCE when the thread opened and then cached for the life of the modal.
+   Opening a thread bumps YOUR cursor and does nothing to the OTHER
+   participant's row, so when the peer read your message it changed a column
+   this client had already fetched and would never fetch again. The tick stayed
+   at one until you closed and reopened the thread. A receipt is a live fact
+   about somebody ELSE's session, so it is now polled every 8s while the thread
+   is open, re-rendered only when the value actually moved, refreshed on tab
+   focus, and torn down in `stopChat()` so no interval leaks.
 
 WHY THIS MATTERS FOR LAUNCH: bugs 1-3 are exactly why the unread badge would
 not clear. Bug 3 HIDES the real cause, which is the missing RLS policy in
 `migration-read-receipts.sql`. That is why 7.1a is a hard blocker, not a
-formality.
+formality. Bug 5 is independent of the migrations - it is pure client state and
+no SQL fixes it.
 
 ## THE ONE TEST THAT PROVES IT
 

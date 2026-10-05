@@ -526,6 +526,32 @@ ok('a refused mark is reported, not repainted as a success',
   /markRead\(conversation, upTo\)\)\.then\(\(ok\) => \{[\s\S]*?if \(ok === false\)/.test(markBody));
 ok('a refused mark points at the read-receipts migration',
   /ok === false[\s\S]{0,700}?migration-read-receipts\.sql/.test(markBody));
+
+/* THE TICK THAT STAYED AT ONE. The peer's cursor was fetched once when the
+   thread opened and cached in state.chat.peerReadAt for the life of the
+   modal. Opening the thread bumps YOUR cursor and does nothing to the OTHER
+   participant's row, so the peer reading your message changed a column this
+   client had already read and would never read again - the tick stayed at one
+   until you closed and reopened the thread. A receipt is a live fact about
+   somebody else's session, so it must be polled, not snapshotted. */
+ok('there is a function that refreshes the peer read cursor',
+  /async function refreshPeerReadAt\(\)/.test(js));
+ok('the refresh reads the cursor from sbDmPeers',
+  /async function refreshPeerReadAt\(\)[\s\S]{0,700}?sbDmPeers/.test(js));
+ok('the refresh re-renders when the cursor actually moved',
+  /async function refreshPeerReadAt\(\)[\s\S]{0,900}?state\.chat\.peerReadAt = fresh;[\s\S]{0,200}?renderChat\(\)/.test(js));
+ok('an unchanged cursor does not trigger a re-render',
+  /=== \(state\.chat\.peerReadAt \|\| ''\)\) return;/.test(js));
+ok('the thread polls the peer cursor while it is open',
+  /setInterval\(refreshPeerReadAt, \d+\)/.test(js));
+ok('the poll starts as soon as the thread opens',
+  /refreshPeerReadAt\(\);\s*\n\s*state\.chat\.readTimer = setInterval/.test(js));
+ok('the poll is cleared when the thread closes',
+  /function stopChat\(\)[\s\S]{0,400}?clearInterval\(state\.chat\.readTimer\)/.test(js));
+ok('the timer handle lives in chat state',
+  /readTimer: null/.test(js));
+ok('returning to the tab also refreshes the peer cursor',
+  /function onTabVisible\(\)[\s\S]{0,400}?refreshPeerReadAt\(\)/.test(js));
 /* The SQL side. A database created before the mark-read policy cannot
    clear its badge at all, and the failure is invisible in the UI - which
    is the single most likely reason a volunteer still sees a stuck count. */
