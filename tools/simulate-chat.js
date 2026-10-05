@@ -242,17 +242,31 @@ const esc = (s) => String(s == null ? '' : s)
 const ME = 'me-uuid';
 const PEER = 'peer-uuid';
 const PEER_NAME = 'Lala';
-const iso = (minsAgo) => new Date(Date.now() - minsAgo * 60000).toISOString();
+
+/* The two-day split is anchored to LOCAL MIDNIGHT, not to "N hours ago".
+   A message from 18 hours ago is Yesterday only between 03:00 and 20:00 -
+   outside that window every row lands on one calendar day and the
+   yesterday/today assertions below fail for no real reason. */
+const midnight = new Date();
+midnight.setHours(0, 0, 0, 0);
+const dayStart = midnight.getTime();
+const yesterAt = (hour, min) =>
+  new Date(dayStart - 86400000 + hour * 3600000 + min * 60000).toISOString();
+/* My reply: the later of "just after midnight" and "two hours ago", so it
+   is always Today and always after the yesterday block. */
+const replyMs = Math.max(dayStart + 60000, Date.now() - 2 * 3600000);
+const replyAt = new Date(replyMs).toISOString();
+const replyNext = new Date(replyMs + 60000).toISOString();
 
 /* m0 sits alone yesterday, m1+m2 are a burst from the peer, m3+m4 are my
    reply. Two calendar days, three groups, both directions. m0 is listed
    LAST in the source array to prove the loader's sort orders it. */
 const messages = [
-  { id: 'm1', sender_id: PEER, body: 'Fed Milo at 7am, he ate well', created_at: iso(60 * 18) },
-  { id: 'm2', sender_id: PEER, body: 'Bowl was empty though', created_at: iso(60 * 18 - 4) },
-  { id: 'm3', sender_id: ME, body: 'Thanks! I will refill tonight', created_at: iso(60 * 3) },
-  { id: 'm4', sender_id: ME, body: 'On my way now', created_at: iso(60 * 3 - 1) },
-  { id: 'm0', sender_id: PEER, body: 'Is anyone else around today?', created_at: iso(60 * 20) },
+  { id: 'm1', sender_id: PEER, body: 'Fed Milo at 7am, he ate well', created_at: yesterAt(23, 0) },
+  { id: 'm2', sender_id: PEER, body: 'Bowl was empty though', created_at: yesterAt(23, 4) },
+  { id: 'm3', sender_id: ME, body: 'Thanks! I will refill tonight', created_at: replyAt },
+  { id: 'm4', sender_id: ME, body: 'On my way now', created_at: replyNext },
+  { id: 'm0', sender_id: PEER, body: 'Is anyone else around today?', created_at: yesterAt(21, 0) },
 ];
 
 /* openChat() stamps the sender's name onto every row before rendering, so

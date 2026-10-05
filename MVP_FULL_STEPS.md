@@ -27,8 +27,10 @@ migration was added and five real bugs were fixed (see the note at the end).
 
 Verified by running the suites just now:
 - `check-chat.js` 261/261, `simulate-chat.js` 88/88, `check-markup.js` pass
-- `npm test` is NOT fully green: 4 pre-existing theme-class checks fail in
-  `check-activity.js`. They are unrelated to chat and do not block launch.
+- `npm test` is fully green (all 10 scripts, incl. 261 chat + 88 simulation).
+  2026-10-05: fixed the 4 stale navbar theme-class checks in
+  `check-activity.js` and re-anchored the simulate-chat day fixture to local
+  midnight (it only passed between 03:00-20:00 before).
 
 ## DO THESE 5 THINGS NEXT (in this order)
 
@@ -46,8 +48,15 @@ Verified by running the suites just now:
 2. ~~**COMMIT**~~ -> DONE 2026-10-05. Working tree is clean and `main` is level
    with `origin/main` at `dbd76b1`; every chat fix (including the read-cursor
    poll) is pushed.
-3. **DEPLOY** - Cloudflare Pages, build empty, output `.`. This is the single
-   biggest reason the site is not live.
+3. **DEPLOY** - the Cloudflare project is `feedananimal` (a Worker with Git
+   builds, deploy command `npx wrangler deploy`, build command empty).
+   First build failed: assets dir `.` uploaded `node_modules/workerd`
+   (128 MiB > 25 MiB limit). Fixed by committing `wrangler.jsonc` (assets
+   directory `.`, serves `404.html` for misses) + `.assetsignore`
+   (`node_modules/`, `.git/`, `tools/`, `supabase/`, `reference/`, `*.md`...),
+   verified with a local `wrangler deploy --dry-run`. After the push, open
+   Deployments and confirm the build is green, then open the workers.dev URL.
+   This is the single biggest reason the site is not live.
 4. **SUPABASE SETTINGS** (10 min, do these or the test below misleads you):
    - Auth > Providers > Email: turn **Confirm email OFF** (instant test accounts)
    - Database > Publications > supabase_realtime: ensure **events AND messages**

@@ -682,8 +682,9 @@ pages.forEach((file) => {
   rows.push([themeAt > cdn && cdn !== -1 ? 'OK  ' : 'MISS', file + ' loads the theme AFTER the CDN']);
 });
 // The navbar relies on these custom classes; without the theme they are no-ops.
-['bg-primary-fixed/50', 'text-primary', 'border-primary/30', 'text-on-surface',
- 'text-on-surface-variant', 'bg-surface-container', 'text-outline',
+// The pill styling itself moved into site-header.js's CHROME_CSS, so these are
+// the theme-coloured utilities the shared header still carries in markup.
+['text-primary', 'text-on-surface', 'bg-surface-container',
  'border-surface-container-highest'].forEach((cls) => {
   rows.push([header.indexOf(cls) !== -1 && theme.indexOf(cls.split('/')[0].replace(/^(bg|text|border)-/, '')) !== -1
     ? 'OK  ' : 'MISS', 'navbar class "' + cls + '" exists in the shared theme']);
