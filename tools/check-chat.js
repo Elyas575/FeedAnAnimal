@@ -203,7 +203,10 @@ ok('the details modal stays open behind the thread',
  * is two taps and a scroll away, and "who looked after this last?" is the
  * natural next question after "is it fed?" - so the card carries its own
  * button rather than hiding the only entry point behind the info icon. */
-ok('the animal card has a chat button', /function cardHtml[\s\S]{0,6000}data-action="message"/.test(js));
+  /* Window widened 6000 -> 8000: the card legitimately grew (photo/lightbox
+     split, then the city/country place line); the button must stay inside
+     cardHtml, not drift into the next function. */
+  ok('the animal card has a chat button', /function cardHtml[\s\S]{0,8000}data-action="message"/.test(js));
 ok('the card chat button uses the chat icon',
   /data-action="message"[\s\S]{0,400}>chat</.test(js));
 ok('the card chat button carries the animal id', /data-action="message" data-id="/.test(js));

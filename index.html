@@ -279,9 +279,9 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <div class="p-space-md pb-space-sm bg-surface flex flex-col gap-2.5 border-b border-surface-container-high">
     <div class="relative flex items-center">
       <span class="material-symbols-outlined absolute left-3 text-outline text-[20px] pointer-events-none">search</span>
-      <input id="sidebar-search" type="text" autocomplete="off" aria-label="Search animals, areas, caretakers and tags"
+      <input id="sidebar-search" type="text" autocomplete="off" aria-label="Search animals, cities, countries, areas, caretakers and tags"
         class="w-full h-11 pl-10 pr-28 rounded-full bg-surface-container text-on-surface font-body-md text-sm placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary/40 transition-all"
-        placeholder="Search park, area, stray...">
+        placeholder="Search city, country, area, stray...">
       <button id="near-me-btn" type="button" title="Go to my location and measure distances from here"
         class="absolute right-1.5 h-8 px-3 rounded-full bg-surface-bright hover:bg-surface-container-high text-primary flex items-center gap-1 font-label-sm text-xs shadow-sm transition-all">
         <span class="material-symbols-outlined text-[15px]">near_me</span><span>Near Me</span>
@@ -536,6 +536,9 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
              nearest station ("Dropped pin near Riverside Path") so the pin still
              gets a useful label without another input to fill in. -->
         <input id="report-place" type="hidden">
+        <input id="report-city" type="hidden">
+        <input id="report-country" type="hidden">
+        <p id="report-geo" class="hidden text-xs text-[#8b7269]"></p>
 
         <p id="report-error" class="hidden p-2.5 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md"></p>
       </div>

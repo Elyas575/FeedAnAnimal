@@ -20,6 +20,22 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
 
+  /* Shared form-field helpers, used by BOTH report paths (the pin-first
+     flow and the edit flow). Earlier each function kept a private copy,
+     but the pin-first functions call them across function boundaries, so
+     they must exist at module scope - otherwise the very first call throws
+     ReferenceError and "Report a Stray" silently does nothing.
+     value() returns '' for missing/empty fields; setValue() is a no-op
+     when the node is not rendered yet. */
+  const setValue = (id, v) => {
+    const node = document.getElementById(id);
+    if (node) node.value = v;
+  };
+  const value = (id) => {
+    const node = document.getElementById(id);
+    return node ? String(node.value || '').trim() : '';
+  };
+
   const esc = (value) => String(value === undefined || value === null ? '' : value)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -125,6 +141,12 @@
     animal.temperament = animal.temperament || 'unknown';
     animal.stationId = animal.stationId || null;
     animal.source = animal.source || source || 'seed';
+    /* City/country travel inside location so search + Cities grouping see
+       them on seeds, local reports AND cloud reports alike. */
+    animal.location = animal.location || {};
+    animal.location.city = animal.location.city || animal.city || '';
+    animal.location.country = animal.location.country || animal.country || '';
+    animal.location.citySlug = animal.location.citySlug || animal.city_slug || animal.citySlug || '';
     /* Report ownership survives reloads + cloud round trips: reporterId is the
        Supabase auth id (anonymous included), mine marks pins made on this
        device so they stay editable before auth answers. */
@@ -324,12 +346,127 @@
 
   function matchesQuery(animal, query) {
     if (!query) return true;
+    const loc = animal.location || {};
     const haystack = [
       animal.name, animal.breed, animal.color, animal.description, animal.notes,
-      animal.temperament, animal.health, animal.location.area, animal.location.label,
+      animal.temperament, animal.health, loc.area, loc.label,
+      loc.city, loc.country,
       animal.caretakers.join(' '), animal.tags.join(' ')
     ].join(' ').toLowerCase();
     return haystack.indexOf(query) !== -1;
+  }
+
+  /* ------------------- city/country auto-detect -------------------- */
+  /* Reverse-geocodes a report pin to city + country so volunteers never
+     type it (typos/duplicates would kill the Cities grouping). BigDataCloud
+     free client endpoint: no key, CORS-enabled, built for browser calls.
+     Cached in localStorage (rounded ~1km grid) so repeat pins in the same
+     neighbourhood cost zero network. Never blocks the report: on failure
+     the caller keeps city/country empty and submits anyway. */
+  const GEO_CACHE_KEY = 'fta.geo.v1';
+
+  function geoGridKey(lat, lng) {
+    return Number(lat).toFixed(2) + ',' + Number(lng).toFixed(2);
+  }
+
+  function readGeoCache() {
+    try {
+      const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(GEO_CACHE_KEY) : null;
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+
+  function writeGeoCache(cache) {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const keys = Object.keys(cache);
+      /* Cap the cache so one world-travelling browser cannot grow it forever. */
+      while (keys.length > 500) delete cache[keys.shift()];
+      localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) { /* storage full - lookups just run again next time */ }
+  }
+
+  function slugifyCity(city, country) {
+    const slug = String(city || '')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    if (!slug) return '';
+    const cc = String(country || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 3);
+    return cc ? slug + '-' + cc : slug;
+  }
+
+  async function reverseGeocode(lat, lng) {
+    const out = { city: '', country: '', citySlug: '' };
+    if (!isFinite(lat) || !isFinite(lng)) return out;
+    const key = geoGridKey(lat, lng);
+    const cache = readGeoCache();
+    if (cache[key]) return cache[key];
+    /* Skip private/reserved ranges fast - geocoders return junk for them. */
+    if (lat === 0 && lng === 0) return out;
+    try {
+      const url = 'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='
+        + encodeURIComponent(lat) + '&longitude=' + encodeURIComponent(lng)
+        + '&localityLanguage=en';
+      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 6000) : null;
+      const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+      if (timer) clearTimeout(timer);
+      if (!res || !res.ok) return out;
+      const data = await res.json();
+      const city = data.city || data.locality || data.principalSubdivision || '';
+      const country = data.countryName || data.countryCode || '';
+      out.city = String(city || '').slice(0, 80);
+      out.country = String(country || '').slice(0, 80);
+      out.citySlug = slugifyCity(out.city, data.countryCode || out.country);
+      cache[key] = out;
+      writeGeoCache(cache);
+    } catch (e) { /* offline/timeout/blocked - report still submits without city */ }
+    return out;
+  }
+
+  /* Shows the detected city under the pin hint (read-only text, not an
+     input) and stashes it in the hidden fields the submit reads. */
+  function paintGeoLine(geo, state) {
+    const line = $('#report-geo');
+    if (!line) return;
+    if (state === 'loading') {
+      line.textContent = 'Detecting city…';
+      line.classList.remove('hidden');
+    } else if (state === 'done' && geo && (geo.city || geo.country)) {
+      line.textContent = '📍 ' + [geo.city, geo.country].filter(Boolean).join(', ');
+      line.classList.remove('hidden');
+    } else {
+      line.textContent = '';
+      line.classList.add('hidden');
+    }
+  }
+
+  /* Fills hidden report-city/report-country from the current pin. Called
+     from placePickMarker (auto) and right before submit (safety net, in
+     case the pin was set before the lookup finished). Awaits at most ~6s
+     thanks to the abort above; usually instant from cache. */
+  async function fillReportGeo(lat, lng) {
+    const cityInput = $('#report-city');
+    const countryInput = $('#report-country');
+    paintGeoLine(null, 'loading');
+    const geo = await reverseGeocode(lat, lng);
+    if (cityInput && !cityInput.value.trim() && geo.city) cityInput.value = geo.city;
+    if (countryInput && !countryInput.value.trim() && geo.country) countryInput.value = geo.country;
+    /* Re-read: a re-pin keeps the old city while looking up the new one,
+       so show what is actually stored, not the stale lookup. */
+    paintGeoLine({
+      city: cityInput ? cityInput.value.trim() : geo.city,
+      country: countryInput ? countryInput.value.trim() : geo.country
+    }, 'done');
+    return {
+      city: cityInput ? cityInput.value.trim() : '',
+      country: countryInput ? countryInput.value.trim() : '',
+      citySlug: slugifyCity(
+        cityInput ? cityInput.value.trim() : '',
+        countryInput ? countryInput.value.trim() : ''
+      ) || geo.citySlug
+    };
   }
 
   function matchesFilter(row) {
@@ -563,23 +700,29 @@
       ? ((row.status.food === 'urgent' || row.status.water === 'urgent' || row.status.sick) ? 'border-error/30' : 'border-tertiary/30')
       : 'border-surface-container-highest';
 
-    /* The card itself is the "show me the animal" target: a tap anywhere on
-       it (the action buttons answer first, see handleAction/wireEvents)
-       opens the photo full screen. The thumbnail carries the visual
-       affordance - a zoom badge that fades in on hover - and it is layered
-       BEFORE badgeDot so the status dot always stays on top. Without a
-       photo there is no badge: the emoji fallback has nothing to enlarge. */
-    const cardTitle = animal.photoUrl
+    /* Split card behaviour: the PHOTO opens the lightbox, the REST of the
+       card flies the map to the animal. Both are "show me the animal", just
+       different halves — picture vs location. The thumb is a real <button>
+       (data-action="photo") so it answers before the card handler, and it
+       is layered BEFORE badgeDot so the status dot always stays on top.
+       Without a photo the thumb is a plain div: the emoji fallback has
+       nothing to enlarge, so it falls through to the map. */
+    const cardTitle = 'Show ' + animal.name + ' on the map';
+    const photoTitle = animal.photoUrl
       ? 'View a big photo of ' + esc(animal.name)
       : 'No photo of ' + esc(animal.name) + ' has been shared yet';
     const thumbZoom = animal.photoUrl
       ? '<span class="absolute inset-0 flex items-end justify-center pb-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/50 to-transparent pointer-events-none" aria-hidden="true">' +
           '<span class="material-symbols-outlined text-[16px] text-white drop-shadow-sm">zoom_in</span></span>'
       : '';
+    const thumbInner = avatarHtml(animal) + thumbZoom + badgeDot(row);
+    const thumbBox = animal.photoUrl
+      ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="' + photoTitle + '" aria-label="' + photoTitle + '" class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in">' + thumbInner + '</button>'
+      : '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
 
-    return '<article data-animal-card="' + esc(animal.id) + '" title="' + cardTitle + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer">' +
+    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="Show ' + esc(animal.name) + ' on the map" title="' + esc(cardTitle) + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer">' +
       '<div class="flex gap-3 items-center">' +
-        '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + thumbZoom + badgeDot(row) + '</div>' +
+        thumbBox +
         '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center justify-between gap-1">' +
             '<div class="flex items-center gap-1.5 truncate">' +
@@ -594,6 +737,17 @@
             '<span class="material-symbols-outlined text-[14px]">' + issue.icon + '</span> ' + esc(issue.text) +
           '</p>' +
           '<p class="font-body-sm text-xs text-on-surface-variant truncate mt-0.5 opacity-80">' + esc(animal.description) + '</p>' +
+          (function () {
+            /* City/country line: the "where" for a worldwide map. New reports
+               carry a real city; seed animals only have an area label, so the
+               line degrades gracefully: City, Country → label → nothing (the
+               line is skipped, not rendered empty). */
+            const loc = animal.location || {};
+            const place = [loc.city, loc.country].filter(Boolean).join(', ') || loc.label || loc.area || '';
+            if (!place) return '';
+            return '<p class="font-label-sm text-[11px] text-outline truncate mt-0.5 flex items-center gap-1">' +
+              '<span class="material-symbols-outlined text-[12px]">location_on</span>' + esc(place) + '</p>';
+          })() +
           (station ? '<p class="font-label-sm text-[11px] text-outline truncate mt-0.5 flex items-center gap-1">' +
             '<span class="material-symbols-outlined text-[12px]">roofing</span>' + esc(station.name) + '</p>' : '') +
         '</div>' +
@@ -866,6 +1020,8 @@
     setBaseLayer(googleIndex);
 
     state.map.on('click', (event) => {
+      /* One-shot: "Pick on map" arms pickMode, the next tap drops the pin
+         and placePickMarker() clears the flag again. */
       if (state.pickMode) placePickMarker(event.latlng.lat, event.latlng.lng);
     });
     return true;
@@ -1254,17 +1410,18 @@
       const station = nearestStation(lat, lng);
       placeInput.value = 'Dropped pin near ' + (station ? station.ref : 'Oakwood Park');
     }
-    if (state.pickMarker) state.map.removeLayer(state.pickMarker);
-    state.pickMarker = window.L.marker([lat, lng], {
-      icon: window.L.divIcon({
-        className: 'fta-pick-wrap',
-        html: '<div class="fta-pick"><span class="material-symbols-outlined">add_location_alt</span></div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      }),
-      title: 'New report pin',
-      zIndexOffset: 600
-    }).addTo(state.map);
+    /* A moved pin invalidates the old city: clear it, then re-detect in the
+       background so the hidden report-city/country always match THIS pin,
+       not the previous one. Fire-and-forget - submit re-awaits if needed. */
+    const cityInput = $('#report-city');
+    const countryInput = $('#report-country');
+    if (cityInput) cityInput.value = '';
+    if (countryInput) countryInput.value = '';
+    try {
+      const p = fillReportGeo(lat, lng);
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (e) { /* never break pinning */ }
+    drawPickMarker(lat, lng);
 
     /* When the pin came from GPS, the "you are here" dot moves with it so the
        two can never disagree. This does NOT persist as a map reference and
@@ -1288,6 +1445,34 @@
     switchMobileView('map');
     toast('Location pinned on the map.', 'ok');
   }
+
+  /* Draws (or moves) the single report pin. Draggable so a fat-finger tap
+     can be nudged without re-tapping the map. */
+  function drawPickMarker(lat, lng) {
+    if (!state.map || !window.L) return;
+    if (state.pickMarker) state.map.removeLayer(state.pickMarker);
+    state.pickMarker = window.L.marker([lat, lng], {
+      icon: window.L.divIcon({
+        className: 'fta-pick-wrap',
+        html: '<div class="fta-pick"><span class="material-symbols-outlined">add_location_alt</span></div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      }),
+      title: 'New report pin',
+      draggable: true,
+      autoPan: true,
+      zIndexOffset: 600
+    }).addTo(state.map);
+    state.pickMarker.on('dragend', () => {
+      const pos = state.pickMarker.getLatLng();
+      /* Dragging reuses the same path as tapping: hidden fields, city and
+         hint text all refresh together. */
+      const placeInput = $('#report-place');
+      if (placeInput) placeInput.value = '';
+      placePickMarker(pos.lat, pos.lng);
+    });
+  }
+
   /* Fills the report pin from the device GPS.
 
      This is the DEFAULT for the form - most people report a stray they are
@@ -1300,6 +1485,7 @@
      first good fix and stop listening, so this stays quick indoors but is
      accurate outdoors where it matters. */
   /* Captured lazily: the modal is not in the DOM at script-parse time. */
+
   let reportUseLocationHtml = '';
   function useMyLocationForReport() {
     const useMyLocationButton = $('#report-use-location');
@@ -1590,6 +1776,12 @@
     const lngInput = $('#report-lng');
     if (latInput) latInput.value = Number(start.lat).toFixed(6);
     if (lngInput) lngInput.value = Number(start.lng).toFixed(6);
+    /* Show the city/country for the default pin straight away; a later
+       re-pin clears and re-detects (placePickMarker). */
+    try {
+      const p = fillReportGeo(Number(start.lat), Number(start.lng));
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (e) { /* hint already shows the coords */ }
 
     if (known) {
       /* Already located - no need to ask the browser again. */
@@ -1644,6 +1836,9 @@
     setValue('report-lat', Number(animal.location.lat).toFixed(6));
     setValue('report-lng', Number(animal.location.lng).toFixed(6));
     setValue('report-place', animal.location.label || '');
+    setValue('report-city', animal.location.city || '');
+    setValue('report-country', animal.location.country || '');
+    paintGeoLine({ city: animal.location.city || '', country: animal.location.country || '' }, 'done');
 
     /* Prefill the needs ticks from the CURRENT status - that is exactly how
        they are read back on save (a tick = "it needs this now"). So editing
@@ -1768,7 +1963,7 @@
     const lat = Number(value('report-lat'));
     const lng = Number(value('report-lng'));
     if (!isFinite(lat) || !isFinite(lng) || (lat === 0 && lng === 0)) {
-      fail('Please pick the location first - press “Pick on map” or “Use my location”.');
+      fail('Please pick the location first - tap “Change” and drop the pin on the map.');
       return;
     }
 
@@ -1838,6 +2033,9 @@
           lat: lat,
           lng: lng,
           place: place,
+          city: value('report-city') || editing.location.city || '',
+          country: value('report-country') || editing.location.country || '',
+          citySlug: slugifyCity(value('report-city') || editing.location.city || '', value('report-country') || editing.location.country || '') || editing.location.citySlug || '',
           photoUrl: editedPhoto,
           description: value('report-description'),
           needsFood: needsFood,
@@ -1872,7 +2070,14 @@
         health: needsVet ? 'critical' : (editing.health === 'critical' ? 'healthy' : editing.health),
         photoUrl: editedPhoto,
         stationId: station ? station.id : null,
-        location: { label: place, area: station ? station.area : 'Reported area', lat: lat, lng: lng },
+        location: {
+          label: place,
+          area: editing.location.city || (station ? station.area : 'Reported area'),
+          city: value('report-city') || editing.location.city || '',
+          country: value('report-country') || editing.location.country || '',
+          citySlug: slugifyCity(value('report-city') || editing.location.city || '', value('report-country') || editing.location.country || '') || editing.location.citySlug || '',
+          lat: lat, lng: lng
+        },
         lastFedAt: nextFed,
         lastWateredAt: nextWatered,
       });
@@ -1895,6 +2100,16 @@
     setBusy(true, '<span class="material-symbols-outlined text-[18px]">upload</span>Uploading photo…');
     let photoUrl = null;
     let shared = false;
+    /* Safety net: the pin may have been set before the background lookup
+       finished (or offline). Resolve city now so the cloud row gets it. */
+    let geoCity = value('report-city') || '';
+    let geoCountry = value('report-country') || '';
+    try {
+      const geo = await fillReportGeo(lat, lng);
+      geoCity = geo.city || geoCity;
+      geoCountry = geo.country || geoCountry;
+    } catch (e) { /* submit anyway without city */ }
+    const geoSlug = slugifyCity(geoCity, geoCountry);
     try {
       if (pendingReportPhoto && typeof window.sbUploadReportPhoto === 'function') {
         photoUrl = await window.sbUploadReportPhoto(pendingReportPhoto);
@@ -1906,6 +2121,9 @@
           lat: lat,
           lng: lng,
           place: place,
+          city: geoCity,
+          country: geoCountry,
+          citySlug: geoSlug,
           photoUrl: photoUrl,
           description: value('report-description'),
           needsVet: needsVet,
@@ -1952,7 +2170,14 @@
       notes: value('report-notes') || 'Watch this spot for a few days and log what you see.',
       photoUrl: photoUrl || null,
       stationId: station ? station.id : null,
-      location: { label: place, area: station ? station.area : 'Reported area', lat: lat, lng: lng },
+      location: {
+        label: place,
+        area: geoCity || (station ? station.area : 'Reported area'),
+        city: geoCity,
+        country: geoCountry,
+        citySlug: geoSlug,
+        lat: lat, lng: lng
+      },
       reportedAt: new Date(now).toISOString(),
       lastFedAt: new Date(now - levelMinutes(species, 'food', foodLevel) * 60000).toISOString(),
       lastWateredAt: new Date(now - levelMinutes(species, 'water', waterLevel) * 60000).toISOString(),
@@ -2999,15 +3224,15 @@
         return;
       }
 
-      /* A tap anywhere on a card shows that animal's photo full screen.
-         This is deliberately AFTER the action buttons: Feed, Water, chat,
-         locate and details keep their own behaviour, and everything else
-         on the card answers the question people actually ask when they
-         click an animal - "what does it look like?". Animals without a
-         photo get the toast from openPhoto() rather than a dead click. */
+      /* A tap on the card body flies the map to that animal and opens its
+         preview popup: the card answers "who needs help", the map answers
+         "where exactly". Runs AFTER the [data-action] handler above, so the
+         photo thumbnail (data-action="photo"), Feed, Water, chat, locate
+         and details all keep their own behaviour — only the non-button
+         part of the card navigates. */
       const animalCard = target.closest('[data-animal-card]');
       if (animalCard) {
-        openPhoto(animalCard.getAttribute('data-animal-card'));
+        revealAnimal(animalCard.getAttribute('data-animal-card'));
         return;
       }
 
@@ -3094,6 +3319,22 @@
       });
     }
 
+    /* Keyboard users get the same "card = show on map" behaviour as a tap:
+       Enter/Space on a focused card reveals the pin, mirroring the click
+       handler below. */
+    const feedHost = $('#animals-feed');
+    if (feedHost) {
+      feedHost.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const card = event.target && event.target.closest ? event.target.closest('[data-animal-card]') : null;
+        if (!card) return;
+        if (event.target.closest('button')) return;
+        event.preventDefault();
+        revealAnimal(card.getAttribute('data-animal-card'));
+      });
+    }
+
+
     const sort = $('#feed-sort');
     if (sort) {
       sort.addEventListener('change', () => {
@@ -3152,6 +3393,8 @@
     const reportForm = $('#report-form');
     if (reportForm) reportForm.addEventListener('submit', submitReport);
 
+    /* Old in-form pin flow: "Pick on map" docks the panel and arms a one-shot
+       map click; "Use my location" re-pins from the GPS. */
     const pickOnMap = $('#report-pick-map');
     if (pickOnMap) {
       pickOnMap.addEventListener('click', () => {
@@ -3416,7 +3659,10 @@
       },
       setPolicy: (policy) => {
         POLICY = Object.assign({ default: { food: { okHours: 8, urgentHours: 14 }, water: { okHours: 6, urgentHours: 10 } } }, policy || {});
-      }
+      },
+      slugifyCity: slugifyCity,
+      geoGridKey: geoGridKey,
+      matchesQuery: matchesQuery
     };
   }
 }());

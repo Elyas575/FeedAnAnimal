@@ -975,7 +975,10 @@ async function sbLoadReports(limit = 200) {
           lat: isFinite(lat) ? lat : 0,
           lng: isFinite(lng) ? lng : 0,
           label: label,
-          area: 'Reported area'
+          area: row.city || 'Reported area',
+          city: row.city || '',
+          country: row.country || '',
+          citySlug: row.city_slug || ''
         },
         source: 'report'
       };
@@ -1008,6 +1011,11 @@ async function sbSubmitReport(report) {
     if (report.needsWater) description = '[NEEDS_WATER] ' + description;
     if (report.needsVet) description = '[NEEDS_VET] ' + description;
     description = description || null;
+    /* City/country are optional: old databases without migration-report-city.sql
+       still accept the insert via the lean retry below. */
+    const city = (report.city || '').slice(0, 80) || null;
+    const country = (report.country || '').slice(0, 80) || null;
+    const citySlug = (report.citySlug || '').slice(0, 80) || null;
     const payload = {
       reporter_id: (user && !user.is_anonymous) ? user.id : null,
       name: report.name || null,
@@ -1015,6 +1023,9 @@ async function sbSubmitReport(report) {
       lat: Number.isFinite(report.lat) ? report.lat : null,
       lng: Number.isFinite(report.lng) ? report.lng : null,
       location_label: report.place || null,
+      city: city,
+      country: country,
+      city_slug: citySlug,
       photo_url: report.photoUrl || null,
       description: description,
       status: 'open',

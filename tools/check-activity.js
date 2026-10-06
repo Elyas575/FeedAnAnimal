@@ -170,14 +170,62 @@ check('submit reports shared vs local-only', 'is now on the map for everyone', j
 check('reports are announced to the shared feed', "kind: 'report'", js);
 check('picker resets after a successful report', 'resetReportPhoto();', js);
 
-/* --- report location pinning ---------------------------------------- */
+/* --- city/country auto-detect + search -------------------------------- *
+ * The report pin reverse-geocodes to city/country (no typing), stores it
+ * on the report, and the sidebar search matches it — so "Istanbul" shows
+ * every stray reported there. These pin the wiring so it cannot regress. */
+check('report form has hidden city field', 'id="report-city"', html);
+check('report form has hidden country field', 'id="report-country"', html);
+check('report form shows detected city line', 'id="report-geo"', html);
+check('reverse-geocode helper defined', 'async function reverseGeocode(lat, lng)', js);
+check('reverse-geocode uses keyless client endpoint', 'api.bigdatacloud.net/data/reverse-geocode-client', js);
+check('geo lookups are cached per neighbourhood', 'fta.geo.v1', js);
+check('pin drop triggers city detection', 'fillReportGeo(lat, lng)', js);
+check('moved pin clears stale city', "cityInput.value = ''", js);
+check('submit resolves city before sharing', 'await fillReportGeo(lat, lng)', js);
+check('city is sent to Supabase', 'city: geoCity', js);
+check('city slug is sent to Supabase', 'citySlug: geoSlug', js);
+check('cloud reports map city back to location', "city: row.city || ''", sc);
+check('cloud reports group area by city', "area: row.city || 'Reported area'", sc);
+check('sbSubmitReport payload carries city', 'city: city,', sc);
+check('search matches city', 'loc.city, loc.country,', js);
+check('search placeholder mentions city', 'Search city, country', html);
+check('city slug helper exported for tests', 'slugifyCity: slugifyCity', js);
+
+/* The sidebar card answers "where" at a glance: a small place line under the
+   description. New reports carry city + country; seed animals only have a
+   label/area, so the line degrades and is skipped when nothing is known. */
+const cardBlock = js.slice(js.indexOf('function cardHtml'), js.indexOf('function renderFeed'));
+rows.push([cardBlock.indexOf('loc.city, loc.country') !== -1 ? 'OK  ' : 'MISS', 'card shows city + country']);
+rows.push([cardBlock.indexOf('loc.label || loc.area') !== -1 ? 'OK  ' : 'MISS', 'card place falls back to the seed label']);
+rows.push([cardBlock.indexOf('location_on') !== -1 ? 'OK  ' : 'MISS', 'card place line uses a pin icon']);
+rows.push([cardBlock.indexOf("if (!place) return ''") !== -1 ? 'OK  ' : 'MISS', 'card skips the place line when nothing is known']);
+
+
+/* --- report location pinning (classic in-form flow) ------------------ *
+ * "Report a stray" opens the FORM directly: the lat/lng boxes show where the
+ * pin will land, "Pick on map" docks the panel and arms a one-shot map click,
+ * and "Use my location" re-pins from the device GPS (watchPosition warm-up). */
 rows.push([html.indexOf('id="report-use-center"') === -1 ? 'OK  ' : 'MISS', '"Use park centre" button removed from the form']);
 rows.push([js.indexOf('report-use-center') === -1 ? 'OK  ' : 'MISS', 'no orphaned handler for the removed button']);
-check('"Pick on map" is still offered', 'id="report-pick-map"', html);
-check('"Use my location" is still offered', 'id="report-use-location"', html);
+check('"Pick on map" is offered', 'id="report-pick-map"', html);
+check('"Use my location" is offered', 'id="report-use-location"', html);
+check('the form has the lat box', 'id="report-lat"', html);
+check('the form has the lng box', 'id="report-lng"', html);
+check('the form shows a pick hint', 'id="report-pick-hint"', html);
+rows.push([html.indexOf('id="report-pinbar"') === -1 ? 'OK  ' : 'MISS', 'pin-first bar removed (form-first flow restored)']);
+rows.push([html.indexOf('id="report-change-loc"') === -1 ? 'OK  ' : 'MISS', 'read-only Change-location link removed']);
+rows.push([js.indexOf('openPinFirst') === -1 && js.indexOf('wirePinbar') === -1 ? 'OK  ' : 'MISS', 'no pin-first helpers left behind']);
+check('report entry opens the form', 'function openReportModal()', js);
+check('openReportModal resets the form', 'form.reset();', js);
+rows.push([js.indexOf('function openReportModal()') < js.indexOf('useMyLocationForReport();') ? 'OK  ' : 'MISS',
+  'openReportModal auto-pins from GPS when no position is known']);
+check('pick-on-map docks the form panel', "modal.classList.add('fta-picking')", js);
+check('pick-on-map arms the one-shot click', 'state.pickMode = true;', js);
+check('map click requires pickMode', 'if (state.pickMode) placePickMarker(', js);
 check('geolocation request still exists', 'getCurrentPosition(', js);
 check('geolocation keeps high accuracy', 'enableHighAccuracy: true', js);
-// The button must show a pending state, otherwise a slow GPS fix looks broken.
+/* The button must show a pending state, otherwise a slow GPS fix looks broken. */
 check('use-my-location shows a locating state', 'setLocating(true)', js);
 check('locating state has a visible label', 'Locating…', js);
 check('locating state shows a spinner', 'animate-spin', js);
@@ -187,9 +235,20 @@ rows.push([(js.match(/setLocating\(false\)/g) || []).length >= 2 ? 'OK  ' : 'MIS
 check('location success reports the accuracy', 'Pinned at your location (accurate to about', js);
 check('permission denial is explained', 'Location permission denied', js);
 check('failure suggests the map alternative', 'try "Pick on map" instead', js);
+check('geolocation timeout allows a slow fix', 'timeout: 15000', js);
+/* Regression: setValue()/value() used to exist only as LOCAL copies inside
+   openEditReport/submitReport, so callers outside those two functions crashed
+   with ReferenceError and the Report button did nothing. They must be declared
+   at module scope, BEFORE first use. */
+rows.push([js.indexOf('const setValue =') !== -1 &&
+  js.indexOf('const setValue =') < js.indexOf('function openEditReport') ? 'OK  ' : 'MISS',
+'setValue() is at module scope, before openEditReport']);
+rows.push([js.indexOf('const value = (id)') !== -1 &&
+  js.indexOf('const value = (id)') < js.indexOf('function submitReport') ? 'OK  ' : 'MISS',
+'value() is at module scope, before submitReport']);
+check('report pin is draggable', 'draggable: true', js);
 rows.push([/Use park center|Use park centre/.test(js) === false ? 'OK  ' : 'MISS',
   'no copy references the removed button']);
-check('geolocation timeout allows for a slow fix', 'timeout: 15000', js);
 
 /* --- GPS accuracy + pin/dot consistency ----------------------------- *
  * Bug: placePickMarker() wrote the report pin but never updated
@@ -213,7 +272,8 @@ check('an accuracy circle is drawn', 'window.L.circle(', js);
 check('the accuracy circle uses the GPS radius', 'radius: accuracy', js);
 check('the accuracy circle is removed before redrawing', 'state.map.removeLayer(state.accuracyCircle)', js);
 check('accuracyCircle is declared in state', 'accuracyCircle: null', js);
-// A single cold fix is usually the worst one; watch for a better reading.
+// A single cold fix is usually the worst one; watchPosition warms up and the
+// watch is cleared as soon as a good reading arrives.
 check('uses watchPosition for the first fix', 'watchPosition(', js);
 check('the GPS watch is always cleared', 'clearWatch(watchId)', js);
 rows.push([(js.match(/clearWatch\(watchId\)/g) || []).length >= 2 ? 'OK  ' : 'MISS',

@@ -53,9 +53,15 @@ ok('handlers are attached before the src is assigned', /img\.onerror = function[
 ok('an animal with no photo explains itself', js.indexOf('No photo of ') !== -1);
 
 /* --------------------------- the entry points ------------------------ */
+/* NOTE: split card behaviour — the PHOTO thumb (data-action="photo") opens
+   the lightbox, the REST of the card flies the map (revealAnimal). The
+   thumb button answers first via the [data-action] handler, so the card
+   handler only sees non-button taps. */
 ok('exactly one photo action handler exists', (js.match(/action === 'photo'/g) || []).length === 1);
 ok('the photo action opens the lightbox', /action === 'photo'\)[\s\S]{0,80}openPhoto\(id\)/.test(js));
-ok('tapping a card opens the photo', /closest\('\[data-animal-card\]'\)[\s\S]{0,160}openPhoto\(/.test(js));
+ok('the card thumbnail is a photo button', /data-action="photo" data-id=[\s\S]{0,80}View a big photo/.test(js));
+ok('tapping the card body flies the map to the animal', /closest\('\[data-animal-card\]'\)[\s\S]{0,160}revealAnimal\(/.test(js));
+ok('the card tap sits AFTER the action buttons', js.indexOf("target.closest('[data-action]')") < js.indexOf("target.closest('[data-animal-card]')"));
 ok('the card tap sits AFTER the action buttons', js.indexOf("target.closest('[data-action]')") < js.indexOf("target.closest('[data-animal-card]')"));
 ok('the card reads as clickable', /data-animal-card=.*cursor-pointer/.test(js));
 ok('the card thumbnail shows a zoom affordance', js.indexOf('group-hover:opacity-100') !== -1 && js.indexOf('zoom_in') !== -1);
