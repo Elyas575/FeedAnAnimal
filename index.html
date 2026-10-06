@@ -136,7 +136,15 @@
 .fta-popup__distance { margin-left: auto; font-size: 11px; color: #8b7269; }
 .fta-popup__title { font-size: 15px; font-weight: 700; margin: 0; }
 .fta-popup__body { display: flex; gap: 10px; align-items: center; }
-.fta-popup__thumb { width: 52px; height: 52px; border-radius: .75rem; overflow: hidden; background: #f5ecea; flex: 0 0 auto; box-shadow: 0 2px 6px rgba(30, 27, 26, .15); }
+.fta-popup__thumb { width: 64px; height: 64px; border-radius: .85rem; overflow: hidden; background: #f5ecea; flex: 0 0 auto; box-shadow: 0 2px 6px rgba(30, 27, 26, .15); }
+/* A thumb holding a REAL photo is a button: the cursor, pressed state and a
+   gentle grow say "tap me to see the whole animal" (it opens the lightbox).
+   The emoji fallback stays a plain div - there is nothing full-size to show. */
+button.fta-popup__thumb { border: 0; padding: 0; cursor: zoom-in; transition: transform .15s ease, box-shadow .15s ease; }
+button.fta-popup__thumb:hover { transform: scale(1.04); box-shadow: 0 6px 14px rgba(30, 27, 26, .28); }
+button.fta-popup__thumb:active { transform: scale(.96); }
+button.fta-popup__thumb img { transition: transform .2s ease; }
+button.fta-popup__thumb:hover img { transform: scale(1.08); }
 .fta-popup__id h4 { margin: 0; font-size: 16px; font-weight: 700; }
 .fta-popup__id p { margin: 2px 0 0; font-size: 11.5px; color: #57423b; }
 .fta-popup__place { display: flex; align-items: center; gap: 3px; }
@@ -414,7 +422,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
     <div class="flex items-start justify-between gap-3 p-4 border-b border-surface-container-high sticky top-0 bg-surface z-10">
       <div>
         <h2 id="report-title" class="font-headline-sm text-headline-sm text-on-surface font-bold">Report a stray</h2>
-        <p class="font-body-sm text-body-sm text-on-surface-variant">Everything you add here stays on this device and appears on the map instantly.</p>
+        <p id="report-subtitle" class="font-body-sm text-body-sm text-on-surface-variant">Everything you add here stays on this device and appears on the map instantly.</p>
       </div>
       <button type="button" data-close-modal="report-modal"
         class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center border border-surface-container-highest bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:scale-90 transition-all"
@@ -458,6 +466,16 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
             <option value="bird">Bird</option>
             <option value="guinea-pig">Guinea pig</option>
           </select>
+        </div>
+
+        <!-- Optional name. submitReport() has always read #report-name (and
+             falls back to "Unnamed stray"); the input itself is what makes an
+             edit possible, because the name is the first thing a poster wants
+             to fix. -->
+        <div>
+          <label class="fta-label" for="report-name">Name (optional)</label>
+          <input id="report-name" type="text" maxlength="40" class="fta-field"
+            placeholder="e.g. Whiskers — leave blank if you don’t know it">
         </div>
         <!-- NEEDS food/water, not "is it fed?" The map can't know this at report
              time: levelMinutes() turns this answer into a lastFedAt /
@@ -538,6 +556,36 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <div class="fta-modal-panel w-full max-w-xl bg-surface rounded-lg shadow-2xl border border-surface-container-highest p-5">
     <div id="details-content"></div>
   </div>
+</div>
+
+<!-- ========================= PHOTO LIGHTBOX ========================== -->
+<!-- A tap on an animal photo - or on the sidebar card itself - shows the
+     picture full screen. A 64-80px thumb is right for scanning a list, but
+     someone deciding whether a stray needs help wants to SEE the animal.
+
+     Stacking: above chat (z-88 > z-85) because it can be opened from the
+     drawer, a popup or a card while any of those are up, and below the
+     toast stack (z-90) so status messages stay visible.
+
+     Closing needs no bespoke code: data-modal plugs it into the shared
+     system, so the backdrop click, the X and Escape all already work. The
+     picture element sits in the middle, so clicking the image itself never
+     counts as a backdrop click. -->
+<div id="photo-modal" data-modal class="hidden fixed inset-0 z-[88] items-center justify-center p-4 bg-black/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Animal photo">
+  <button type="button" data-close-modal="photo-modal"
+    class="absolute top-4 right-4 w-11 h-11 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/35 text-white active:scale-90 transition-all"
+    title="Close" aria-label="Close photo">
+    <span class="material-symbols-outlined text-[26px] leading-none">close</span>
+  </button>
+  <figure class="m-0 max-w-full flex flex-col items-center gap-3">
+    <!-- No src attribute on purpose: index.js sets it per animal, and an
+         empty src would make the browser re-request this page. -->
+    <img id="photo-img" alt="" class="max-h-[74vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl bg-surface">
+    <figcaption class="text-center px-2">
+      <p id="photo-title" class="m-0 font-headline-sm text-headline-sm text-white"></p>
+      <p id="photo-caption" class="m-0 mt-0.5 font-body-sm text-body-sm text-white/80"></p>
+    </figcaption>
+  </figure>
 </div>
 
 <!-- ======================== CHAT / DM MODAL ========================== -->
@@ -629,6 +677,10 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <span class="py-1.5 px-2 flex-col gap-1.5 p-2.5 flex-wrap text-nowrap shrink-0 truncate max-w-xs"></span>
   <span class="items-start justify-between border-b border-surface-container-high/70 border-surface-container-high"></span>
   <span class="bg-inverse-surface/40 backdrop-blur-sm z-[70] z-[75] z-[90] fixed inset-0"></span>
+  <!-- photo lightbox: big animal photos (index.js openPhoto + card/drawer thumbs) -->
+  <span class="z-[88] text-white text-white/80 bg-white/20 hover:bg-white/35 text-[26px] w-11 h-11 max-h-[74vh] max-w-[92vw] object-contain shadow-2xl m-0 mt-0.5"></span>
+  <!-- the "tap to enlarge" affordance on card thumbnails -->
+  <span class="w-20 h-20 w-28 h-28 cursor-pointer cursor-zoom-in hover:ring-2 focus-visible:ring-2 hover:ring-primary/40 focus-visible:ring-primary/40 ring-primary/40 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/50 to-transparent text-white drop-shadow-sm pointer-events-none text-[16px] pb-1.5"></span>
   <span class="font-mono text-center text-[10.5px] text-[10px] align-middle mr-1"></span>
   <span class="animate-pulse animate-ping w-2.5 h-2.5 w-1.5 h-1.5 rounded-full border-2 border-white"></span>
   <span class="group-hover:scale-105 hover:shadow-md animate-pulse text-2xl transition-transform duration-300 hover:underline active:scale-95"></span>

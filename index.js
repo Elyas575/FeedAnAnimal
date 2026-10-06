@@ -125,6 +125,12 @@
     animal.temperament = animal.temperament || 'unknown';
     animal.stationId = animal.stationId || null;
     animal.source = animal.source || source || 'seed';
+    /* Report ownership survives reloads + cloud round trips: reporterId is the
+       Supabase auth id (anonymous included), mine marks pins made on this
+       device so they stay editable before auth answers. */
+    animal.reporterId = animal.reporterId || animal.reporter_id || null;
+    animal.reporterName = animal.reporterName || null;
+    animal.mine = !!animal.mine;
     animal.lastFedAt = animal.lastFedAt || isoFromMinutes(animal.lastFedMinutesAgo || 0);
     animal.lastWateredAt = animal.lastWateredAt || isoFromMinutes(animal.lastWateredMinutesAgo || 0);
     animal.reportedAt = animal.reportedAt || isoFromDays(animal.reportedDaysAgo || 0);
@@ -198,6 +204,10 @@
     meta: {}, stations: [], animals: [], log: [], activity: [],
     filter: 'all', query: '', sort: 'urgent', selectedId: null,
     userLocation: null, profile: { name: 'Guest volunteer' },
+    /* Signed-in account id, resolved async by syncProfileFromAuth(). Report
+       ownership (canManageReport) is checked against it, so it starts null:
+       until auth answers, only this device's own reports look editable. */
+    myId: null,
     layers: [], baseLayerIndex: 0, baseLayer: null,
     map: null, markerLayer: null, markers: {}, userMarker: null, accuracyCircle: null, pickMarker: null,
     pickMode: false, mobileView: 'map', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
@@ -296,6 +306,21 @@
   }
 
   const statusOf = (animal) => computeStatus(animal, referencePoint());
+
+  /* Report ownership: only the volunteer who posted a stray may edit or
+     delete it. Signed-in AND anonymous ids both count - sbEnsureAuth()
+     gives every browser a stable id, and sbSubmitReport() stores it as
+     reporter_id. `mine` covers pins made on this device before auth answers
+     (or while offline), and seed animals are never manageable. */
+  function isCloudReportId(id) {
+    return /^report-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''));
+  }
+  function canManageReport(animal) {
+    if (!animal || animal.source !== 'report') return false;
+    if (animal.mine) return true;
+    if (animal.reporterId && state.myId && animal.reporterId === state.myId) return true;
+    return false;
+  }
 
   function matchesQuery(animal, query) {
     if (!query) return true;
@@ -538,9 +563,23 @@
       ? ((row.status.food === 'urgent' || row.status.water === 'urgent' || row.status.sick) ? 'border-error/30' : 'border-tertiary/30')
       : 'border-surface-container-highest';
 
-    return '<article data-animal-card="' + esc(animal.id) + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group">' +
+    /* The card itself is the "show me the animal" target: a tap anywhere on
+       it (the action buttons answer first, see handleAction/wireEvents)
+       opens the photo full screen. The thumbnail carries the visual
+       affordance - a zoom badge that fades in on hover - and it is layered
+       BEFORE badgeDot so the status dot always stays on top. Without a
+       photo there is no badge: the emoji fallback has nothing to enlarge. */
+    const cardTitle = animal.photoUrl
+      ? 'View a big photo of ' + esc(animal.name)
+      : 'No photo of ' + esc(animal.name) + ' has been shared yet';
+    const thumbZoom = animal.photoUrl
+      ? '<span class="absolute inset-0 flex items-end justify-center pb-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/50 to-transparent pointer-events-none" aria-hidden="true">' +
+          '<span class="material-symbols-outlined text-[16px] text-white drop-shadow-sm">zoom_in</span></span>'
+      : '';
+
+    return '<article data-animal-card="' + esc(animal.id) + '" title="' + cardTitle + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer">' +
       '<div class="flex gap-3 items-center">' +
-        '<div class="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + badgeDot(row) + '</div>' +
+        '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + thumbZoom + badgeDot(row) + '</div>' +
         '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center justify-between gap-1">' +
             '<div class="flex items-center gap-1.5 truncate">' +
@@ -719,7 +758,9 @@
         '<span class="fta-popup__distance">' + formatDistance(row.status.distance) + '</span>' +
       '</div>' +
       '<div class="fta-popup__body">' +
-        '<div class="fta-popup__thumb">' + avatarHtml(animal) + '</div>' +
+        (animal.photoUrl
+          ? '<button type="button" class="fta-popup__thumb" data-action="photo" data-id="' + esc(animal.id) + '" title="View a big photo of ' + esc(animal.name) + '" aria-label="View a big photo of ' + esc(animal.name) + '">' + avatarHtml(animal) + '</button>'
+          : '<div class="fta-popup__thumb">' + avatarHtml(animal) + '</div>') +
         '<div class="fta-popup__id">' +
           '<h4>' + esc(animal.name) + '</h4>' +
           '<p>' + esc(animal.breed) + ' • ' + esc(animal.sex || 'sex unknown') + ' • ' + esc(animal.ageClass || 'unknown') + '</p>' +
@@ -1486,7 +1527,10 @@
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
-    document.body.style.overflow = '';
+    /* The photo lightbox is usually opened FROM the details drawer, so
+       closing it must not unlock page scrolling while another modal is
+       still up. Only the last visible modal releases the lock. */
+    document.body.style.overflow = document.querySelector('[data-modal]:not(.hidden)') ? 'hidden' : '';
     if (id === 'chat-modal') stopChat();
     if (id === 'report-modal') {
       state.pickMode = false;
@@ -1517,6 +1561,17 @@
     const form = $('#report-form');
     if (!form) return;
     form.reset();
+
+    /* Every open starts as a FRESH report: a cancelled edit and the photo
+       from a previous attempt must never leak into it. */
+    editingReportId = null;
+    resetReportPhoto();
+    const title = $('#report-title');
+    if (title) title.textContent = 'Report a stray';
+    const subtitle = $('#report-subtitle');
+    if (subtitle) subtitle.textContent = 'Everything you add here stays on this device and appears on the map instantly.';
+    const submit = $('#report-submit');
+    if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span>Save to the map';
 
     const hint = $('#report-pick-hint');
     if (hint) hint.textContent = 'We pin your current location automatically. Press “Pick on map” if you saw the animal somewhere else.';
@@ -1550,6 +1605,81 @@
 
     openModal('report-modal');
   }
+
+  /* --------------------------- editing a report ----------------------- */
+  /* Reopens the SAME form in edit mode, prefilled from the report, so a
+     correction is typed with the widgets it was created with. The report
+     keeps its id - minting a new one would pin the same stray twice - and
+     keeps its reporter, care log and history.
+
+     Gating lives in canManageReport(): this function only builds the form,
+     the buttons that lead here never render for someone else's report. */
+  function openEditReport(id) {
+    const animal = animalById(id);
+    if (!animal) return;
+    if (!canManageReport(animal)) {
+      toast('Only the volunteer who reported this stray can edit or delete it.', 'error');
+      return;
+    }
+    const form = $('#report-form');
+    if (!form) return;
+    form.reset();
+    editingReportId = id;
+    resetReportPhoto();
+
+    const setValue = (fieldId, value) => {
+      const node = document.getElementById(fieldId);
+      if (node) node.value = value;
+    };
+    const tick = (fieldId, on) => {
+      const node = document.getElementById(fieldId);
+      if (node) node.checked = !!on;
+    };
+
+    /* "Unnamed stray" is the placeholder the form produces, so showing it
+       back in the name box would look like a name someone chose. */
+    setValue('report-name', animal.name === 'Unnamed stray' ? '' : animal.name);
+    setValue('report-species', animal.species);
+    setValue('report-description', animal.description || '');
+    setValue('report-lat', Number(animal.location.lat).toFixed(6));
+    setValue('report-lng', Number(animal.location.lng).toFixed(6));
+    setValue('report-place', animal.location.label || '');
+
+    /* Prefill the needs ticks from the CURRENT status - that is exactly how
+       they are read back on save (a tick = "it needs this now"). So editing
+       an unrelated field never silently re-urgentises a bowl that is fine. */
+    const status = statusOf(animal);
+    tick('report-needs-food', status.food !== 'ok');
+    tick('report-needs-water', status.water !== 'ok');
+    tick('report-health', animal.health === 'critical');
+
+    const error = $('#report-error');
+    if (error) { error.textContent = ''; error.classList.add('hidden'); }
+    const hint = $('#report-pick-hint');
+    if (hint) hint.textContent = 'Editing the pin from your report. Press “Pick on map” if the animal has moved.';
+    const photoHint = $('#report-photo-hint');
+    if (photoHint) {
+      photoHint.textContent = animal.photoUrl
+        ? 'Current photo shown. Choose a new one to replace it.'
+        : 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+    }
+    if (animal.photoUrl) setReportPhotoPreview(animal.photoUrl);
+
+    const title = $('#report-title');
+    if (title) title.textContent = 'Edit your report';
+    const subtitle = $('#report-subtitle');
+    if (subtitle) subtitle.textContent = 'Changes show up for every volunteer with this map open.';
+    const submit = $('#report-submit');
+    if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>Save changes';
+
+    openModal('report-modal');
+  }
+
+  /* The report the form is currently editing, or null while it is creating a
+     new one. Lives beside the pending photo it pairs with: both only mean
+     something while the report modal is open, and both are cleared on save,
+     on cancel (openReportModal) and on close. */
+  let editingReportId = null;
 
   /* ------------------------- report photo picker ---------------------- */
   /* Holds the chosen File until submit. We keep the File (not a data URL)
@@ -1597,6 +1727,14 @@
         setReportPhotoPreview(null);
         clear.classList.add('hidden');
         if (hint) hint.textContent = 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+        /* In edit mode an empty preview must not read as "the photo is
+           gone": the stored one is kept unless a NEW file replaces it, so
+           put it back on screen. */
+        const editing = editingReportId ? animalById(editingReportId) : null;
+        if (editing && editing.photoUrl) {
+          setReportPhotoPreview(editing.photoUrl);
+          if (hint) hint.textContent = 'Current photo kept. Choose a new one to replace it.';
+        }
       });
     }
   }
@@ -1668,6 +1806,90 @@
     const foodLevel = needsFood ? 'urgent' : 'ok';
     const waterLevel = needsWater ? 'urgent' : 'ok';
 
+    /* ===================== editing an existing report ================== */
+    /* Same validation, same widgets, same upload path as creating one - but
+       the report keeps its id, its reporter and its care history, so nothing
+       pins twice and no feed log is lost. Everything below this block is the
+       create path.
+
+       The cloud row is written FIRST: if it cannot be updated (offline, or
+       the ownership policies from schema-core.sql are missing) the local
+       edit still lands and the volunteer is told, instead of watching the
+       change silently reappear at the next load. */
+    const editing = editingReportId ? animalById(editingReportId) : null;
+    if (editing) {
+      setBusy(true, '<span class="material-symbols-outlined text-[18px]">save</span>Saving changes…');
+      let editedPhoto = editing.photoUrl || null;
+      try {
+        if (pendingReportPhoto && typeof window.sbUploadReportPhoto === 'function') {
+          editedPhoto = await window.sbUploadReportPhoto(pendingReportPhoto);
+        }
+      } catch (err) {
+        console.warn('[FeedAnAnimalMap] photo upload failed', err);
+        toast('Photo upload failed - keeping the previous photo.', 'error');
+        editedPhoto = editing.photoUrl || null;
+      }
+      let sharedOk = true;
+      if (isCloudReportId(editing.id) && typeof window.sbUpdateReport === 'function') {
+        sharedOk = await window.sbUpdateReport({
+          id: editing.id.replace(/^report-/, ''),
+          name: value('report-name') || 'Unnamed stray',
+          species: species,
+          lat: lat,
+          lng: lng,
+          place: place,
+          photoUrl: editedPhoto,
+          description: value('report-description'),
+          needsFood: needsFood,
+          needsWater: needsWater,
+          needsVet: needsVet,
+        });
+      }
+      setBusy(false);
+
+      const status = statusOf(editing);
+      /* The ticks are the one thing that cannot be diffed against the form:
+         they are an opinion about RIGHT NOW. Recompute a timestamp only
+         when its answer actually changed, so fixing a typo never wipes out
+         a feed someone logged an hour ago. A tick that lands on an already
+         urgent bowl keeps the ORIGINAL deadline rather than extending it. */
+      const nextFed = needsFood
+        ? (status.food === 'ok' ? new Date(now - levelMinutes(species, 'food', foodLevel) * 60000).toISOString() : editing.lastFedAt)
+        : (status.food === 'ok' ? editing.lastFedAt : new Date(now - 5 * 60000).toISOString());
+      const nextWatered = needsWater
+        ? (status.water === 'ok' ? new Date(now - levelMinutes(species, 'water', waterLevel) * 60000).toISOString() : editing.lastWateredAt)
+        : (status.water === 'ok' ? editing.lastWateredAt : new Date(now - 5 * 60000).toISOString());
+
+      Object.assign(editing, {
+        name: value('report-name') || 'Unnamed stray',
+        species: species,
+        /* The breed string embeds the species, so it has to be rebuilt when
+           the species changes; reports never carry a typed breed. */
+        breed: speciesInfo(species).singular + ' (breed unknown)',
+        description: value('report-description') || 'Newly reported by a community volunteer.',
+        /* 'critical' when the vet tick is on; otherwise leave whatever state
+           a later vet visit recorded rather than resetting it to healthy. */
+        health: needsVet ? 'critical' : (editing.health === 'critical' ? 'healthy' : editing.health),
+        photoUrl: editedPhoto,
+        stationId: station ? station.id : null,
+        location: { label: place, area: station ? station.area : 'Reported area', lat: lat, lng: lng },
+        lastFedAt: nextFed,
+        lastWateredAt: nextWatered,
+      });
+
+      writeOverlay();
+      editingReportId = null;
+      closeModal('report-modal');
+      resetReportPhoto();
+      afterMutation(sharedOk
+        ? 'Saved - the updated report is on the map for everyone.'
+        : 'Saved on this device - the shared copy could not be updated yet.', sharedOk ? 'ok' : 'error');
+      /* Show the result rather than dumping the volunteer back on the map:
+         the drawer they came from now carries the corrected facts. */
+      openDetails(editing.id);
+      return;
+    }
+
     /* Upload the photo + share the report. Local save happens either way, so
        a network failure never loses what the volunteer typed. */
     setBusy(true, '<span class="material-symbols-outlined text-[18px]">upload</span>Uploading photo…');
@@ -1722,6 +1944,10 @@
       /* Kept so the profile can say WHO reported it, not just "from this
          device". Without it the drawer had nothing but "this device". */
       reporterName: reporter || (state.profile.name || ''),
+      /* Ownership so this stray stays editable/deletable for its poster
+         across reloads and on their other screens once signed in. */
+      reporterId: state.myId || null,
+      mine: true,
       tags: ['community-report'],
       notes: value('report-notes') || 'Watch this spot for a few days and log what you see.',
       photoUrl: photoUrl || null,
@@ -1804,6 +2030,49 @@
     return detailRow(label, n + (n === 1 ? ' time' : ' times'));
   }
 
+  /* ========================== photo lightbox ========================= */
+  /* Full-screen viewer for one animal's photo. Opened from three places -
+     a sidebar card tap, the details-drawer thumbnail and the map-popup
+     thumb - all through the single `photo` action, so they can never
+     disagree about what a photo click does.
+
+     The image is capped at 74vh / 92vw with object-contain: it should feel
+     huge without ever cropping the animal's face or forcing a scroll.
+
+     Photo links die over time (the old Google aida CDN now 403s), and a
+     broken-image glyph blown up to full screen looks like a crashed app -
+     so a failed load drops the picture and swaps the caption instead. */
+  function openPhoto(id) {
+    const animal = animalById(id);
+    if (!animal) return;
+    if (!animal.photoUrl) {
+      toast('No photo of ' + animal.name + ' has been shared yet - add one when you report or update it.', 'info');
+      return;
+    }
+    const img = $('#photo-img');
+    const title = $('#photo-title');
+    const caption = $('#photo-caption');
+    const detail = [animal.breed, animal.location.label]
+      .filter((part) => !isUnknown(part))
+      .join(' • ');
+
+    if (title) title.textContent = animal.name;
+    if (caption) caption.textContent = detail;
+    if (img) {
+      img.classList.remove('hidden');
+      img.onload = function () { img.classList.remove('hidden'); };
+      img.onerror = function () {
+        img.classList.add('hidden');
+        if (caption) caption.textContent = 'The photo of ' + animal.name + ' could not be loaded right now.';
+      };
+      img.alt = animal.name + ' the ' + animal.breed;
+      /* Assigned last: the handlers above must be in place before the
+         browser starts the (possibly cached, possibly instant) load. */
+      img.src = animal.photoUrl;
+    }
+    openModal('photo-modal');
+  }
+
   function openDetails(id) {
     const animal = animalById(id);
     if (!animal) return;
@@ -1833,13 +2102,23 @@
          like part of the content. It is now a proper 36px circular button with
          a visible resting border, a hover state and a pressed state, pinned to
          the header's corner with shrink-0 so a long name can never squeeze it.
-         The title column carries pr-10 to reserve that space. */
+         The title column carries pr-10 to reserve that space.
+
+         The photo is the point of a profile, so its thumbnail is large
+         (112px) and - when there IS a photo - IS the button that opens the
+         full-screen viewer. The emoji fallback stays a plain div: tapping it
+         explains there is nothing to enlarge instead of opening an empty
+         viewer. The heading and subtitle truncate so the bigger thumb can
+         never push the close button out of the row. */
+    const drawerThumb = animal.photoUrl
+      ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="View a big photo of ' + esc(animal.name) + '" aria-label="View a big photo of ' + esc(animal.name) + '" class="w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40 transition-all">' + avatarHtml(animal) + '</button>'
+      : '<div class="w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + '</div>';
     host.innerHTML =
       '<div class="flex items-start gap-3">' +
-        '<div class="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + '</div>' +
+        drawerThumb +
         '<div class="flex-1 min-w-0 pr-10">' +
-          '<h3 class="font-headline-md text-headline-md text-on-surface">' + esc(animal.name) + '</h3>' +
-          '<p class="font-body-sm text-body-sm text-on-surface-variant">' +
+          '<h3 class="font-headline-md text-headline-md text-on-surface truncate">' + esc(animal.name) + '</h3>' +
+          '<p class="font-body-sm text-body-sm text-on-surface-variant truncate">' +
             esc([animal.breed, animal.color].filter((part) => !isUnknown(part)).join(' • ') || speciesInfo(animal.species).singular) +
           '</p>' +
           '<p class="font-label-sm text-xs text-outline flex items-center gap-1 mt-1">' +
@@ -2666,6 +2945,13 @@
       openDetails(id);
       return;
     }
+    /* Photo lightbox. One action name, one handler, shared by the sidebar
+       card, the details-drawer thumbnail and the map-popup thumb - the same
+       rule the message action follows, so the entry points can never drift. */
+    if (action === 'photo') {
+      openPhoto(id);
+      return;
+    }
     if (action === 'station-check') logStationCheck(button.getAttribute('data-station'));
     if (action === 'copy-coords') {
       const a = animalById(id);
@@ -2710,6 +2996,18 @@
       const actionButton = target.closest('[data-action]');
       if (actionButton) {
         handleAction(actionButton);
+        return;
+      }
+
+      /* A tap anywhere on a card shows that animal's photo full screen.
+         This is deliberately AFTER the action buttons: Feed, Water, chat,
+         locate and details keep their own behaviour, and everything else
+         on the card answers the question people actually ask when they
+         click an animal - "what does it look like?". Animals without a
+         photo get the toast from openPhoto() rather than a dead click. */
+      const animalCard = target.closest('[data-animal-card]');
+      if (animalCard) {
+        openPhoto(animalCard.getAttribute('data-animal-card'));
         return;
       }
 
