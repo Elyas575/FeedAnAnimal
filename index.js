@@ -999,9 +999,18 @@
       return false;
     }
     const center = state.meta.center || { lat: 47.671236, lng: -122.343184 };
-    /* Leaflet renders Google's raster tiles; Google's own terms/attribution still apply.
-       We start zoomed out; fitToPark() refines this to the exact park extent as
-       soon as the dataset loads, so the opening frame is never a close-up. */
+    /* ONE camera move, decided before the first tile loads.
+
+       Tiles are fetched per viewport, so every extra move at boot downloads a
+       full screen of pixels that the NEXT move throws away. This used to be
+       setView(startZoom) -> fitToPark() -> flyTo(visitor): three screens per
+       visit, two of them never seen. hydrate() has already run by now, so the
+       final frame is known already - the visitor's saved position when we have
+       one, otherwise the park bounds. state.fitted then stops renderMarkers()
+       from framing the park a second time.
+
+       Leaflet renders raster tiles fetched from the provider in
+       meta.tileLayers; that provider's terms and attribution still apply. */
     state.map = window.L.map('map', {
       zoomControl: false,
       attributionControl: true,
@@ -1010,7 +1019,16 @@
       worldCopyJump: true,
       zoomSnap: 0.5,
       zoomDelta: 0.5
-    }).setView([center.lat, center.lng], state.meta.startZoom || 13);
+    });
+    const cached = state.userLocation;
+    if (cached) {
+      /* Returning visitor: open on their own street, not the demo park. */
+      state.map.setView([cached.lat, cached.lng], 16);
+    } else if (!fitToPark({ animate: false })) {
+      /* No points to frame (empty dataset): fall back to the seeded start view. */
+      state.map.setView([center.lat, center.lng], state.meta.startZoom || 13);
+    }
+    state.fitted = true;
 
     window.L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
     /* Default to the Google Streets base map; the layers button cycles the rest. */
@@ -1039,7 +1057,19 @@
     if (!state.map || !state.layers.length) return;
     const layer = state.layers[((index % state.layers.length) + state.layers.length) % state.layers.length];
     if (state.baseLayer) state.map.removeLayer(state.baseLayer);
-    const options = { attribution: layer.attribution || '', maxZoom: layer.maxZoom || 20, minZoom: 2, subdomains: layerSubdomains(layer) || 'abc' };
+    const options = {
+      attribution: layer.attribution || '',
+      maxZoom: layer.maxZoom || 20,
+      minZoom: 2,
+      subdomains: layerSubdomains(layer) || 'abc',
+      /* Every tile is a network round trip, so don't pay for tiles the visitor
+         is about to drag past: on a phone (Leaflet's own recommendation) wait
+         for the pan to settle before fetching, and prefetch one ring beyond the
+         screen instead of the default two. Desktop keeps streaming mid-pan so
+         dragging stays smooth. */
+      updateWhenIdle: isNarrow(),
+      keepBuffer: isNarrow() ? 1 : 2
+    };
     state.baseLayer = window.L.tileLayer(layer.url, options).addTo(state.map);
     state.baseLayerIndex = state.layers.indexOf(layer);
     const label = $('#layer-label');
@@ -1090,32 +1120,33 @@
     state.map.addLayer(group);
     state.markerLayer = group;
 
-    /* Frame the WHOLE park on first load, not just the animals that survive
-       the current filter. Fitting the filtered subset meant that opening the
-       page with "Cats" active zoomed into a corner, and the extent changed
-       every time a chip was applied. We also drop the maxZoom cap: it was
-       inherited from the old default-zoom behaviour and prevented zooming
-       out far enough to see the full 1.7km park. */
+    /* Safety net: initMap() has already framed the opening view (the saved
+       visitor position, or the park) and set state.fitted, so this normally
+       does nothing. It exists so an unframed map still gets the WHOLE park. */
     if (!state.fitted) {
       state.fitted = true;
       fitToPark();
     }
   }
 
-  /* Zoom out far enough to show every animal and station in one view. */
+  /* Zoom out far enough to show every animal and station in one view.
+
+     Returns true when it actually framed something, false when it could not -
+     initMap() uses that to fall back to the seeded start view instead of
+     leaving the camera with no view at all. */
   function fitToPark(options) {
-    if (!state.map) return;
+    if (!state.map) return false;
     const points = [];
     state.animals.forEach((a) => points.push([a.location.lat, a.location.lng]));
     state.stations.forEach((s) => points.push([s.location.lat, s.location.lng]));
     const centre = state.meta.center || null;
     if (centre) points.push([centre.lat, centre.lng]);
-    if (!points.length) return;
+    if (!points.length) return false;
 
     const opts = options || {};
     if (points.length === 1) {
       state.map.setView(points[0], state.meta.defaultZoom || 15);
-      return;
+      return true;
     }
     state.map.fitBounds(L.latLngBounds(points).pad(0.08), {
       padding: opts.padding || [40, 40],
@@ -1123,6 +1154,7 @@
       animate: opts.animate !== false,
       duration: opts.duration === undefined ? 0.6 : opts.duration,
     });
+    return true;
   }
   function animalMarker(row) {
     const animal = row.animal;
@@ -1277,8 +1309,13 @@
     if (reason) toast(reason + ' - showing New York State.', 'info');
   }
 
-  /* Aims the map at the visitor on open, so the first frame they see is their
-     own neighbourhood instead of the seeded demo park.
+  /* Refreshes the opening frame with a LIVE fix.
+
+     initMap() has already framed the map on state.userLocation (or on the
+     park), so this does not move the camera by itself - that would be a second
+     full screen of tiles for the position the map just opened on. It asks the
+     browser for a fresh position and only flies when the new fix lands more
+     than 50m from the one we opened on.
 
      Geolocation is best effort and can fail in four different ways - no API,
      insecure origin (browsers block it outside https/localhost), a refused
@@ -1289,12 +1326,9 @@
   function openAtVisitor() {
     if (!state.map) return;
 
-    /* A position cached from an earlier visit frames the map immediately, so a
-       returning visitor never sees the demo park flash past. */
+    /* The position the map opened on, kept as the baseline: a fresh fix a few
+       metres away must not make the map jitter between two spots. */
     const cached = state.userLocation;
-    if (cached) {
-      state.map.flyTo([cached.lat, cached.lng], Math.max(state.map.getZoom(), 16), { duration: 0.6 });
-    }
 
     if (!navigator.geolocation) {
       if (!cached) flyToFallback('This browser cannot share your location');
@@ -3516,10 +3550,12 @@
        view, so the side menu is there from the first frame. The desktop pill
        can still collapse it to a full-bleed map on demand. */
     switchMobileView(isNarrow() ? 'map' : 'list');
-    /* Point the opening frame at the visitor (or the New York fallback). On a
-       phone the sidebar hides here, so wait for switchMobileView()'s
-       invalidateSize() (260ms) or the flyTo aims at a zero-size container.
-       The desktop map keeps its size, so it can fly straight away. */
+    /* initMap() has already framed the opening view; openAtVisitor() only
+       refines it with a LIVE fix (and takes the fallback paths when there is
+       none). On a phone the sidebar hides here, so wait for
+       switchMobileView()'s invalidateSize() (260ms) or its flyTo aims at a
+       zero-size container. The desktop map keeps its size, so it can fly
+       straight away. */
     window.setTimeout(openAtVisitor, isNarrow() ? 300 : 0);
     wireEvents();
     wireReportPhoto();

@@ -43,7 +43,7 @@ Data flow: animals.json -> normalizeAnimal() -> computeStatus() -> selectAnimals
 
 ## 6. How to edit safely
 - Add animal: edit data/animals.json animals[] (unique id, lat/lng near center, caretakers/tags/notes, health in 4 values) -> run node tools/build-data.js -> node tools/selftest.js
-- Map start: meta.center + defaultZoom 15, minZoom 2 in index.js initMap()
+- Map start (index.js initMap()): saved visitor position if there is one, else ONE fitToPark() over meta.center; minZoom 2
 - Tiles: meta.tileLayers (google-streets, google-satellite). Layers button toggles between the two.
 - Urgency: meta.urgencyPolicy cat/dog/rabbit/bird/guinea-pig food/water okHours/urgentHours
 - Reset demo: button clears localStorage fta.overlay.v1

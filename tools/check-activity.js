@@ -303,7 +303,15 @@ rows.push([/inside the mapped area|outside the mapped area/.test(js) === false ?
   'the park inside/outside scolding is gone']);
 check('reset clears the stored location', 'state.userLocation = null;', js);
 check('reset re-frames the whole park', 'showing the whole', js);
-check('map opens on the park centre', '}).setView([center.lat, center.lng]', js);
+/* ONE camera move at boot: each extra move downloads a full screen of tiles
+   that the next move throws away (it used to be setView -> fitToPark ->
+   flyTo = three screens per visit). The opening frame is decided in initMap()
+   from the saved position or the park bounds. */
+check('map opens on the saved visitor position', 'state.map.setView([cached.lat, cached.lng], 16);', js);
+check('first visit frames the park in ONE move', 'fitToPark({ animate: false })', js);
+check('the opening view counts as framed (no second refit)', 'state.fitted = true;', js);
+rows.push([/flyTo\(\[cached\.lat/.test(js) === false ? 'OK  ' : 'MISS',
+  'boot does not fly to the position it just opened on']);
 
 /* --- opening view shows the WHOLE park ------------------------------- *
  * The old fitBounds() used the filtered subset and carried maxZoom: 15,

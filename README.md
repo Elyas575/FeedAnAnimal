@@ -27,7 +27,10 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
 
 **Real map (Leaflet 1.9 + Google tiles, no API key)**
 - Live slippy map centered on the dataset's coordinates, with a real map centre
-  from `meta.center` (47.671236, -122.343184) and 10-20 zoom.
+  from `meta.center` (47.671236, -122.343184) and 10-20 zoom. The opening view
+  is decided in ONE camera move (`initMap()`): the saved visitor position when
+  there is one, otherwise a single `fitToPark()` over the whole park - so a page
+  load downloads one screen of tiles, not the old three.
 - Two switchable base maps from `meta.tileLayers`: Google Streets (default) and
   Google Satellite (the layers button toggles between them, the label shows the
   active one). Google tiles are free for light dev use but
