@@ -117,10 +117,10 @@
     '@media (min-width:1024px){#site-top-header .fta-hd-inner{padding:0 32px}}',
     '#site-top-header .fta-hd-left{display:flex;align-items:center;gap:12px;min-width:0}',
     '#site-top-header .fta-hd-brandlink{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none}',
-    '#site-top-header .fta-logo{flex:0 0 auto;width:40px;height:40px;border-radius:9999px;',
+    '#site-top-header .fta-logo{flex:0 0 auto;width:48px;height:48px;border-radius:9999px;',
     'display:flex;align-items:center;justify-content:center;font-size:20px;background:#a03b0e;',
     'box-shadow:0 1px 2px rgba(30,27,26,.15)}',
-    '@media (min-width:640px){#site-top-header .fta-logo{width:36px;height:36px}}',
+    '@media (min-width:640px){#site-top-header .fta-logo{width:44px;height:44px}}',
     '#site-top-header .fta-brand{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
     'font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1;color:#1e1b1a}',
     '@media (min-width:640px){#site-top-header .fta-brand{font-size:24px}}',
@@ -243,7 +243,7 @@
       + '<div class="fta-hd-inner h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4">'
       + '<div class="fta-hd-left flex items-center gap-3 min-w-0">'
         + '<a href="index.html" class="fta-hd-brandlink flex items-center gap-2.5 group min-w-0">'
-          + '<span class="fta-logo h-10 w-10 sm:h-9 sm:w-9 shrink-0 rounded-full flex items-center justify-center text-xl shadow-sm" style="background:#a03b0e">🐾</span>'
+          + '<span class="fta-logo h-20 w-20 sm:h-16 sm:w-16 shrink-0 rounded-full flex items-center justify-center text-xl shadow-sm" style="background:#fff"><img src="logo/logo.png" alt="FeedAnAnimalMap logo" class="h-full w-full object-contain px-1"></span>'
           + '<span class="fta-brand text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none min-w-0 truncate whitespace-nowrap">FeedAnAnimalMap</span>'
         + '</a>'
       + '</div>'
