@@ -836,8 +836,6 @@
   function renderStatusBar() {
     const volunteers = $('#volunteer-count');
     if (volunteers) volunteers.textContent = String(state.meta.volunteersActive || 0);
-    const centerLabel = $('#center-label');
-    if (centerLabel) centerLabel.textContent = 'Center on ' + String(state.meta.region || 'Oakwood Park').split('&')[0].trim();
     const needsHelp = $('#header-needs-help');
     if (needsHelp) needsHelp.textContent = String(needsHelpCount()) + ' need help now';
   }
@@ -1252,6 +1250,18 @@
       icon.textContent = busy ? 'progress_activity' : 'my_location';
       icon.classList.toggle('animate-spin', busy);
     }
+    /* Same pending treatment for the labelled desktop pill, so a slow fix
+       never looks like a click that did nothing there either. */
+    const pill = $('#center-btn');
+    if (pill) {
+      pill.setAttribute('aria-busy', busy ? 'true' : 'false');
+      pill.classList.toggle('opacity-60', busy);
+    }
+    const pillIcon = $('#center-icon');
+    if (pillIcon) {
+      pillIcon.textContent = busy ? 'progress_activity' : 'my_location';
+      pillIcon.classList.toggle('animate-spin', busy);
+    }
   }
 
   /* --------------------------- opening view --------------------------- */
@@ -1336,8 +1346,8 @@
 
      "Near Me" means "show me me": the map is global, so whatever the seeded
      demo pins are, the viewport flies to the visitor's own point at street
-     level. Distances then re-measure from that point (see referencePoint()),
-     and "Center on ..." resets the view back to the park. */
+     level. Distances then re-measure from that point (see referencePoint()).
+     The desktop "Current Location" pill and the mobile circle share this flow. */
   function locateMe() {
     if (!navigator.geolocation) {
       toast('This browser cannot share a location.', 'error');
@@ -3352,17 +3362,11 @@
     if (zoomOut) zoomOut.addEventListener('click', () => state.map && state.map.zoomOut());
     const layerButton = $('#layer-btn');
     if (layerButton) layerButton.addEventListener('click', cycleBaseLayer);
-    /* Only the desktop pill stays on "Center on ..." - its own label says so.
-       The mobile circle is a bare my_location icon, which every other map app
-       reads as "take me to ME", so it runs the real geolocation flow instead. */
-    const centerOnPark = () => {
-      if (!state.map) return;
-      const center = state.meta.center || { lat: 0, lng: 0 };
-      state.map.flyTo([center.lat, center.lng], state.meta.defaultZoom || 15, { duration: 0.7 });
-      toast('Centered on ' + (state.meta.region || 'Oakwood Park'), 'info');
-    };
+    /* Both locate controls - the desktop "Current Location" pill and the bare
+       mobile my_location circle - read the same way: "take me to ME", so both
+       run the real geolocation flow instead of jumping to the demo park. */
     const centerButton = $('#center-btn');
-    if (centerButton) centerButton.addEventListener('click', centerOnPark);
+    if (centerButton) centerButton.addEventListener('click', locateMe);
     const mobileLocateButton = $('#mobile-locate-btn');
     if (mobileLocateButton) mobileLocateButton.addEventListener('click', locateMe);
 

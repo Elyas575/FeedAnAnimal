@@ -57,8 +57,8 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
 - "Feed"/"Water" one-tap logging updates `lastFedAt`/`lastWateredAt`, feed counts,
   the pin colour, the filter counters and the activity ticker, then writes to
   `localStorage` (`fta.overlay.v1`) so it survives a reload.
-- "Near Me" uses the browser Geolocation API, flies the map to where you are and
-  re-measures every distance from there; "reset" returns to the park centre.
+- "Near Me" and the floating "Current Location" pill use the browser Geolocation
+  API, fly the map to where you are and re-measure every distance from there.
 - "+ Report a Stray" opens a full form. You can drop the pin on the map (the
   modal docks to the bottom so the map is clickable) or use your GPS position.
   The photo is compressed in the browser before upload. Reports are saved
