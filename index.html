@@ -529,9 +529,10 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
             placeholder="Name, colour, friendly or scared, limping or bleeding, where exactly..."></textarea>
         </div>
 
-        <!-- Landmark is derived, not typed: placePickMarker() fills it with the
-             nearest station ("Dropped pin near Riverside Path") so the pin still
-             gets a useful label without another input to fill in. -->
+        <!-- Landmark is derived, not typed: fillPlaceLabel() names a station
+             next to the pin ("Dropped pin near Riverside Path") or, outside
+             the park, the reverse-geocoded city - so the pin always gets a
+             truthful label without another input to fill in. -->
         <input id="report-place" type="hidden">
         <input id="report-city" type="hidden">
         <input id="report-country" type="hidden">

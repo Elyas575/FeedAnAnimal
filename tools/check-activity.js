@@ -267,6 +267,21 @@ check('report pin is NOT draggable (GPS-only)', 'draggable: false', js);
 rows.push([/Use park center|Use park centre/.test(js) === false ? 'OK  ' : 'MISS',
   'no copy references the removed button']);
 
+/* --- honest landmarks ------------------------------------------------- *
+ * Bug: the auto label named the nearest demo station for EVERY pin (and a
+ * hard-coded "Oakwood Park" when none was loaded), so a real GPS report
+ * thousands of km from the park claimed to be dropped inside it. The label
+ * must come from a station actually next to the pin, or from the
+ * reverse-geocoded city - and legacy labels must rebuild on load. */
+rows.push([js.indexOf("'Dropped pin near ' + (station") === -1 ? 'OK  ' : 'MISS',
+  'the unconditional nearest-station landmark is gone']);
+check('the landmark helper exists', 'function fillPlaceLabel(lat, lng)', js);
+check('a station only names the pin when it is near', '<= 3000', js);
+check('far pins fall back to the reverse-geocoded city', "'Dropped pin near ' + geo.city", js);
+check('submit rebuilds an empty landmark from the resolved city', 'place = geoCity', js);
+check('legacy far-away labels are rebuilt on load',
+  'haversine(animal.location, state.meta.center) > 20000', js);
+
 /* --- GPS accuracy + pin/dot consistency ----------------------------- *
  * Bug: placePickMarker() wrote the report pin but never updated
  * state.userLocation, so the blue "you are here" dot kept rendering a

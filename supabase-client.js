@@ -36,6 +36,7 @@ try {
     window.sbForumToggleLike = sbForumToggleLike;
     window.sbRequireEmail = sbRequireEmail;
     window.sbCaretakerFor = sbCaretakerFor;
+    window.sbProfileName = sbProfileName;
     window.sbOpenDm = sbOpenDm;
     window.sbListMessages = sbListMessages;
     window.sbSendMessage = sbSendMessage;
@@ -403,6 +404,24 @@ async function sbCaretakerFor(animalId, excludeId) {
     return null;
   } catch (err) {
     console.warn('[sb] caretaker lookup failed:', err.message);
+    return null;
+  }
+}
+
+/* Display name for one account, used to title a thread that has no messages
+   yet - e.g. a report's poster, who has never spoken in the DM. Returns null
+   when unknown (or profiles RLS says no); callers fall back to "Volunteer". */
+async function sbProfileName(userId) {
+  if (!sb || !userId) return null;
+  try {
+    const { data, error } = await sb.from('profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .limit(1);
+    if (error) throw error;
+    return (data && data[0] && data[0].display_name) || null;
+  } catch (err) {
+    console.warn('[sb] profile name lookup failed:', err.message);
     return null;
   }
 }
@@ -971,6 +990,10 @@ async function sbLoadReports(limit = 200) {
         tags: ['community-report'],
         photoUrl: row.photo_url || null,
         reportedAt: row.created_at || new Date().toISOString(),
+        /* Who posted it (null for anonymous/old rows). index.js reads this as
+           reporterId, and openChat() opens the thread with the poster before
+           the last carer - "chat with whoever reported this stray". */
+        reporter_id: row.reporter_id || null,
         location: {
           lat: isFinite(lat) ? lat : 0,
           lng: isFinite(lng) ? lng : 0,

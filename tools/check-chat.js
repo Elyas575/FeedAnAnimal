@@ -223,6 +223,21 @@ ok('only one message handler exists', (js.match(/action === 'message'/g) || []).
 ok('the message button carries a data-id for delegation',
   /data-action="message" data-id="[^"]*"/.test(js));
 
+/* ----------------------------- the map popup ------------------------ *
+ * The leaflet popup is a THIRD entry point: the pin you just tapped IS the
+ * animal you are looking at, so chat must be one tap away there too - the
+ * drawer is two taps plus a scroll. */
+ok('the map popup has a chat button',
+  /data-action="message"/.test(
+    js.slice(js.indexOf('function popupHtml'), js.indexOf('function stationPopupHtml'))));
+/* For REPORTS the peer is whoever POSTED the stray, not whoever fed it last. */
+ok('a report threads with its poster first',
+  /animal\.source === 'report' && reporterId/.test(js));
+ok('the poster id rides in from the cloud rows',
+  client.indexOf('reporter_id: row.reporter_id') !== -1);
+ok('the poster display name can be resolved',
+  client.indexOf('function sbProfileName(') !== -1);
+
 /* ------------------------------- wiring ----------------------------- */
 ok('the send button submits the form', /chatForm\.addEventListener\('submit'/.test(js));
 ok('Enter sends without shift', /event\.key === 'Enter' && !event\.shiftKey/.test(js));

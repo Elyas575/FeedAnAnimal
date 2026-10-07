@@ -153,6 +153,20 @@
     animal.reporterId = animal.reporterId || animal.reporter_id || null;
     animal.reporterName = animal.reporterName || null;
     animal.mine = !!animal.mine;
+    /* The auto landmark used to name the demo park ("Dropped pin near Oakwood
+       Park") or a Seattle station for EVERY pin, including real GPS reports on
+       the other side of the country. Rebuild such a label from the detected
+       city whenever the report sits far outside the mapped area, so the card
+       never points at a place the animal is not near. Idempotent: an honest
+       in-park label (or a city label) passes through unchanged. */
+    if (animal.source === 'report' &&
+        String(animal.location.label || '').indexOf('Dropped pin near ') === 0 &&
+        state.meta && state.meta.center &&
+        haversine(animal.location, state.meta.center) > 20000) {
+      animal.location.label = animal.location.city
+        ? 'Dropped pin near ' + animal.location.city
+        : 'Community report pin';
+    }
     animal.lastFedAt = animal.lastFedAt || isoFromMinutes(animal.lastFedMinutesAgo || 0);
     animal.lastWateredAt = animal.lastWateredAt || isoFromMinutes(animal.lastWateredMinutesAgo || 0);
     animal.reportedAt = animal.reportedAt || isoFromDays(animal.reportedDaysAgo || 0);
@@ -973,6 +987,13 @@
           : '') +
         '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Full profile">' +
           '<span class="material-symbols-outlined">info</span></button>' +
+        /* Chat mirrors the sidebar card: "is it fed?" is immediately followed
+           by "who is looking after it?", and the pin you just clicked IS the
+           animal you are looking at - so the thread is one tap away instead of
+           two (drawer) plus a scroll. openChat() resolves the poster/caretaker
+           and explains every dead end, so the icon is never a trap. */
+        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Message whoever posted or cared for ' + esc(animal.name) + '" aria-label="Message whoever posted or cared for ' + esc(animal.name) + '">' +
+          '<span class="material-symbols-outlined">chat</span></button>' +
       '</div>' +
     '</div>';
   }
@@ -1459,6 +1480,41 @@
     toast('Cleared your location - showing the whole ' + (state.meta.region || 'park') + '.', 'ok');
   }
 
+  /* The auto landmark for a pin, written into the hidden report-place field.
+     The user never types it (the field is hidden), so it is always safe to
+     recompute whenever the pin moves.
+
+     It used to name the nearest demo station unconditionally - nearestStation()
+     returns the CLOSEST station whatever the distance, so a real GPS fix
+     hundreds of kilometres from the park got labelled with a Seattle landmark
+     (or the hard-coded "Oakwood Park" fallback when no station was loaded).
+     Both lied about where the animal actually is.
+
+     Now a station only names the pin when it is genuinely next to it (within
+     3 km - every demo station sits inside the park); otherwise the landmark
+     comes from the reverse-geocoded city. That lookup is cached and never
+     blocks pinning, and submitReport() has its own city fallback. */
+  function fillPlaceLabel(lat, lng) {
+    const placeInput = $('#report-place');
+    if (placeInput) placeInput.value = '';
+    const station = nearestStation(lat, lng);
+    if (station && haversine({ lat: lat, lng: lng }, station.location) <= 3000) {
+      if (placeInput) placeInput.value = 'Dropped pin near ' + station.ref;
+      return;
+    }
+    try {
+      const p = reverseGeocode(lat, lng);
+      if (p && typeof p.then === 'function') {
+        p.then((geo) => {
+          const input = $('#report-place');
+          if (input && !input.value.trim() && geo && geo.city) {
+            input.value = 'Dropped pin near ' + geo.city;
+          }
+        }).catch(() => {});
+      }
+    } catch (e) { /* offline - submit falls back to "Community report pin" */ }
+  }
+
   /* Used by the "Report a stray" form: writes the GPS fix into the hidden
      lat/lng fields. The user never sees or types these numbers. */
   function placePickMarker(lat, lng, options) {
@@ -1468,11 +1524,7 @@
     const lngInput = $('#report-lng');
     if (latInput) latInput.value = lat.toFixed(6);
     if (lngInput) lngInput.value = lng.toFixed(6);
-    const placeInput = $('#report-place');
-    if (placeInput && !placeInput.value.trim()) {
-      const station = nearestStation(lat, lng);
-      placeInput.value = 'Dropped pin near ' + (station ? station.ref : 'Oakwood Park');
-    }
+    fillPlaceLabel(lat, lng);
     /* A moved pin invalidates the old city: clear it, then re-detect in the
        background so the hidden report-city/country always match THIS pin,
        not the previous one. Fire-and-forget - submit re-awaits if needed. */
@@ -1852,8 +1904,9 @@
     if (known) {
       if (latInput) latInput.value = Number(known.lat).toFixed(6);
       if (lngInput) lngInput.value = Number(known.lng).toFixed(6);
-      /* Show the city/country for the default pin straight away; a later
-         re-pin clears and re-detects (placePickMarker). */
+      /* Landmark + city/country for the known pin straight away; a later
+         re-pin recomputes both (fillPlaceLabel / placePickMarker). */
+      fillPlaceLabel(Number(known.lat), Number(known.lng));
       try {
         const p = fillReportGeo(Number(known.lat), Number(known.lng));
         if (p && typeof p.catch === 'function') p.catch(() => {});
@@ -2054,7 +2107,7 @@
     const now = Date.now();
     const reporter = value('report-reporter');
     const station = nearestStation(lat, lng);
-    const place = value('report-place') || 'Community report pin';
+    let place = value('report-place') || 'Community report pin';
 
     const button = $('#report-submit');
     const originalLabel = button ? button.innerHTML : '';
@@ -2193,6 +2246,12 @@
       geoCity = geo.city || geoCity;
       geoCountry = geo.country || geoCountry;
     } catch (e) { /* submit anyway without city */ }
+    /* The auto landmark may still be empty (fresh pin whose city lookup was
+       in flight, or offline). Name the city just resolved instead, so the
+       card never falls back to a park the pin is nowhere near. */
+    if (!value('report-place')) {
+      place = geoCity ? 'Dropped pin near ' + geoCity : 'Community report pin';
+    }
     const geoSlug = slugifyCity(geoCity, geoCountry);
     try {
       if (pendingReportPhoto && typeof window.sbUploadReportPhoto === 'function') {
@@ -3005,10 +3064,36 @@
          if nobody has a real account for this animal yet, say so instead of
          opening a composer that would fail on send. */
       const caretaker = await caretakerFor(animal ? animal.id : animalId, me ? me.id : null);
-      if (!caretaker) {
+      /* For a REPORT the natural peer is whoever POSTED it - not whoever
+         happens to have fed it most recently. The poster id rides along on
+         every report (sbLoadReports maps reporter_id), so the chat icon on
+         the popup really does open a thread with the person who pinned the
+         stray. Seed animals carry no reporter, so they keep the caretaker
+         behaviour unchanged, and your own report is never messaged (the RPC
+         refuses self-DMs anyway). */
+      let peer = caretaker;
+      const reporterId = animal && animal.reporterId ? animal.reporterId : null;
+      const postedByMe = !!(reporterId && me && reporterId === me.id);
+      if (animal && animal.source === 'report' && reporterId && !postedByMe) {
+        peer = { userId: reporterId, name: animal.reporterName || null };
+        if (!peer.name) {
+          /* The thread header must name the poster before the first message
+             exists; profiles.display_name is the same name the inbox shows. */
+          const profileName = chatFn('sbProfileName');
+          if (profileName) {
+            try { peer.name = await profileName(reporterId); } catch (e) { peer.name = null; }
+          }
+        }
+        peer.name = peer.name || 'Volunteer';
+      }
+      if (!peer) {
         chatEmptyLog('');
-        chatGate('Nobody has signed in to care for ' + esc(state.chat.animalName || 'this animal') +
-          ' yet, so there is nobody to message. Log a feed or a vet check first - then you can talk to whoever did it.');
+        if (postedByMe) {
+          chatGate('This is your own report, so there is nobody else to message about it yet.');
+        } else {
+          chatGate('Nobody has signed in to care for ' + esc(state.chat.animalName || 'this animal') +
+            ' yet, so there is nobody to message. Log a feed or a vet check first - then you can talk to whoever did it.');
+        }
         return;
       }
 
@@ -3016,13 +3101,13 @@
         /* An anonymous session cannot be replied to, so chat asks for a real
            account (step 5.2). Logging a feed still works without one. */
         chatEmptyLog('');
-        chatGate('Messaging needs a real account so ' + esc(caretaker.name) +
+        chatGate('Messaging needs a real account so ' + esc(peer.name) +
           ' can reply to you. <a href="auth.html" class="text-primary font-semibold hover:underline">Sign in</a> - ' +
           'logging a feed still works without one.');
         return;
       }
 
-      conversation = await openDm(caretaker.userId, animal ? animal.id : animalId, null);
+      conversation = await openDm(peer.userId, animal ? animal.id : animalId, null);
 
       if (conversation && conversation.error === 'self') {
         chatEmptyLog('');
@@ -3031,7 +3116,7 @@
       }
       if (conversation && conversation.error === 'signin') {
         chatEmptyLog('');
-        chatGate('Messaging needs a real account. <a href="auth.html" class="text-primary font-semibold hover:underline">Sign in</a> to message ' + esc(caretaker.name) + '.');
+        chatGate('Messaging needs a real account. <a href="auth.html" class="text-primary font-semibold hover:underline">Sign in</a> to message ' + esc(peer.name) + '.');
         return;
       }
       if (!conversation) {
@@ -3043,8 +3128,8 @@
         chatGate('That conversation could not be opened. Check the browser console (F12) for the reason - if it mentions a foreign key, run <code class="font-mono">supabase/migration-drop-events-fk.sql</code>.');
         return;
       }
-      peerId = caretaker.userId;
-      peerName = caretaker.name;
+      peerId = peer.userId;
+      peerName = peer.name;
       peerReadAt = null;
     }
 
