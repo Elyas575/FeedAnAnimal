@@ -510,20 +510,15 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
         <div class="p-3 rounded-lg bg-surface-container border border-surface-container-high flex flex-col gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px] text-primary">location_on</span>Pin the location
+              <span class="material-symbols-outlined text-[18px] text-primary">location_on</span>Animal location
             </span>
-            <button id="report-pick-map" type="button" class="fta-btn fta-btn--ghost">
-              <span class="material-symbols-outlined">add_location_alt</span>Pick on map
-            </button>
             <button id="report-use-location" type="button" class="fta-btn fta-btn--primary">
               <span class="material-symbols-outlined">my_location</span>Use my location
             </button>
           </div>
-          <div class="flex items-center gap-2">
-            <input id="report-lat" class="fta-field" type="text" readonly aria-label="Latitude">
-            <input id="report-lng" class="fta-field" type="text" readonly aria-label="Longitude">
-          </div>
-          <p id="report-pick-hint" class="font-label-sm text-[11px] text-on-surface-variant">We pin your current location automatically. Press “Pick on map” if you saw the animal somewhere else.</p>
+          <input id="report-lat" type="hidden">
+          <input id="report-lng" type="hidden">
+          <p id="report-pick-hint" class="font-label-sm text-[11px] text-on-surface-variant">Tap “Use my location” to pin where you are standing with the animal.</p>
         </div>
 
         <div>

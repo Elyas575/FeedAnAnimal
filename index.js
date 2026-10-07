@@ -897,7 +897,6 @@
     const station = stationById(animal.stationId);
     const directions = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
     const mapsSearch = 'https://www.google.com/maps/search/?api=1&query=' + animal.location.lat + ',' + animal.location.lng;
-    const coordText = Number(animal.location.lat).toFixed(6) + ', ' + Number(animal.location.lng).toFixed(6);
     const myCare = historyFor(animal.id).length;
     const foodWidth = row.status.food === 'ok' ? 100 : row.status.food === 'needs' ? 40 : 15;
     const waterWidth = row.status.water === 'ok' ? 100 : row.status.water === 'needs' ? 40 : 15;
@@ -930,9 +929,10 @@
       '<p class="fta-popup__notes">' + esc(animal.notes) + '</p>' +
       '<p class="fta-popup__meta">' + esc(station ? station.name : 'No station assigned') + ' • ' + animal.feedCount + ' feeds logged' +
         (myCare ? ' • ' + myCare + ' by you' : '') + '</p>' +
+      /* Coordinates are background data: this link opens the pin in Google
+         Maps without ever printing the numbers on screen. */
       '<p class="fta-popup__meta"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">location_on</span> ' +
-        '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open exact pin in Google Maps">' + esc(coordText) + '</a>' +
-        ' <button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" title="Copy coordinates" style="text-decoration:underline">Copy</button></p>' +
+        '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open this location in Google Maps">View on Google Maps</a></p>' +
       /* Directions gets its OWN full-width row above the care actions. "Walk to
          this animal" is the reason someone opened the popup, so it should not
          compete with Feed/Water for horizontal space on one row.
@@ -950,6 +950,10 @@
           '<span class="material-symbols-outlined">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
         '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--water">' +
           '<span class="material-symbols-outlined">water_drop</span>Water</button>' +
+        (canManageReport(animal)
+          ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Edit your report">' +
+            '<span class="material-symbols-outlined">edit</span></button>'
+          : '') +
         '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Full profile">' +
           '<span class="material-symbols-outlined">info</span></button>' +
       '</div>' +
@@ -1035,11 +1039,8 @@
     const googleIndex = Math.max(0, state.layers.findIndex((entry) => entry.id === 'google-streets'));
     setBaseLayer(googleIndex);
 
-    state.map.on('click', (event) => {
-      /* One-shot: "Pick on map" arms pickMode, the next tap drops the pin
-         and placePickMarker() clears the flag again. */
-      if (state.pickMode) placePickMarker(event.latlng.lat, event.latlng.lng);
-    });
+    /* No map-click pinning: the report pin comes from GPS only, so a stray
+       tap on the map can never change a location. */
     return true;
   }
 
@@ -1441,7 +1442,8 @@
     toast('Cleared your location - showing the whole ' + (state.meta.region || 'park') + '.', 'ok');
   }
 
-  /* Used by the "Report a stray" form: click the map to drop the pin. */
+  /* Used by the "Report a stray" form: writes the GPS fix into the hidden
+     lat/lng fields. The user never sees or types these numbers. */
   function placePickMarker(lat, lng, options) {
     const opts = options || {};
     state.pickMode = false;
@@ -1478,10 +1480,9 @@
     const hint = $('#report-pick-hint');
     if (hint) {
       if (opts.accuracy && isFinite(opts.accuracy)) {
-        hint.textContent = 'Pinned at ' + lat.toFixed(5) + ', ' + lng.toFixed(5)
-          + ' - accurate to about ' + formatDistance(opts.accuracy) + '.';
+        hint.textContent = 'Location pinned - accurate to about ' + formatDistance(opts.accuracy) + '.';
       } else {
-        hint.textContent = 'Pinned at ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '.';
+        hint.textContent = 'Location pinned.';
       }
     }
     const modal = $('#report-modal');
@@ -1490,8 +1491,8 @@
     toast('Location pinned on the map.', 'ok');
   }
 
-  /* Draws (or moves) the single report pin. Draggable so a fat-finger tap
-     can be nudged without re-tapping the map. */
+  /* Draws (or moves) the single report pin. NOT draggable: the location is
+     GPS-only and must never be modified by dragging. */
   function drawPickMarker(lat, lng) {
     if (!state.map || !window.L) return;
     if (state.pickMarker) state.map.removeLayer(state.pickMarker);
@@ -1503,18 +1504,10 @@
         iconAnchor: [15, 15]
       }),
       title: 'New report pin',
-      draggable: true,
+      draggable: false,
       autoPan: true,
       zIndexOffset: 600
     }).addTo(state.map);
-    state.pickMarker.on('dragend', () => {
-      const pos = state.pickMarker.getLatLng();
-      /* Dragging reuses the same path as tapping: hidden fields, city and
-         hint text all refresh together. */
-      const placeInput = $('#report-place');
-      if (placeInput) placeInput.value = '';
-      placePickMarker(pos.lat, pos.lng);
-    });
   }
 
   /* Fills the report pin from the device GPS.
@@ -1535,7 +1528,7 @@
     const useMyLocationButton = $('#report-use-location');
     if (!useMyLocationButton) return;
     if (!navigator.geolocation) {
-      toast('Geolocation is unavailable in this browser - press "Pick on map" instead.', 'error');
+      toast('Geolocation is unavailable in this browser - reporting a location needs device GPS.', 'error');
       return;
     }
     if (!reportUseLocationHtml) reportUseLocationHtml = useMyLocationButton.innerHTML;
@@ -1565,7 +1558,7 @@
           { fromGps: true, accuracy: accuracy }
         );
         toast(accuracy && accuracy > 40
-          ? 'Pinned, but GPS was only accurate to about ' + formatDistance(accuracy) + '. Use “Pick on map” to fine-tune.'
+          ? 'Pinned, but GPS was only accurate to about ' + formatDistance(accuracy) + '. Tap “Use my location” again for a better fix.'
           : 'Pinned at your location (accurate to about ' + formatDistance(accuracy) + ').', 'ok');
       },
       (error) => {
@@ -1575,8 +1568,8 @@
         setLocating(false);
         const denied = error && error.code === 1;
         toast(denied
-          ? 'Location permission denied - you can still use "Pick on map".'
-          : 'Could not read your location - try "Pick on map" instead.', 'error');
+          ? 'Location permission denied - allow location access in your browser settings, then tap “Use my location” again.'
+          : 'Could not read your location - check that GPS is on and tap “Use my location” again.', 'error');
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -1787,7 +1780,31 @@
     return rule.urgentHours * 60 + 120;
   }
 
-  function openReportModal() {
+  /* Login gate for reporting: only signed-in volunteers (real account, not
+     anonymous) may open the report form. Guests get a toast explaining why
+     and are sent to auth.html. A sessionStorage flag re-opens the form after
+     they sign in, so they don't lose their intent. */
+  async function requireLoginForReport(quiet, intent) {
+    try {
+      let user = null;
+      if (typeof window !== 'undefined' && typeof window.sbRequireEmail === 'function') {
+        try { user = await window.sbRequireEmail(); } catch (e) { user = null; }
+      } else if (typeof window !== 'undefined' && window.sbAuth) {
+        try { user = await window.sbAuth.currentUser(); } catch (e) { user = null; }
+        if (user && user.is_anonymous) user = null;
+        if (user && !user.email) user = null;
+      }
+      if (user) { state.myId = user.id; return true; }
+    } catch (e) { /* fall through to login prompt */ }
+    if (quiet) return false;
+    toast('Please sign in to report a stray.', 'info');
+    try { sessionStorage.setItem('fta-after-login', intent || 'open-report'); } catch (e) {}
+    window.setTimeout(() => { window.location.href = 'auth.html?next=report'; }, 700);
+    return false;
+  }
+
+  async function openReportModal() {
+    if (!(await requireLoginForReport())) return;
     const form = $('#report-form');
     if (!form) return;
     form.reset();
@@ -1804,36 +1821,33 @@
     if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span>Save to the map';
 
     const hint = $('#report-pick-hint');
-    if (hint) hint.textContent = 'We pin your current location automatically. Press “Pick on map” if you saw the animal somewhere else.';
+    if (hint) hint.textContent = 'We pin your location from the device GPS - coordinates stay in the background and are never shown.';
     const error = $('#report-error');
     if (error) { error.textContent = ''; error.classList.add('hidden'); }
 
-    /* Default to where the reporter actually IS: people report a stray they
-       are standing in front of. A position we already know (from the opening
-       locate) is applied instantly with no further prompt; otherwise ask for
-       one. The old default was the map's viewport centre, which silently
-       pinned the report wherever the user last panned to. */
+    /* GPS ONLY: the pin comes from the device location, never from the map
+       viewport and never from a typed field - the lat/lng inputs are hidden
+       and are only ever written here. A fix we already know (from the
+       opening locate) is applied instantly; otherwise ask for one. */
     const known = state.userLocation;
-    const fallback = state.map ? state.map.getCenter() : (state.meta.center || { lat: 0, lng: 0 });
-    const start = known || fallback;
     const latInput = $('#report-lat');
     const lngInput = $('#report-lng');
-    if (latInput) latInput.value = Number(start.lat).toFixed(6);
-    if (lngInput) lngInput.value = Number(start.lng).toFixed(6);
-    /* Show the city/country for the default pin straight away; a later
-       re-pin clears and re-detects (placePickMarker). */
-    try {
-      const p = fillReportGeo(Number(start.lat), Number(start.lng));
-      if (p && typeof p.catch === 'function') p.catch(() => {});
-    } catch (e) { /* hint already shows the coords */ }
-
     if (known) {
-      /* Already located - no need to ask the browser again. */
-      if (hint) hint.textContent = 'Pinned to your current location. Press “Pick on map” if the animal was somewhere else.';
-    } else if (hint) {
-      hint.textContent = 'Finding your location… press “Pick on map” to choose the spot yourself.';
+      if (latInput) latInput.value = Number(known.lat).toFixed(6);
+      if (lngInput) lngInput.value = Number(known.lng).toFixed(6);
+      /* Show the city/country for the default pin straight away; a later
+         re-pin clears and re-detects (placePickMarker). */
+      try {
+        const p = fillReportGeo(Number(known.lat), Number(known.lng));
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch (e) { /* the hint already explains the pin */ }
+      if (hint) hint.textContent = 'Pinned to your current location (GPS).';
+    } else {
+      if (latInput) latInput.value = '';
+      if (lngInput) lngInput.value = '';
+      if (hint) hint.textContent = 'Finding your location… allow GPS access when asked.';
+      useMyLocationForReport();
     }
-    if (!known) useMyLocationForReport();
 
     /* No "your name" field any more: the log is attributed to state.profile.name,
        which the shared header already keeps in sync with the signed-in account
@@ -1850,9 +1864,10 @@
 
      Gating lives in canManageReport(): this function only builds the form,
      the buttons that lead here never render for someone else's report. */
-  function openEditReport(id) {
+  async function openEditReport(id) {
     const animal = animalById(id);
     if (!animal) return;
+    if (!(await requireLoginForReport(false, 'edit:' + id))) return;
     if (!canManageReport(animal)) {
       toast('Only the volunteer who reported this stray can edit or delete it.', 'error');
       return;
@@ -1895,7 +1910,7 @@
     const error = $('#report-error');
     if (error) { error.textContent = ''; error.classList.add('hidden'); }
     const hint = $('#report-pick-hint');
-    if (hint) hint.textContent = 'Editing the pin from your report. Press “Pick on map” if the animal has moved.';
+    if (hint) hint.textContent = 'Location stays as reported. Tap “Use my location” only if the animal has moved.';
     const photoHint = $('#report-photo-hint');
     if (photoHint) {
       photoHint.textContent = animal.photoUrl
@@ -1991,6 +2006,9 @@
 
   async function submitReport(event) {
     event.preventDefault();
+    /* Second half of the login gate: the modal can't be opened while logged
+       out, but a stale open form (or console call) must not sneak through. */
+    if (!(await requireLoginForReport())) return;
     const value = (id) => {
       const node = document.getElementById(id);
       return node ? String(node.value || '').trim() : '';
@@ -2007,7 +2025,7 @@
     const lat = Number(value('report-lat'));
     const lng = Number(value('report-lng'));
     if (!isFinite(lat) || !isFinite(lng) || (lat === 0 && lng === 0)) {
-      fail('Please pick the location first - tap “Change” and drop the pin on the map.');
+      fail('Your location has not been pinned yet - tap “Use my location” and allow GPS access.');
       return;
     }
 
@@ -2363,7 +2381,6 @@
       : '<p class="font-body-sm text-xs text-on-surface-variant">No care logged from this device yet. Your first feed or water log will show up here.</p>';
 
     const mapsUrl2 = 'https://www.google.com/maps/search/?api=1&query=' + animal.location.lat + ',' + animal.location.lng;
-    const coord2 = Number(animal.location.lat).toFixed(6) + ', ' + Number(animal.location.lng).toFixed(6);
     const directions2 = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
 
     /* Header. The close control used to be a bare 32px "x" crammed into the title
@@ -2444,10 +2461,11 @@
         (animal.source === 'report' ? detailRow('Reported', animal.reporterName || 'by a community volunteer') : '') +
       '</div>' +
 
+      /* Exact coordinates are background data - the link opens the pin in
+         Google Maps, but the numbers themselves are never printed. */
       '<div class="mt-4 p-2.5 rounded-lg bg-surface-container-low">' +
-        '<p class="font-label-sm text-[11px] text-on-surface-variant">Exact GPS (tap to open in Google Maps)</p>' +
-        '<p class="font-mono text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">' + esc(coord2) + '</a> ' +
-        '<button type="button" data-action="copy-coords" data-id="' + esc(animal.id) + '" style="text-decoration:underline">Copy</button></p>' +
+        '<p class="font-label-sm text-[11px] text-on-surface-variant">Location</p>' +
+        '<p class="font-body-sm text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">Open this location in Google Maps</a></p>' +
       '</div>' +
 
       '<p class="mt-4 font-body-sm text-body-sm text-on-surface">' + esc(animal.description) + '</p>' +
@@ -2479,6 +2497,12 @@
           '<span class="material-symbols-outlined text-[18px]">medical_services</span>Vet visit</button>' +
         '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">my_location</span>Show on map</button>' +
+        /* Only the reporter of THIS stray sees the edit control - and even a
+           forged button dies at openEditReport()'s canManageReport() check. */
+        (canManageReport(animal)
+          ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
+            '<span class="material-symbols-outlined text-[18px]">edit</span>Edit report</button>'
+          : '') +
         /* Phase 5. DMs to whoever most recently cared for this animal. The
            button is always present - openChat() resolves the caretaker and
            explains the outcome ("nobody has signed in yet", "sign in
@@ -3164,6 +3188,7 @@
       if (!auth || !getName) return;
       const user = await auth.currentUser();
       if (user && !user.is_anonymous) {
+        state.myId = user.id;
         const name = await getName(state.profile.name || 'Guest volunteer');
         const avatarUrl = await syncAvatar(user);
         if (name && name !== state.profile.name) {
@@ -3178,6 +3203,7 @@
           client.auth.onAuthStateChange(async () => {
             const u = await auth.currentUser();
             if (u && !u.is_anonymous) {
+              state.myId = u.id;
               const n = await getName(state.profile.name || 'Guest volunteer');
               const av = await syncAvatar(u);
               if (n) { state.profile = { name: n, avatarUrl: av || state.profile.avatarUrl || null }; writeOverlay(); renderTicker(); }
@@ -3209,6 +3235,14 @@
       openChat(id);
       return;
     }
+    /* Own report: reopen the same form pre-filled. openEditReport() re-checks
+       login AND ownership, so a forged button still gets nowhere. */
+    if (action === 'edit') {
+      if (state.map) state.map.closePopup();
+      closeModal('details-modal');
+      openEditReport(id);
+      return;
+    }
     if (action === 'details') {
       if (state.map) state.map.closePopup();
       openDetails(id);
@@ -3222,18 +3256,6 @@
       return;
     }
     if (action === 'station-check') logStationCheck(button.getAttribute('data-station'));
-    if (action === 'copy-coords') {
-      const a = animalById(id);
-      if (a) {
-        const txt = Number(a.location.lat).toFixed(6) + ', ' + Number(a.location.lng).toFixed(6);
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(txt).then(() => toast('Coordinates copied: ' + txt, 'ok'));
-          } else { toast(txt, 'info'); }
-        } catch (e) { toast(txt, 'info'); }
-      }
-      return;
-    }
   }
 
   function wireEvents() {
@@ -3431,18 +3453,7 @@
     const reportForm = $('#report-form');
     if (reportForm) reportForm.addEventListener('submit', submitReport);
 
-    /* Old in-form pin flow: "Pick on map" docks the panel and arms a one-shot
-       map click; "Use my location" re-pins from the GPS. */
-    const pickOnMap = $('#report-pick-map');
-    if (pickOnMap) {
-      pickOnMap.addEventListener('click', () => {
-        state.pickMode = true;
-        const modal = $('#report-modal');
-        if (modal) modal.classList.add('fta-picking');
-        switchMobileView('map');
-        toast('Now click the map where you saw the animal.', 'info');
-      });
-    }
+    /* GPS-only location: there is no "Pick on map" flow any more. */
 
     const useMyLocationButton = $('#report-use-location');
     if (useMyLocationButton) useMyLocationButton.addEventListener('click', useMyLocationForReport);
@@ -3560,6 +3571,20 @@
     wireEvents();
     wireReportPhoto();
     syncProfileFromAuth();
+    /* Back from auth.html after the login gate: the guest wanted to report,
+       so re-open the form now that they're signed in. */
+    try {
+      const want = sessionStorage.getItem('fta-after-login');
+      if (want) {
+        sessionStorage.removeItem('fta-after-login');
+        window.setTimeout(() => {
+          try {
+            if (want.indexOf('edit:') === 0) openEditReport(want.slice(5));
+            else openReportModal();
+          } catch (e) {}
+        }, 900);
+      }
+    } catch (e) {}
     wireDeepLink();
 
     // Phase 4: shared backend — anonymous auth + merge recent cloud events + live ticker

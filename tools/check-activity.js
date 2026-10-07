@@ -202,16 +202,19 @@ rows.push([cardBlock.indexOf('location_on') !== -1 ? 'OK  ' : 'MISS', 'card plac
 rows.push([cardBlock.indexOf("if (!place) return ''") !== -1 ? 'OK  ' : 'MISS', 'card skips the place line when nothing is known']);
 
 
-/* --- report location pinning (classic in-form flow) ------------------ *
- * "Report a stray" opens the FORM directly: the lat/lng boxes show where the
- * pin will land, "Pick on map" docks the panel and arms a one-shot map click,
- * and "Use my location" re-pins from the device GPS (watchPosition warm-up). */
+/* --- report location pinning (GPS-only in-form flow) ----------------- *
+ * "Report a stray" opens the FORM directly and the pin comes from the device
+ * GPS only: the lat/lng inputs are hidden (never shown to the user), there is
+ * no "Pick on map" flow, and "Use my location" re-pins (watchPosition warm-up). */
 rows.push([html.indexOf('id="report-use-center"') === -1 ? 'OK  ' : 'MISS', '"Use park centre" button removed from the form']);
 rows.push([js.indexOf('report-use-center') === -1 ? 'OK  ' : 'MISS', 'no orphaned handler for the removed button']);
-check('"Pick on map" is offered', 'id="report-pick-map"', html);
+rows.push([html.indexOf('report-pick-map') === -1 ? 'OK  ' : 'MISS', '"Pick on map" removed from the form']);
 check('"Use my location" is offered', 'id="report-use-location"', html);
-check('the form has the lat box', 'id="report-lat"', html);
-check('the form has the lng box', 'id="report-lng"', html);
+check('the form keeps the hidden lat input', 'id="report-lat"', html);
+check('the form keeps the hidden lng input', 'id="report-lng"', html);
+rows.push([html.indexOf('id="report-lat" type="hidden"') !== -1 &&
+  html.indexOf('id="report-lng" type="hidden"') !== -1 ? 'OK  ' : 'MISS',
+  'lat/lng inputs are hidden from the user']);
 check('the form shows a pick hint', 'id="report-pick-hint"', html);
 rows.push([html.indexOf('id="report-pinbar"') === -1 ? 'OK  ' : 'MISS', 'pin-first bar removed (form-first flow restored)']);
 rows.push([html.indexOf('id="report-change-loc"') === -1 ? 'OK  ' : 'MISS', 'read-only Change-location link removed']);
@@ -220,9 +223,9 @@ check('report entry opens the form', 'function openReportModal()', js);
 check('openReportModal resets the form', 'form.reset();', js);
 rows.push([js.indexOf('function openReportModal()') < js.indexOf('useMyLocationForReport();') ? 'OK  ' : 'MISS',
   'openReportModal auto-pins from GPS when no position is known']);
-check('pick-on-map docks the form panel', "modal.classList.add('fta-picking')", js);
-check('pick-on-map arms the one-shot click', 'state.pickMode = true;', js);
-check('map click requires pickMode', 'if (state.pickMode) placePickMarker(', js);
+rows.push([js.indexOf("modal.classList.add('fta-picking')") === -1 ? 'OK  ' : 'MISS', 'pick-on-map panel docking is gone']);
+rows.push([js.indexOf('state.pickMode = true;') === -1 ? 'OK  ' : 'MISS', 'pick-on-map arming is gone']);
+rows.push([js.indexOf('if (state.pickMode) placePickMarker(') === -1 ? 'OK  ' : 'MISS', 'map taps never move the report pin']);
 check('geolocation request still exists', 'getCurrentPosition(', js);
 check('geolocation keeps high accuracy', 'enableHighAccuracy: true', js);
 /* The button must show a pending state, otherwise a slow GPS fix looks broken. */
@@ -234,7 +237,7 @@ rows.push([(js.match(/setLocating\(false\)/g) || []).length >= 2 ? 'OK  ' : 'MIS
   'locating state clears on BOTH success and failure (' + (js.match(/setLocating\(false\)/g) || []).length + ' calls)']);
 check('location success reports the accuracy', 'Pinned at your location (accurate to about', js);
 check('permission denial is explained', 'Location permission denied', js);
-check('failure suggests the map alternative', 'try "Pick on map" instead', js);
+check('failure suggests a GPS retry', 'allow location access', js);
 check('geolocation timeout allows a slow fix', 'timeout: 15000', js);
 /* Regression: setValue()/value() used to exist only as LOCAL copies inside
    openEditReport/submitReport, so callers outside those two functions crashed
@@ -246,7 +249,7 @@ rows.push([js.indexOf('const setValue =') !== -1 &&
 rows.push([js.indexOf('const value = (id)') !== -1 &&
   js.indexOf('const value = (id)') < js.indexOf('function submitReport') ? 'OK  ' : 'MISS',
 'value() is at module scope, before submitReport']);
-check('report pin is draggable', 'draggable: true', js);
+check('report pin is NOT draggable (GPS-only)', 'draggable: false', js);
 rows.push([/Use park center|Use park centre/.test(js) === false ? 'OK  ' : 'MISS',
   'no copy references the removed button']);
 

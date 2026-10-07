@@ -39,7 +39,7 @@ Data flow: animals.json -> normalizeAnimal() -> computeStatus() -> selectAnimals
 2. Chips: All 48 / Cats 28 / Dogs 16 / Needs Help 12
 3. Feed: open Milo popup > Feed -> pin turns green, ticker adds You, reload keeps it (localStorage)
 4. Near Me: click Near Me > Allow location > distances re-sort + blue dot + flyTo 16
-5. Report: + Report a Stray > Pick on map > click map > Submit > new pin appears
+5. Report: + Report a Stray (sign in first) > Use my location > Submit > new pin appears
 
 ## 6. How to edit safely
 - Add animal: edit data/animals.json animals[] (unique id, lat/lng near center, caretakers/tags/notes, health in 4 values) -> run node tools/build-data.js -> node tools/selftest.js
