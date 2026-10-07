@@ -495,9 +495,26 @@
   function countBySpecies() {
     const counts = new Map();
     state.animals.forEach((a) => counts.set(a.species, (counts.get(a.species) || 0) + 1));
-    return (state.meta.speciesCatalog || [])
+    const listed = (state.meta.speciesCatalog || [])
       .map((s) => ({ id: s.id, label: s.label, emoji: s.emoji, count: counts.get(s.id) || 0, singular: s.singular }))
       .filter((s) => s.count > 0);
+    /* Species the report form creates that the demo catalog never had
+       (e.g. a report saved as 'other'): count them too, or their pins only
+       ever show up under All / Needs Help and cannot be filtered. */
+    const known = new Set(listed.map((s) => s.id));
+    counts.forEach((count, id) => {
+      if (count > 0 && !known.has(id)) {
+        const info = speciesInfo(id);
+        listed.push({
+          id: id,
+          label: info.label.charAt(0).toUpperCase() + info.label.slice(1),
+          emoji: info.emoji,
+          count: count,
+          singular: info.singular
+        });
+      }
+    });
+    return listed;
   }
 
   const needsHelpCount = () => state.animals.filter((a) => statusOf(a).needsHelp).length;
@@ -1890,7 +1907,12 @@
     /* "Unnamed stray" is the placeholder the form produces, so showing it
        back in the name box would look like a name someone chose. */
     setValue('report-name', animal.name === 'Unnamed stray' ? '' : animal.name);
-    setValue('report-species', animal.species);
+    /* The select only offers Cat/Dog/Other now. An older report can still
+       carry a species we no longer list (rabbit/bird/guinea-pig); assigning
+       it would leave the <select> blank, and a blank submit silently
+       re-saves as 'cat'. Park anything not offered on 'other' instead. */
+    const offeredSpecies = ['cat', 'dog', 'other'];
+    setValue('report-species', offeredSpecies.indexOf(animal.species) === -1 ? 'other' : animal.species);
     setValue('report-description', animal.description || '');
     setValue('report-lat', Number(animal.location.lat).toFixed(6));
     setValue('report-lng', Number(animal.location.lng).toFixed(6));

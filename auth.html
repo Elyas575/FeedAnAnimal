@@ -6,163 +6,482 @@
 <title>Sign in — FeedAnAnimalMap</title>
 <meta name="description" content="Sign in to keep your care history and share updates with other volunteers.">
 <meta name="robots" content="index,follow">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="logo/logo.png" type="image/png">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="tailwind-theme.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<script>
+/* Captured before supabase-client.js runs: an emailed recovery link lands on
+   auth.html#access_token=...&type=recovery, and supabase-js removes that hash
+   once it has established the session. */
+window.__ftaRecovery = location.hash.indexOf('type=recovery') !== -1;
+</script>
 <style>
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;color:#1e1b1a}
-.fta-field{width:100%;height:44px;padding:0 14px;border-radius:.8rem;border:1px solid #dec0b6;background:#fff;font-size:14px}
-.fta-field:focus{outline:none;border-color:#a03b0e;box-shadow:0 0 0 3px rgba(160,59,14,.12)}
-.fta-btn{height:44px;border-radius:9999px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
-.fta-btn:disabled{opacity:.6;cursor:wait}
-#toast-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px)}
-.toast{background:#1e1b1a;color:#fff8f6;border-radius:12px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:8px;align-items:center}
-.toast.ok{background:#006d30}.toast.err{background:#ba1a1a}.toast.info{background:#006194}
-  /* clear the shared fixed navbar */
-  body.has-site-header{padding-top:68px}
-  /* keep the card above the mobile bottom tab bar */
-  @media (max-width:767px){body.has-site-header{padding-bottom:100px}}
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background-color: #faf8f7;
+  color: #2d2a29;
+}
 
+/* Custom Interactive Field Inputs */
+.fa-input-group {
+  position: relative;
+}
+.fa-field {
+  width: 100%;
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #e8e2de;
+  background: #ffffff;
+  color: #2d2a29;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+.fa-field::placeholder { color: #9e9895; }
+.fa-field:focus {
+  outline: none;
+  border-color: #f06548;
+  box-shadow: 0 0 0 3px rgba(240, 101, 72, 0.15);
+}
+
+/* Vibrant Action Buttons */
+.fa-btn-primary {
+  width: 100%;
+  height: 50px;
+  border-radius: 12px;
+  background-color: #f06548;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.fa-btn-primary:hover {
+  background-color: #d95337;
+}
+.fa-btn-primary:disabled { opacity: 0.65; cursor: wait; }
+
+/* Custom Provider Buttons */
+.fa-btn-provider {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid #e8e2de;
+  background: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+  color: #2d2a29;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.15s ease;
+}
+.fa-btn-provider:hover {
+  background: #fcfbfa;
+  border-color: #d0c8c4;
+}
+
+/* Custom Segmented Control Switches */
+.segment-bar {
+  background: #f4f0ed;
+  border-radius: 12px;
+  padding: 4px;
+  display: flex;
+  gap: 2px;
+}
+.segment-btn {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #786f6a;
+  border-radius: 10px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.segment-btn.active {
+  background: #ffffff;
+  color: #1e1b1a;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Toast Notifications */
+#toast-wrap {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+  width: 100%;
+}
+.toast {
+  background: #2d2a29;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+.toast.ok { background: #1b8a43; }
+.toast.err { background: #d93838; }
+.toast.info { background: #1f78b4; }
+
+body.has-site-header { padding-top: 68px; }
 </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 <div id="site-header"></div>
 <div id="toast-wrap"></div>
-<div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-[#efe6e4] p-6">
-<div class="flex items-center gap-3 mb-1">
-<span class="h-10 w-10 rounded-full flex items-center justify-center text-xl" style="background:#a03b0e">🐾</span>
-<div><h1 class="text-xl font-bold">Welcome back</h1>
-<p class="text-sm text-[#57423b]">Login unlocks chat + sync. Feeding works without login.</p></div>
-</div>
-<div id="auth-status" class="mt-3 text-sm hidden rounded-xl p-3"></div>
-<button id="btn-google" class="fta-btn mt-4 bg-white border border-[#dec0b6]">Continue with Gmail / Google</button>
 
-<p class="text-[11px] mt-2">Gmail needs setup: Supabase Auth Providers Google ON. Until then use email link.</p>
-<div class="flex items-center gap-3 my-4"><div class="h-px bg-[#efe6e4] flex-1"></div><span class="text-xs">or email</span><div class="h-px bg-[#efe6e4] flex-1"></div></div>
-<label class="text-xs font-bold" for="auth-email">Email</label>
-<input id="auth-email" class="fta-field mt-1" type="email" placeholder="you@gmail.com">
-<button id="btn-magic" class="fta-btn mt-3 text-white" style="background:#a03b0e">Send login link</button>
-<div class="flex items-center gap-3 my-4"><div class="h-px bg-[#efe6e4] flex-1"></div><span class="text-xs">or password</span><div class="h-px bg-[#efe6e4] flex-1"></div></div>
-<label class="text-xs font-bold" for="auth-name">Display name (register only)</label>
-<input id="auth-name" class="fta-field mt-1" type="text" placeholder="Alex R.">
-<label class="text-xs font-bold mt-3 block" for="auth-password">Password</label>
-<input id="auth-password" class="fta-field mt-1" type="password" placeholder="........">
-<div class="flex gap-2 mt-3">
-<button id="btn-login" class="fta-btn text-white" style="background:#006d30">Login</button>
-<button id="btn-register" class="fta-btn" style="background:#ffdbcf">Register</button>
-</div>
-<div class="flex items-center justify-between mt-4">
-<a href="index.html" class="text-sm font-semibold" style="color:#a03b0e">Back to map</a>
-<button id="btn-logout" class="text-sm hidden">Sign out</button>
-</div>
-</div>
+<main class="w-full max-w-[440px] bg-white rounded-[28px] border border-[#ede7e3] shadow-xl p-6 sm:p-8">
+  
+  <!-- Header with Brand Logo -->
+  <div class="text-center mb-6">
+    <div class="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-[#f06548]/10 border border-[#f06548]/20 p-2 mb-3 shadow-sm">
+      <img src="logo/logo.png" alt="FeedAnAnimalMap logo" class="h-full w-full object-contain">
+    </div>
+    <h1 class="text-2xl font-bold text-[#1e1b1a] tracking-tight">Welcome Back</h1>
+    <p class="text-xs text-[#786f6a] mt-1">Sign in to submit spots, vote, and join the community</p>
+  </div>
+
+  <div class="space-y-5">
+    
+    <!-- Social Provider Buttons -->
+    <div class="grid grid-cols-2 gap-3">
+      <button id="btn-google" class="fa-btn-provider">
+        <svg class="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        Google
+      </button>
+
+      <button id="btn-facebook" class="fa-btn-provider">
+        <svg class="w-4 h-4 fill-[#1877F2]" viewBox="0 0 24 24">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+        Facebook
+      </button>
+    </div>
+
+    <div class="relative flex items-center justify-center">
+      <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-[#e8e2de]"></div></div>
+      <span class="relative px-3 text-xs font-semibold text-[#9e9895] uppercase tracking-wider bg-white">or email access</span>
+    </div>
+
+    <!-- Live Dynamic Status Notice -->
+    <div id="auth-status" class="hidden text-xs rounded-xl p-3 border"></div>
+
+    <!-- Mode Tabs -->
+    <div class="segment-bar">
+      <button id="tab-magic" class="segment-btn active" onclick="switchTab('magic')">Magic Link</button>
+      <button id="tab-login" class="segment-btn" onclick="switchTab('login')">Sign In</button>
+      <button id="tab-signup" class="segment-btn" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- Form Inputs Container -->
+    <div class="space-y-3">
+      
+      <!-- Display Name (Sign Up only) -->
+      <div id="group-name" class="hidden fa-input-group">
+        <input id="auth-name" class="fa-field" type="text" placeholder="Full name / Alias">
+      </div>
+
+      <!-- Email Field -->
+      <div class="fa-input-group">
+        <input id="auth-email" class="fa-field" type="email" placeholder="Enter your email">
+      </div>
+
+      <!-- Password Field (Sign In & Sign Up) -->
+      <div id="group-password" class="hidden fa-input-group">
+        <input id="auth-password" class="fa-field" type="password" placeholder="••••••••">
+      </div>
+
+      <!-- New Password (only after clicking a reset link in email) -->
+      <div id="group-reset" class="hidden space-y-3 pt-2">
+        <p class="text-xs text-[#786f6a] leading-relaxed">
+          Your reset link was verified. Choose a new password for your account.
+        </p>
+        <div class="fa-input-group">
+          <input id="auth-new-password" class="fa-field" type="password" placeholder="New password (min 6 characters)">
+        </div>
+        <button id="btn-save-password" class="fa-btn-primary">Save new password →</button>
+      </div>
+
+      <!-- Trigger Buttons (Standard Modes) -->
+      <button id="btn-magic" class="fa-btn-primary">Send magic link</button>
+      <button id="btn-login" class="fa-btn-primary hidden">Sign In to Account →</button>
+      <button id="btn-register" class="fa-btn-primary hidden">Create Account →</button>
+
+      <!-- Verification Code Section (Revealed when "Have a code" is clicked) -->
+      <div id="group-code" class="hidden space-y-3 pt-2">
+        <p class="text-xs text-[#786f6a] leading-relaxed">
+          Enter the email you asked us to send to, then the code from that email.
+        </p>
+        <div class="space-y-1">
+          <label class="block text-xs font-medium text-[#2d2a29]">Enter the code from the email</label>
+          <div class="fa-input-group">
+            <input id="auth-code" class="fa-field" type="text">
+          </div>
+        </div>
+        <button id="btn-verify-code" class="fa-btn-primary">Sign in with code</button>
+      </div>
+
+    </div>
+
+    <!-- Action Secondary Links -->
+    <div class="flex justify-between items-center text-xs text-[#786f6a]">
+      <button type="button" id="link-code" class="hover:text-[#1e1b1a] transition-colors" onclick="toggleCodeSection()">I already have a code</button>
+      <a href="#" id="link-forgot" class="hover:text-[#1e1b1a] transition-colors hidden">Forgot password?</a>
+    </div>
+
+    <!-- Bottom Navigation & Sign Out -->
+    <div class="pt-4 border-t border-[#f4f0ed] flex justify-between items-center text-xs">
+      <a href="index.html" class="font-semibold text-[#f06548] hover:underline flex items-center gap-1">
+        <span>←</span> Return to Map
+      </a>
+      <button id="btn-logout" class="text-rose-600 hover:text-rose-700 font-medium hidden">Sign Out</button>
+    </div>
+
+  </div>
+</main>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
 <script>
+/* Mode Switcher Logic */
+function switchTab(mode) {
+  var tabs = ['magic', 'login', 'signup'];
+  tabs.forEach(function(t) {
+    var btn = document.getElementById('tab-' + t);
+    if (btn) btn.classList.toggle('active', t === mode);
+  });
+
+  var nameGroup = document.getElementById('group-name');
+  var passGroup = document.getElementById('group-password');
+  var codeGroup = document.getElementById('group-code');
+  var btnMagic = document.getElementById('btn-magic');
+  var btnLogin = document.getElementById('btn-login');
+  var btnRegister = document.getElementById('btn-register');
+  var linkCode = document.getElementById('link-code');
+  var linkForgot = document.getElementById('link-forgot');
+
+  // Reset Code Section on Tab Switch
+  codeGroup.classList.add('hidden');
+
+  nameGroup.classList.toggle('hidden', mode !== 'signup');
+  passGroup.classList.toggle('hidden', mode === 'magic');
+
+  btnMagic.classList.toggle('hidden', mode !== 'magic');
+  btnLogin.classList.toggle('hidden', mode !== 'login');
+  btnRegister.classList.toggle('hidden', mode !== 'signup');
+
+  linkCode.classList.toggle('hidden', mode !== 'magic');
+  linkForgot.classList.toggle('hidden', mode !== 'login');
+}
+
+function toggleCodeSection() {
+  var codeGroup = document.getElementById('group-code');
+  var btnMagic = document.getElementById('btn-magic');
+  
+  var isHidden = codeGroup.classList.contains('hidden');
+  if (isHidden) {
+    codeGroup.classList.remove('hidden');
+    btnMagic.classList.add('hidden');
+  } else {
+    codeGroup.classList.add('hidden');
+    btnMagic.classList.remove('hidden');
+  }
+}
+
+/* Supabase Auth Script Integration */
 (function(){
 var $ = function(id){ return document.getElementById(id); };
+
+/* Password-recovery landing: supabase-client.js has already turned the emailed
+   #access_token&type=recovery hash into a session, so the only job left is
+   collecting a new password — and NOT forwarding the visitor to the map before
+   they set one. The flag itself is captured in <head> (see __ftaRecovery)
+   because supabase-js clears the hash after processing it. */
+var recoveryMode = !!window.__ftaRecovery;
+function enterResetMode(){
+  recoveryMode = true;
+  var seg = document.querySelector('.segment-bar'); if (seg) seg.classList.add('hidden');
+  ['group-name','group-password','group-code','btn-magic','btn-login','btn-register','link-code','link-forgot']
+    .forEach(function(id){ var el = $(id); if (el) el.classList.add('hidden'); });
+  var g = $('group-reset'); if (g) g.classList.remove('hidden');
+  status('Reset link verified — choose a new password for your account.', true);
+}
+
 function toast(msg, tone){
-var wrap = $('toast-wrap');
-var d = document.createElement('div');
-d.className = 'toast ' + (tone || '');
-d.textContent = msg;
-wrap.appendChild(d);
-setTimeout(function(){ d.remove(); }, 4200);
+  var wrap = $('toast-wrap');
+  var d = document.createElement('div');
+  d.className = 'toast ' + (tone || '');
+  d.textContent = msg;
+  wrap.appendChild(d);
+  setTimeout(function(){ d.remove(); }, 4200);
 }
+
 function status(msg, ok){
-var el = $('auth-status'); el.classList.remove('hidden');
-el.style.background = ok ? '#92f5a4' : '#ffdad6'; el.textContent = msg;
+  var el = $('auth-status'); 
+  el.classList.remove('hidden');
+  el.style.background = ok ? '#e6f4ea' : '#fce8e6'; 
+  el.style.borderColor = ok ? '#ceead6' : '#fad2cf';
+  el.style.color = ok ? '#137333' : '#c5221f';
+  el.textContent = msg;
 }
+
 function setBusy(b){
-['btn-google','btn-magic','btn-login','btn-register'].forEach(function(id){
-var el = $(id); if (el) el.disabled = !!b;
-});
-var m = $('btn-magic'); if (m && b) toast('Sending...', 'info');
+  ['btn-google','btn-facebook','btn-magic','btn-login','btn-register','btn-verify-code','btn-save-password'].forEach(function(id){
+    var el = $(id); if (el) el.disabled = !!b;
+  });
+  if (b) toast('Processing request...', 'info');
 }
+
 function friendlyError(e){
-var msg = (e && e.message) ? e.message : String(e);
-if (/429|too many|rate/i.test(msg)) return 'Too many tries — Supabase paused signups for ~1 minute (spam protection). Wait 60 seconds, then press Register ONCE.';
-if (/confirm|verify|confirmation/i.test(msg)) return msg + ' — check your inbox/spam for the confirm link, click it, then press Login.';
-return msg;
+  var msg = (e && e.message) ? e.message : String(e);
+  if (/429|too many|rate/i.test(msg)) return 'Too many attempts — please wait 60 seconds.';
+  if (/confirm|verify|confirmation/i.test(msg)) return msg + ' — check your email for the confirmation link.';
+  return msg;
 }
+
 function email(){ return ($('auth-email').value || '').trim(); }
-/* A volunteer only counts as signed in with a real account. Anonymous
-   sessions are created silently for forum posting (sbEnsureAuth), and those
-   visitors still need this page, so is_anonymous must not redirect home. */
+function code(){ return ($('auth-code').value || '').trim(); }
 function isSignedIn(u){ return !!u && !u.is_anonymous; }
-/* Every successful sign-in ends on the map. location.replace() rather than a
-   plain href assignment, so the browser Back button skips auth.html instead of
-   bouncing the volunteer back to a form they already completed. */
+
 var leaving = false;
 function goHome(delay){
   if (leaving) return;
   leaving = true;
   setTimeout(function(){ window.location.replace('index.html'); }, delay || 0);
 }
-/* The magic link and the Google button both return to this same page with the
-   session in the URL. Supabase consumes it and fires onAuthStateChange, and that
-   is what finally sends the volunteer home. */
+
 function watchSession(){
-  try { window.sbAuth.onChange(function(u){ if (isSignedIn(u)) goHome(); }); }
+  try { window.sbAuth.onChange(function(u){ if (isSignedIn(u) && !recoveryMode) goHome(); }); }
   catch(e){}
 }
+
 async function showUser(){
-try {
-var u = await window.sbAuth.currentUser();
-if (isSignedIn(u)) {
-  status('Signed in as ' + (u.email || u.id), true);
-  $('btn-logout').classList.remove('hidden');
-  goHome(700);   /* already signed in — no reason to stay on this form */
+  try {
+    var u = await window.sbAuth.currentUser();
+    if (isSignedIn(u)) {
+      $('btn-logout').classList.remove('hidden');
+      if (recoveryMode) return; // stay here: the new password is not set yet
+      status('Signed in as ' + (u.email || u.id), true);
+      goHome(700);
+    }
+  } catch(e){}
 }
-} catch(e){}
-}
+
 $('btn-google').onclick = async function(){
-setBusy(true);
-try { toast('Opening Google...', 'info'); await window.sbAuth.signInWithGoogle(); }
-catch(e){ var m = friendlyError(e); status('Google not configured yet: ' + m, false); toast(m, 'err'); }
-setBusy(false);
+  setBusy(true);
+  try { toast('Connecting to Google...', 'info'); await window.sbAuth.signInWithGoogle(); }
+  catch(e){ var m = friendlyError(e); status('Google Auth Error: ' + m, false); toast(m, 'err'); }
+  setBusy(false);
 };
+
+$('btn-facebook').onclick = async function(){
+  setBusy(true);
+  try { toast('Connecting to Facebook...', 'info'); await window.sbAuth.signInWithFacebook(); }
+  catch(e){ var m = friendlyError(e); status('Facebook Auth Error: ' + m, false); toast(m, 'err'); }
+  setBusy(false);
+};
+
 $('btn-magic').onclick = async function(){
-setBusy(true);
-try { await window.sbAuth.signInWithEmailLink(email()); status('Link sent! Check your email (and spam) now.', true); toast('Login link sent — check your email!', 'ok'); }
-catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
-setBusy(false);
+  setBusy(true);
+  try { 
+    await window.sbAuth.signInWithEmailLink(email()); 
+    status('Magic link/code dispatched! Check your email inbox.', true); 
+    toast('Magic link sent!', 'ok');
+    toggleCodeSection(); // Reveal code box right after sending
+  }
+  catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
+  setBusy(false);
 };
+
+$('btn-verify-code').onclick = async function(){
+  setBusy(true);
+  try {
+    toast('Verifying code...', 'info');
+    await window.sbAuth.verifyOtp(email(), code());
+    status('Authenticated! Returning to map…', true);
+    toast('Welcome back!', 'ok');
+    goHome(800);
+  } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
+  setBusy(false);
+};
+
 $('btn-register').onclick = async function(){
-setBusy(true);
-try {
-toast('Creating your account...', 'info');
-await window.sbAuth.signUpWithPassword(email(), $('auth-password').value, $('auth-name').value);
-/* Email confirmation ON -> signUp returns no session, so the volunteer has
-   to click the confirm link first and stays here. Confirmation OFF -> they
-   are already signed in, so the map is the only sensible next screen. */
-if (isSignedIn(await window.sbAuth.currentUser())) {
-  status('Account created! Taking you to the map…', true);
-  toast('Welcome to FeedAnAnimalMap!', 'ok');
-  goHome(800);
-} else {
-  status('Account created! Check your email for the confirm link, click it, then press Login.', true);
-  toast('Account created! Check your email, then Login.', 'ok');
-}
-} catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
-setBusy(false);
+  setBusy(true);
+  try {
+    toast('Registering account...', 'info');
+    await window.sbAuth.signUpWithPassword(email(), $('auth-password').value, $('auth-name').value);
+    if (isSignedIn(await window.sbAuth.currentUser())) {
+      status('Account active! Redirecting to map…', true);
+      toast('Welcome to FeedAnAnimalMap!', 'ok');
+      goHome(800);
+    } else {
+      status('Account created! Please check your email to confirm.', true);
+      toast('Confirmation link sent!', 'ok');
+    }
+  } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
+  setBusy(false);
 };
+
 $('btn-login').onclick = async function(){
-setBusy(true);
-try {
-toast('Logging you in...', 'info');
-await window.sbAuth.signInWithPassword(email(), $('auth-password').value);
-status('Logged in! Taking you to the map…', true);
-toast('Welcome back!', 'ok');
-goHome(800);
-} catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
-setBusy(false);
+  setBusy(true);
+  try {
+    toast('Authenticating...', 'info');
+    await window.sbAuth.signInWithPassword(email(), $('auth-password').value);
+    status('Authenticated! Returning to map…', true);
+    toast('Welcome back!', 'ok');
+    goHome(800);
+  } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
+  setBusy(false);
 };
+
+$('link-forgot').onclick = async function(e){
+  if (e && e.preventDefault) e.preventDefault();
+  var mail = email();
+  if (!mail) { status('Enter your email address above first, then tap "Forgot password?".', false); toast('Email needed', 'err'); return; }
+  setBusy(true);
+  try {
+    toast('Sending reset link...', 'info');
+    await window.sbAuth.resetPassword(mail);
+    status('If that address has an account, a reset link is on its way. Check your inbox (and spam).', true);
+    toast('Reset link sent!', 'ok');
+  } catch(err){ var m = friendlyError(err); status(m, false); toast(m, 'err'); }
+  setBusy(false);
+};
+
+$('btn-save-password').onclick = async function(){
+  setBusy(true);
+  try {
+    toast('Saving new password...', 'info');
+    await window.sbAuth.updatePassword($('auth-new-password').value);
+    status('Password updated! Returning to map…', true);
+    toast('Password updated!', 'ok');
+    recoveryMode = false;
+    goHome(900);
+  } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
+  setBusy(false);
+};
+
 $('btn-logout').onclick = async function(){ await window.sbAuth.signOut(); location.reload(); };
-/* Covers the magic-link and Google round trips: those come back here first. */
+
+if (recoveryMode) enterResetMode();
 watchSession();
-/* Covers a volunteer who is already signed in and opens this page again. */
 showUser();
 })();
 </script>

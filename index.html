@@ -247,6 +247,8 @@ body .material-symbols-outlined {
 .fta-avatar[data-species="rabbit"] { background: linear-gradient(135deg, #f2e6ff, #ded0f7); }
 .fta-avatar[data-species="bird"] { background: linear-gradient(135deg, #d9f0ff, #c2e4fb); }
 .fta-avatar[data-species="guinea-pig"] { background: linear-gradient(135deg, #fff2cf, #ffe3a8); }
+/* Reports saved as "Other" (and any species outside the demo catalog). */
+.fta-avatar[data-species="other"] { background: linear-gradient(135deg, #eceff4, #dbe0e8); }
 .fta-card { scroll-margin: 24px; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
@@ -456,15 +458,15 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
         </div>
 
         <!-- The only field that must be answered: species drives the pin art
-             and the per-species food/water urgency thresholds. -->
+             and the per-species food/water urgency thresholds (anything not
+             in the urgency policy - e.g. 'other' - falls back to the default
+             cat-like thresholds). -->
         <div>
           <label class="fta-label" for="report-species">What kind of animal?</label>
           <select id="report-species" class="fta-field">
             <option value="cat">Cat</option>
             <option value="dog">Dog</option>
-            <option value="rabbit">Rabbit</option>
-            <option value="bird">Bird</option>
-            <option value="guinea-pig">Guinea pig</option>
+            <option value="other">Other</option>
           </select>
         </div>
 

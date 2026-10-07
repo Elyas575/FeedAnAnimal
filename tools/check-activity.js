@@ -216,6 +216,20 @@ rows.push([html.indexOf('id="report-lat" type="hidden"') !== -1 &&
   html.indexOf('id="report-lng" type="hidden"') !== -1 ? 'OK  ' : 'MISS',
   'lat/lng inputs are hidden from the user']);
 check('the form shows a pick hint', 'id="report-pick-hint"', html);
+/* Species: the select was cut down to Cat / Dog / Other. "Other" is the
+   catch-all - unknown species already fall back to the default urgency
+   policy (speciesRule) and the generic paw emoji (speciesInfo). */
+const speciesSelStart = html.indexOf('id="report-species"');
+const speciesSel = speciesSelStart === -1 ? '' : html.slice(speciesSelStart, html.indexOf('</select>', speciesSelStart));
+rows.push([speciesSel.indexOf('value="cat"') !== -1 &&
+  speciesSel.indexOf('value="dog"') !== -1 &&
+  speciesSel.indexOf('value="other"') !== -1 ? 'OK  ' : 'MISS', 'species select offers Cat, Dog, Other']);
+rows.push([speciesSel.indexOf('value="rabbit"') === -1 &&
+  speciesSel.indexOf('value="bird"') === -1 &&
+  speciesSel.indexOf('value="guinea-pig"') === -1 ? 'OK  ' : 'MISS', 'Rabbit/Bird/Guinea pig are no longer report options']);
+rows.push([js.indexOf("const offeredSpecies = ['cat', 'dog', 'other'];") !== -1 &&
+  js.indexOf('offeredSpecies.indexOf(animal.species)') !== -1 ? 'OK  ' : 'MISS',
+  'editing an unlisted species parks it on Other']);
 rows.push([html.indexOf('id="report-pinbar"') === -1 ? 'OK  ' : 'MISS', 'pin-first bar removed (form-first flow restored)']);
 rows.push([html.indexOf('id="report-change-loc"') === -1 ? 'OK  ' : 'MISS', 'read-only Change-location link removed']);
 rows.push([js.indexOf('openPinFirst') === -1 && js.indexOf('wirePinbar') === -1 ? 'OK  ' : 'MISS', 'no pin-first helpers left behind']);

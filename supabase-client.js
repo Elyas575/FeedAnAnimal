@@ -1094,6 +1094,27 @@ const sbAuth = {
     if (error) throw error;
     return data.user;
   },
+  // Forgot password: emails a recovery link back to auth.html. Supabase answers
+  // the same whether or not the address exists, so callers should not promise
+  // that an account was found — just that a link may be on its way.
+  // Requires the site origin to be allowed under Authentication > URL Config.
+  async resetPassword(email) {
+    const clean = String(email || '').trim();
+    if (!clean) throw new Error('Enter your email first.');
+    const { error } = await sb.auth.resetPasswordForEmail(clean, {
+      redirectTo: window.location.origin + '/auth.html',
+    });
+    if (error) throw error;
+    return true;
+  },
+  // Only usable while the session from the emailed recovery link is active.
+  async updatePassword(newPassword) {
+    const pw = String(newPassword || '');
+    if (pw.length < 6) throw new Error('Password must be at least 6 characters.');
+    const { data, error } = await sb.auth.updateUser({ password: pw });
+    if (error) throw error;
+    return data.user;
+  },
   // Gmail / Google OAuth — requires one-time setup in Supabase (see auth.html instructions).
   // If not configured yet, this throws a clear message instead of hanging.
   async signInWithGoogle() {
