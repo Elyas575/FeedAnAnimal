@@ -117,7 +117,7 @@
     '@media (min-width:1024px){#site-top-header .fta-hd-inner{padding:0 32px}}',
     '#site-top-header .fta-hd-left{display:flex;align-items:center;gap:12px;min-width:0}',
     '#site-top-header .fta-hd-brandlink{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none}',
-    '#site-top-header .fta-logo{flex:0 0 auto;width:48px;height:48px;border-radius:9999px;',
+    '#site-top-header .fta-logo{flex:0 0 auto;width:48px;height:48px;',
     'display:flex;align-items:center;justify-content:center;font-size:20px;background:#a03b0e;',
     'box-shadow:0 1px 2px rgba(30,27,26,.15)}',
     '@media (min-width:640px){#site-top-header .fta-logo{width:44px;height:44px}}',
