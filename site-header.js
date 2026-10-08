@@ -566,6 +566,7 @@
   }
 
   var COMMUNITY_LAST_SEEN_KEY = 'fta.community.lastSeenAt.v1';
+  var COMMUNITY_WELCOME_SEEN_KEY = 'fta.community.welcomeSeen.v1';
 
   function paintCommunityBadge(count) {
     var n = Number(count) || 0;
@@ -612,22 +613,37 @@
 
       async function refresh(markSeen) {
         var since = null;
+        var welcomeSeen = false;
         try { since = localStorage.getItem(COMMUNITY_LAST_SEEN_KEY); } catch (e) {
           console.warn('[site-header] Community notification storage unavailable:', e.message);
         }
+        try { welcomeSeen = localStorage.getItem(COMMUNITY_WELCOME_SEEN_KEY) === '1'; } catch (e) {
+          console.warn('[site-header] Community welcome state unavailable:', e.message);
+        }
 
-        if (markSeen || !since) {
+        if (markSeen) {
           var latest = await latestAt();
           since = latest || new Date().toISOString();
           try { localStorage.setItem(COMMUNITY_LAST_SEEN_KEY, since); } catch (e) {
             console.warn('[site-header] Could not save community notification cursor:', e.message);
           }
+          try { localStorage.setItem(COMMUNITY_WELCOME_SEEN_KEY, '1'); } catch (e) {
+            console.warn('[site-header] Could not save community welcome state:', e.message);
+          }
           paintCommunityBadge(0);
           return;
         }
 
+        if (!since) {
+          var initialLatest = await latestAt();
+          since = initialLatest || new Date().toISOString();
+          try { localStorage.setItem(COMMUNITY_LAST_SEEN_KEY, since); } catch (e) {
+            console.warn('[site-header] Could not save community notification cursor:', e.message);
+          }
+        }
+
         var count = await unreadCount(since);
-        if (count !== null) paintCommunityBadge(count);
+        if (count !== null) paintCommunityBadge(welcomeSeen ? count : Math.max(count, 1));
       }
 
       var channel = subscribe(function () {

@@ -164,6 +164,11 @@ ok('community notification count starts after the saved last-visit cursor',
   /function sbForumUnreadCount\(since\)/.test(client) &&
   /\.gt\('created_at', since\)/.test(client) &&
   /fta\.community\.lastSeenAt\.v1/.test(sharedHeader));
+ok('first-time visitors get a one-topic Community welcome badge',
+  /COMMUNITY_WELCOME_SEEN_KEY = 'fta\.community\.welcomeSeen\.v1'/.test(sharedHeader) &&
+  /welcomeSeen \? count : Math\.max\(count, 1\)/.test(sharedHeader));
+ok('opening Community clears the welcome badge for that browser',
+  /if \(markSeen\)[\s\S]{0,800}localStorage\.setItem\(COMMUNITY_WELCOME_SEEN_KEY, '1'\)[\s\S]{0,180}paintCommunityBadge\(0\)/.test(sharedHeader));
 const notificationMigration = fs.readFileSync(
   path.join(ROOT, 'supabase', 'migration-community-notifications.sql'), 'utf8');
 ok('Supabase Realtime migration enables new-topic events',
