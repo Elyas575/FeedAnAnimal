@@ -399,8 +399,10 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 
 </main>
 
-<!-- Report a stray FAB + mobile search (CheapFoodMap style: above the tab bar) -->
-<div class="absolute z-40 right-3 bottom-[88px] md:right-space-md md:bottom-space-lg lg:right-space-xl flex items-center gap-2.5">
+<!-- Report a stray FAB + mobile search (CheapFoodMap style: above the tab bar)
+     Mobile: fixed to viewport + z-[60] (above #site-bottom-nav z-50, below modal z-70)
+     + bottom calc clears the tab bar + iPhone safe-area. Desktop: absolute as before. -->
+<div class="fixed md:absolute z-[60] md:z-40 right-3 bottom-[calc(88px+env(safe-area-inset-bottom))] md:bottom-space-lg md:right-space-md lg:right-space-xl flex items-center gap-2.5">
   <button id="mobile-search-btn" type="button" aria-label="Search animals"
     class="md:hidden h-12 w-12 rounded-full text-white flex items-center justify-center shadow-xl border border-white/10 active:scale-95 transition-all"
     style="background:#182743">
