@@ -350,23 +350,22 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 .fta-label { font-size: 11px; font-weight: 700; color: #57423b; display: block; margin-bottom: 6px; letter-spacing: .02em; }
 .fta-label-hint { font-weight: 500; color: #8b7269; }
 
-/* Report modal — hidden native file input; custom picker stays centered */
+/* Report modal — hidden native gallery picker; custom picker stays centered */
 .fta-file-input-hidden {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
-.fta-report-photo-btn {
+.fta-report-photo-status {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px;
   padding: 8px 10px; border-radius: 14px; border: 1px dashed #dec0b6;
   background: linear-gradient(180deg, #fff 0%, #fff8f6 100%);
-  cursor: pointer; font-family: inherit; text-align: left;
-  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  text-align: left;
 }
-.fta-report-photo-btn:hover { border-color: #c15326; background: #fff8f6; }
-.fta-report-photo-btn:focus-visible {
-  outline: none; border-color: #a03b0e; box-shadow: 0 0 0 3px rgba(160, 59, 14, .14);
+.fta-report-photo-status.has-image { border-style: solid; border-color: #efe6e4; background: #fff; }
+.fta-camera-preview {
+  width: 100%; max-height: min(68dvh, 560px); aspect-ratio: 3 / 4;
+  border-radius: 16px; background: #1e1b1a; object-fit: cover;
 }
-.fta-report-photo-btn.has-image { border-style: solid; border-color: #efe6e4; background: #fff; }
 .fta-report-section { display: flex; flex-direction: column; gap: 6px; }
 .fta-report-needs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .fta-need-chip {
@@ -581,22 +580,34 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
     <form id="report-form" novalidate>
       <div class="fta-report-body px-4 py-4 sm:px-5 flex flex-col gap-3">
 
-        <!-- Photo first: custom picker hides the misaligned native file control -->
+        <!-- Photo first: separate, clearly labelled camera and gallery actions. -->
         <div class="fta-report-section">
           <span class="fta-label">Photo <span class="fta-label-hint">· helps others recognise them</span></span>
-          <div class="relative">
-            <input id="report-photo-file" type="file" accept="image/*" capture="environment" class="fta-file-input-hidden" aria-describedby="report-photo-hint">
-            <button id="report-photo-pick" type="button" class="fta-report-photo-btn" aria-label="Choose or take a photo">
+          <div>
+            <input id="report-photo-camera-file" type="file" accept="image/*" capture="environment" class="fta-file-input-hidden" aria-describedby="report-photo-hint">
+            <input id="report-photo-gallery-file" type="file" accept="image/*" class="fta-file-input-hidden" aria-describedby="report-photo-hint">
+            <div id="report-photo-status" class="fta-report-photo-status">
               <div id="report-photo-preview" class="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-surface-container border border-surface-container-highest flex items-center justify-center text-outline">
                 <span class="material-symbols-outlined text-[24px]">add_a_photo</span>
               </div>
               <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                <span id="report-photo-action" class="text-sm font-semibold text-on-surface">Add a photo</span>
+                <span id="report-photo-action" class="text-sm font-semibold text-on-surface">No photo selected</span>
                 <p id="report-photo-hint" class="font-label-sm text-[11px] text-on-surface-variant leading-snug m-0">
-                  Camera or gallery · compressed to ~110 KB on upload
+                  Optional. Add a photo from your camera or gallery.
                 </p>
               </div>
-              <span class="material-symbols-outlined text-[22px] text-primary shrink-0" aria-hidden="true">chevron_right</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="report-photo-pick" type="button" aria-label="Take a photo with your camera"
+              class="min-h-11 rounded-xl border border-surface-container-highest bg-surface px-2 py-2 text-xs font-semibold text-on-surface inline-flex items-center justify-center gap-1.5 whitespace-nowrap hover:bg-surface-container-low active:scale-[.98]">
+              <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">photo_camera</span>
+              <span>Take photo</span>
+            </button>
+            <button id="report-photo-gallery-pick" type="button" aria-label="Choose a photo from your gallery"
+              class="min-h-11 rounded-xl bg-primary px-2 py-2 text-xs font-semibold text-on-primary inline-flex items-center justify-center gap-1.5 whitespace-nowrap hover:bg-primary-container active:scale-[.98]">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">photo_library</span>
+              <span>Choose from gallery</span>
             </button>
           </div>
           <button id="report-photo-clear" type="button" class="self-start text-xs font-semibold text-primary hover:underline hidden mt-1">
@@ -673,6 +684,25 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
         </button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="report-camera-modal" data-modal class="hidden fixed inset-0 z-[80] items-center justify-center p-3 sm:p-6 bg-inverse-surface/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="report-camera-title">
+  <div class="w-full max-w-md rounded-2xl bg-surface p-4 shadow-2xl">
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <h2 id="report-camera-title" class="font-headline-sm text-on-surface font-bold">Take a photo</h2>
+      <button type="button" data-close-modal="report-camera-modal" class="h-9 w-9 rounded-full border border-surface-container-highest flex items-center justify-center" aria-label="Close camera">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <video id="report-camera-video" class="fta-camera-preview" autoplay playsinline muted></video>
+    <p id="report-camera-error" class="mt-2 text-sm text-error hidden" role="alert"></p>
+    <div class="mt-3 flex justify-end gap-2">
+      <button type="button" data-close-modal="report-camera-modal" class="h-11 rounded-full px-4 text-sm font-semibold text-on-surface-variant">Cancel</button>
+      <button id="report-camera-capture" type="button" class="h-11 rounded-full bg-primary px-5 text-sm font-semibold text-on-primary inline-flex items-center gap-2" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>Capture photo
+      </button>
+    </div>
   </div>
 </div>
 

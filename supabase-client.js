@@ -809,14 +809,17 @@ async function sbCompressImage(file, options = {}) {
     // Already tiny and in a modern format: re-encoding cannot beat it.
     if (file.size && file.size <= cfg.targetBytes && /(webp|avif)/.test(file.type)) return file;
 
-    const maxDecodeWidth = Math.min(cfg.maxEdge, Math.max.apply(null, cfg.dimensionSteps));
-    const decodeOptions = file.size > 1024 * 1024
-      ? { resizeWidth: maxDecodeWidth, resizeQuality: 'high' }
+    const maxDecodeEdge = Math.min(cfg.maxEdge, Math.max.apply(null, cfg.dimensionSteps));
+    const decodeOptions = file.size > 256 * 1024
+      ? { resizeWidth: maxDecodeEdge, resizeQuality: 'high' }
       : undefined;
     bitmap = decodeOptions
       ? await createImageBitmap(file, decodeOptions)
       : await createImageBitmap(file);
     const sourceLongEdge = Math.max(bitmap.width, bitmap.height);
+    if (decodeOptions && sourceLongEdge > maxDecodeEdge * 2) {
+      throw new Error('The browser could not safely resize this large image.');
+    }
     const format = await sbBestImageFormat();
 
     // Never upscale a small image.
@@ -881,6 +884,9 @@ async function sbCompressImage(file, options = {}) {
     });
   } catch (err) {
     console.warn('[sb] image compression skipped:', err.message);
+    if (file && file.size > cfg.targetBytes) {
+      throw new Error('This photo is too large for this browser to process safely. Choose a smaller photo or submit without one.');
+    }
     return file;
   } finally {
     if (bitmap) {

@@ -1828,6 +1828,7 @@
        still up. Only the last visible modal releases the lock. */
     document.body.style.overflow = document.querySelector('[data-modal]:not(.hidden)') ? 'hidden' : '';
     if (id === 'chat-modal') stopChat();
+    if (id === 'report-camera-modal') stopReportCamera();
     if (id === 'report-modal') {
       state.pickMode = false;
       if (state.pickMarker && state.map) state.map.removeLayer(state.pickMarker);
@@ -1843,6 +1844,7 @@
     document.body.style.overflow = '';
     state.pickMode = false;
     stopChat();
+    stopReportCamera();
   }
   /* ====================== "report a stray" workflow =================== */
   /* Turns the volunteer's quick answer about a bowl into dataset minutes. */
@@ -2007,7 +2009,7 @@
     if (photoHint) {
       photoHint.textContent = animal.photoUrl
         ? 'Current photo shown. Choose a new one to replace it, or Remove photo to take it off.'
-        : 'Camera or gallery · compressed to ~110 KB on upload';
+        : 'Take a photo or choose one from your gallery. It is resized before upload.';
     }
     if (animal.photoUrl) setReportPhotoPreview(animal.photoUrl);
 
@@ -2031,7 +2033,7 @@
   /* Holds the chosen File until submit. We keep the File (not a data URL)
      so it can be uploaded straight to Supabase Storage. */
   let pendingReportPhoto = null;
-  let pendingReportPhotoPreviewUrl = null;
+  let reportCameraStream = null;
   /* Set by "Remove photo" while EDITING: the save then writes photo_url =
      null instead of quietly keeping the old file - the button says Remove,
      so it has to mean it. Cleared when a new file is chosen and by
@@ -2040,66 +2042,191 @@
 
   function setReportPhotoPreview(src) {
     const box = $('#report-photo-preview');
-    const pick = $('#report-photo-pick');
+    const status = $('#report-photo-status');
     const action = $('#report-photo-action');
     if (!box) return;
     if (!src) {
       box.innerHTML = '<span class="material-symbols-outlined text-[28px]">add_a_photo</span>';
-      if (pick) pick.classList.remove('has-image');
-      if (action) action.textContent = 'Add a photo';
+      if (status) status.classList.remove('has-image');
+      if (action) action.textContent = 'No photo selected';
       return;
     }
     box.innerHTML = '<img alt="Selected stray photo" class="w-full h-full object-cover" src="' + esc(src) + '">';
-    if (pick) pick.classList.add('has-image');
-    if (action) action.textContent = 'Change photo';
+    if (status) status.classList.add('has-image');
+    if (action) action.textContent = 'Current photo';
   }
 
-  function releaseReportPhotoPreview() {
-    if (!pendingReportPhotoPreviewUrl) return;
-    URL.revokeObjectURL(pendingReportPhotoPreviewUrl);
-    pendingReportPhotoPreviewUrl = null;
+  function stopReportCamera() {
+    if (reportCameraStream) {
+      reportCameraStream.getTracks().forEach((track) => track.stop());
+      reportCameraStream = null;
+    }
+    const video = $('#report-camera-video');
+    if (video) video.srcObject = null;
+    const capture = $('#report-camera-capture');
+    if (capture) capture.disabled = true;
+  }
+
+  async function startReportCamera() {
+    const error = $('#report-camera-error');
+    const video = $('#report-camera-video');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !video) {
+      toast('Camera capture is unavailable here. Choose a photo from your gallery instead.', 'error');
+      return;
+    }
+    if (error) {
+      error.textContent = '';
+      error.classList.add('hidden');
+    }
+    openModal('report-camera-modal');
+    try {
+      reportCameraStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 960, max: 1280 },
+          height: { ideal: 720, max: 1280 },
+        },
+      });
+      const cameraModal = $('#report-camera-modal');
+      if (!cameraModal || cameraModal.classList.contains('hidden')) {
+        stopReportCamera();
+        return;
+      }
+      video.srcObject = reportCameraStream;
+      await video.play();
+      const capture = $('#report-camera-capture');
+      if (capture) capture.disabled = false;
+    } catch (err) {
+      stopReportCamera();
+      if (error) {
+        error.textContent = err && err.name === 'NotAllowedError'
+          ? 'Allow camera access in your browser settings, or choose a photo from your gallery.'
+          : 'Could not start the camera. Choose a photo from your gallery instead.';
+        error.classList.remove('hidden');
+      }
+    }
+  }
+
+  function isMobilePhotoDevice() {
+    const userAgent = navigator.userAgent || '';
+    const isTouchIpad = /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1;
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent) || isTouchIpad;
+  }
+
+  function openReportCamera() {
+    const cameraInput = $('#report-photo-camera-file');
+    const supportsLiveCamera = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+    if (isMobilePhotoDevice() && supportsLiveCamera) {
+      startReportCamera();
+    } else if (cameraInput) {
+      cameraInput.click();
+    } else {
+      startReportCamera();
+    }
+  }
+
+  function acceptReportPhoto(file) {
+    if (!file || !/^image\//.test(file.type)) {
+      toast('Please choose an image file.', 'error');
+      return false;
+    }
+    pendingReportPhoto = file;
+    reportPhotoRemoved = false;
+    /* Do not preview the original file: mobile browsers may decode a full
+       camera-resolution image just to paint this small thumbnail. */
+    setReportPhotoPreview(null);
+    const preview = $('#report-photo-preview');
+    const action = $('#report-photo-action');
+    const status = $('#report-photo-status');
+    const clear = $('#report-photo-clear');
+    const hint = $('#report-photo-hint');
+    if (preview) {
+      preview.innerHTML = '<span class="material-symbols-outlined text-[24px]">image</span>';
+    }
+    if (status) status.classList.add('has-image');
+    if (action) action.textContent = 'Photo selected';
+    if (clear) clear.classList.remove('hidden');
+    if (hint) {
+      const mb = typeof window.sbFormatBytes === 'function' ? window.sbFormatBytes(file.size) : (file.size / 1048576).toFixed(1) + ' MB';
+      hint.textContent = file.name + ' · ' + mb + '. Resized before upload.';
+    }
+    return true;
+  }
+
+  function captureReportPhoto() {
+    const video = $('#report-camera-video');
+    const capture = $('#report-camera-capture');
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      toast('The camera is not ready yet. Please wait a moment and try again.', 'error');
+      return;
+    }
+    if (capture) capture.disabled = true;
+    const scale = Math.min(1, 960 / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    try {
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        try {
+          if (!blob) throw new Error('Could not create a photo.');
+          const file = new File([blob], 'stray-photo.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+          acceptReportPhoto(file);
+          stopReportCamera();
+          closeModal('report-camera-modal');
+        } catch (err) {
+          if (capture) capture.disabled = false;
+          toast('Could not capture the photo. Please try again or choose one from your gallery.', 'error');
+        } finally {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+      }, 'image/jpeg', 0.78);
+    } catch (err) {
+      if (capture) capture.disabled = false;
+      toast('Could not capture the photo. Please try again or choose one from your gallery.', 'error');
+      canvas.width = 0;
+      canvas.height = 0;
+    }
   }
 
   function wireReportPhoto() {
-    const input = $('#report-photo-file');
+    const cameraInput = $('#report-photo-camera-file');
+    const galleryInput = $('#report-photo-gallery-file');
     const pick = $('#report-photo-pick');
+    const galleryPick = $('#report-photo-gallery-pick');
     const clear = $('#report-photo-clear');
     const hint = $('#report-photo-hint');
-    if (!input) return;
+    if (!cameraInput && !galleryInput) return;
 
     if (pick) {
-      pick.addEventListener('click', () => input.click());
+      pick.addEventListener('click', openReportCamera);
+    }
+    const capture = $('#report-camera-capture');
+    if (capture) capture.addEventListener('click', captureReportPhoto);
+    if (galleryPick) {
+      galleryPick.addEventListener('click', () => galleryInput.click());
     }
 
-    input.addEventListener('change', () => {
-      const file = input.files && input.files[0];
-      if (!file) { pendingReportPhoto = null; setReportPhotoPreview(null); if (clear) clear.classList.add('hidden'); return; }
-      if (!/^image\//.test(file.type)) {
-        toast('Please choose an image file.', 'error');
-        input.value = '';
-        return;
-      }
-      pendingReportPhoto = file;
-      reportPhotoRemoved = false;
-      // Preview with an object URL; release the previous one when replacing it.
-      releaseReportPhotoPreview();
-      pendingReportPhotoPreviewUrl = URL.createObjectURL(file);
-      setReportPhotoPreview(pendingReportPhotoPreviewUrl);
-      if (clear) clear.classList.remove('hidden');
-      if (hint) {
-        const mb = typeof window.sbFormatBytes === 'function' ? window.sbFormatBytes(file.size) : (file.size / 1048576).toFixed(1) + ' MB';
-        hint.textContent = file.name + ' - ' + mb + '. It is compressed to about 110 KB before upload.';
-      }
-    });
+    const onPhotoSelected = (event) => {
+      const selectedInput = event.currentTarget;
+      const file = selectedInput.files && selectedInput.files[0];
+      if (!file) return;
+      acceptReportPhoto(file);
+      selectedInput.value = '';
+    };
+    if (cameraInput) cameraInput.addEventListener('change', onPhotoSelected);
+    if (galleryInput) galleryInput.addEventListener('change', onPhotoSelected);
 
     if (clear) {
       clear.addEventListener('click', () => {
         pendingReportPhoto = null;
-        input.value = '';
-        releaseReportPhotoPreview();
+        if (cameraInput) cameraInput.value = '';
+        if (galleryInput) galleryInput.value = '';
         setReportPhotoPreview(null);
         clear.classList.add('hidden');
-        if (hint) hint.textContent = 'Camera or gallery · compressed to ~110 KB on upload';
+        if (hint) hint.textContent = 'Photo is resized before upload to reduce memory use.';
         /* Edit mode: the button says "Remove photo", so removing is what it
            does - the empty preview is the truth and the save writes
            photo_url = null (reportPhotoRemoved). Picking a new file clears
@@ -2116,13 +2243,14 @@
   function resetReportPhoto() {
     pendingReportPhoto = null;
     reportPhotoRemoved = false;
-    releaseReportPhotoPreview();
-    const input = $('#report-photo-file');
-    if (input) input.value = '';
+    const cameraInput = $('#report-photo-camera-file');
+    if (cameraInput) cameraInput.value = '';
+    const galleryInput = $('#report-photo-gallery-file');
+    if (galleryInput) galleryInput.value = '';
     const clear = $('#report-photo-clear');
     if (clear) clear.classList.add('hidden');
     const hint = $('#report-photo-hint');
-    if (hint) hint.textContent = 'Camera or gallery · compressed to ~110 KB on upload';
+    if (hint) hint.textContent = 'Photo is resized before upload to reduce memory use.';
     setReportPhotoPreview(null);
   }
 
@@ -2207,7 +2335,7 @@
         }
       } catch (err) {
         console.warn('[FeedAnAnimalMap] photo upload failed', err);
-        toast('Photo upload failed - keeping the previous photo.', 'error');
+        toast('Photo could not be processed safely - keeping the previous photo.', 'error');
         editedPhoto = editing.photoUrl || null;
       }
       let sharedOk = true;
@@ -2330,7 +2458,7 @@
       }
     } catch (err) {
       console.warn('[FeedAnAnimalMap] report upload failed', err);
-      toast('Photo upload failed - saving the report on this device only.', 'error');
+      toast('Photo could not be processed safely. The report will be saved on this device without its photo.', 'error');
     }
     setBusy(false);
     /* sbSubmitReport returns the new row's id. Reuse it for the local pin so

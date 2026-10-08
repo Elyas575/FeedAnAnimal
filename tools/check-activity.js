@@ -188,9 +188,21 @@ check('index.js fallback span carries z-[1]', 'z-[1] flex items-center', js);
 
 /* --- Phase 4.6: report photo upload ---------------------------------- */
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-check('report form has a file picker', 'id="report-photo-file"', html);
-check('file picker accepts images', 'accept="image/*"', html);
-check('file picker opens the camera on mobile', 'capture="environment"', html);
+check('report form has a gallery image picker', 'id="report-photo-gallery-file"', html);
+check('camera action retains the desktop file picker', 'id="report-photo-camera-file"', html);
+check('native camera input requests the rear camera on mobile', 'capture="environment"', html);
+check('gallery picker accepts images', 'accept="image/*"', html);
+check('report form has a separate gallery picker', 'id="report-photo-gallery-file"', html);
+check('gallery upload has a clearly labelled visible action', 'Choose from gallery', html);
+check('gallery action is prominent alongside the camera action', 'bg-primary px-2 py-2 text-xs font-semibold text-on-primary', html);
+check('take-photo action opens a camera dialog', 'id="report-camera-modal"', html);
+check('camera dialog has a live video preview', 'id="report-camera-video"', html);
+check('camera capture button is available', 'id="report-camera-capture"', html);
+check('take-photo action uses the in-page camera API', 'navigator.mediaDevices.getUserMedia', js);
+check('desktop camera action keeps its existing file-picker flow', 'cameraInput.click();', js);
+check('mobile device detection selects the low-resolution camera', 'if (isMobilePhotoDevice() && supportsLiveCamera)', js);
+check('camera frame is reduced before it becomes a photo', '960 / Math.max(video.videoWidth, video.videoHeight)', js);
+check('camera tracks stop when its modal closes', "if (id === 'report-camera-modal') stopReportCamera();", js);
 check('report form has a preview box', 'id="report-photo-preview"', html);
 check('report form has a remove-photo button', 'id="report-photo-clear"', html);
 rows.push([html.indexOf('id="report-photo"') === -1 ? 'OK  ' : 'MISS', 'the old "paste a photo URL" box is gone']);
@@ -206,6 +218,12 @@ check('submit button shows upload progress', 'Uploading photo', js);
 check('submit reports shared vs local-only', 'is now on the map for everyone', js);
 check('reports are announced to the shared feed', "kind: 'report'", js);
 check('picker resets after a successful report', 'resetReportPhoto();', js);
+check('selected original photo is not decoded for the preview',
+  'Do not preview the original file', js);
+rows.push([/URL\.createObjectURL\(file\)/.test(js) ? 'MISS' : 'OK  ',
+  'selected photo preview avoids full-resolution decoding']);
+check('failed photo upload explains the report can still be saved without a photo',
+  'The report will be saved on this device without its photo.', js);
 
 /* --- city/country auto-detect + search -------------------------------- *
  * The report pin reverse-geocodes to city/country (no typing), stores it
@@ -542,6 +560,7 @@ function makeEncoderBox(opts) {
   const o = opts || {};
   const calls = [];
   let decodeOptions = null;
+  let bitmapCloseCount = 0;
   const encode = (type, quality, width, height) => {
     calls.push({ type, quality, width, height });
     if (o.unsupported && o.unsupported.indexOf(type) !== -1) {
@@ -557,8 +576,18 @@ function makeEncoderBox(opts) {
     decodeOptions: () => decodeOptions,
     createImageBitmap: async (_file, options) => {
       decodeOptions = options || null;
-      return { width: o.w || 4000, height: o.h || 3000, close() {} };
+      const originalWidth = o.w || 4000;
+      const originalHeight = o.h || 3000;
+      const scale = decodeOptions && !o.ignoreResize
+        ? Math.min(1, decodeOptions.resizeWidth / originalWidth)
+        : 1;
+      return {
+        width: Math.round(originalWidth * scale),
+        height: Math.round(originalHeight * scale),
+        close() { bitmapCloseCount++; },
+      };
     },
+    bitmapCloseCount: () => bitmapCloseCount,
     document: {
       createElement: () => {
         const canvas = {
@@ -601,13 +630,27 @@ const BUDGET = 110 * 1024;
   {
     const box = makeEncoderBox({});
     const out = await loadEncoder(box).sbCompressImage({ name: 'cat.jpg', type: 'image/jpeg', size: 6_000_000 });
-    rows.push([box.decodeOptions() && box.decodeOptions().resizeWidth <= 1200 ? 'OK  ' : 'MISS',
-      'large photos are downsampled by the decoder before canvas processing']);
+    rows.push([box.decodeOptions() && Math.max.apply(null, realEncodes(box).map((c) => Math.max(c.width, c.height))) <= 1200
+      ? 'OK  ' : 'MISS', 'large photos are downsampled by the decoder before canvas processing']);
+    rows.push([box.bitmapCloseCount() === 1 ? 'OK  ' : 'MISS',
+      'decoded image memory is released after compression']);
     rows.push([out.type === 'image/avif' ? 'OK  ' : 'MISS', 'picks AVIF when supported (got ' + out.type + ')']);
     rows.push([out.size <= BUDGET ? 'OK  ' : 'MISS', 'hits the ~110KB budget: 6MB -> ' + Math.round(out.size / 1024) + 'KB']);
     rows.push([longestEdge(box) <= 1200 ? 'OK  ' : 'MISS', 'never exceeds the 1200px long edge (got ' + longestEdge(box) + ')']);
     rows.push([realEncodes(box).length >= 3 ? 'OK  ' : 'MISS', 'binary-searches quality (' + realEncodes(box).length + ' passes)']);
     rows.push([out.name.endsWith('.avif') ? 'OK  ' : 'MISS', 'names the file with a matching extension']);
+  }
+  {
+    const box = makeEncoderBox({ ignoreResize: true });
+    let rejected = false;
+    try {
+      await loadEncoder(box).sbCompressImage({ name: 'large.jpg', type: 'image/jpeg', size: 6_000_000 });
+    } catch (e) {
+      rejected = /too large for this browser to process safely/.test(e.message);
+    }
+    rows.push([rejected ? 'OK  ' : 'MISS', 'fails safely if the browser ignores image resize options']);
+    rows.push([box.bitmapCloseCount() === 1 ? 'OK  ' : 'MISS',
+      'releases decoded image memory when resizing is unsupported']);
   }
   // 2. no AVIF support -> WebP
   {
