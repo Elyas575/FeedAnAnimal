@@ -270,13 +270,36 @@ rows.push([html.indexOf('id="report-change-loc"') === -1 ? 'OK  ' : 'MISS', 'rea
 rows.push([js.indexOf('openPinFirst') === -1 && js.indexOf('wirePinbar') === -1 ? 'OK  ' : 'MISS', 'no pin-first helpers left behind']);
 check('report entry opens the form', 'function openReportModal()', js);
 check('openReportModal resets the form', 'form.reset();', js);
-rows.push([js.indexOf('function openReportModal()') < js.indexOf('useMyLocationForReport();') ? 'OK  ' : 'MISS',
-  'openReportModal auto-pins from GPS when no position is known']);
+rows.push([/if \(!hasLocation\)\s*\{\s*requestReportLocation\(\);\s*return;\s*\}/.test(js) ? 'OK  ' : 'MISS',
+  'report form requires a valid user location']);
+check('report without location opens the location prompt',
+  'Your location is required to place this report accurately.', js);
+rows.push([/if \(state\.pendingReportOpen\)\s*\{\s*state\.pendingReportOpen = false;\s*void openReportModal\(\);/.test(js) ? 'OK  ' : 'MISS',
+  'report opens after location is acquired']);
+rows.push([/state\.pendingReportOpen = false;\s*hideLocationPrompt\(true\);/.test(js) ? 'OK  ' : 'MISS',
+  'dismissing the location prompt cancels the pending report']);
 rows.push([js.indexOf("modal.classList.add('fta-picking')") === -1 ? 'OK  ' : 'MISS', 'pick-on-map panel docking is gone']);
 rows.push([js.indexOf('state.pickMode = true;') === -1 ? 'OK  ' : 'MISS', 'pick-on-map arming is gone']);
 rows.push([js.indexOf('if (state.pickMode) placePickMarker(') === -1 ? 'OK  ' : 'MISS', 'map taps never move the report pin']);
 check('geolocation request still exists', 'getCurrentPosition(', js);
 check('geolocation keeps high accuracy', 'enableHighAccuracy: true', js);
+check('location onboarding prompt is present', 'id="location-prompt"', html);
+check('location icon is aligned inline with the prompt heading',
+  'fta-location-prompt__title-icon material-symbols-outlined', html);
+check('location prompt has an explicit opt-in action', 'id="location-enable-btn"', html);
+check('location prompt can be dismissed', 'id="location-dismiss-btn"', html);
+check('mobile location control is visibly labelled', 'class="text-xs font-semibold">Near me</span>', html);
+check('location permission is not requested automatically at startup', 'initLocationPrompt();', js);
+rows.push([js.indexOf('function openAtVisitor') === -1 ? 'OK  ' : 'MISS',
+  'automatic geolocation-on-load flow is removed']);
+check('location prompt opt-in uses the normal location flow',
+  "locationEnableButton.addEventListener('click', locateMe)", js);
+check('dismissed prompt is remembered for the current tab session',
+  'fta.location-prompt-dismissed.v1', js);
+check('blocked location shows browser permission recovery guidance',
+  'Allow it in this site’s browser permissions', js);
+check('insecure origin explains the HTTPS requirement',
+  'Location requires a secure connection', js);
 /* The button must show a pending state, otherwise a slow GPS fix looks broken. */
 check('use-my-location shows a locating state', 'setLocating(true)', js);
 check('locating state has a visible label', 'Locating…', js);
@@ -811,8 +834,8 @@ check('a food marker is written', "'[NEEDS_FOOD] '", sc);
 check('a water marker is written', "'[NEEDS_WATER] '", sc);
 check('the food marker is read back', "indexOf('[NEEDS_FOOD]') === 0", sc);
 check('the water marker is read back', "indexOf('[NEEDS_WATER]') === 0", sc);
-check('cloud reports restore lastFedAt', 'lastFedAt: new Date(nowMs', sc);
-check('cloud reports restore lastWateredAt', 'lastWateredAt: new Date(nowMs', sc);
+check('cloud reports restore saved or needs-based lastFedAt', 'lastFedAt: row.last_fed_at || new Date(nowMs', sc);
+check('cloud reports restore saved or needs-based lastWateredAt', 'lastWateredAt: row.last_watered_at || new Date(nowMs', sc);
 check('speciesRule() mirrors the dataset policy', 'function speciesRule(species)', sc);
 
 /* --- the medical-help tick --------------------------------------------- *

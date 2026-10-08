@@ -239,7 +239,7 @@
   const state = {
     meta: {}, stations: [], animals: [], log: [], activity: [],
     filter: 'all', query: '', sort: 'urgent', selectedId: null,
-    userLocation: null, profile: { name: 'Guest volunteer' },
+    userLocation: null, pendingReportOpen: false, profile: { name: 'Guest volunteer' },
     /* Signed-in account id, resolved async by syncProfileFromAuth(). Report
        ownership (canManageReport) is checked against it, so it starts null:
        until auth answers, only this device's own reports look editable. */
@@ -807,7 +807,7 @@
         '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" title="View on map" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">navigation</span>' +
         '</button>' +
-        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" title="Details" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
+        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" title="More details" aria-label="More details for ' + esc(animal.name) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">info</span>' +
         '</button>' +
       '</div>' +
@@ -991,8 +991,8 @@
           ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Edit your report">' +
             '<span class="material-symbols-outlined">edit</span>Edit</button>'
           : '') +
-        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Full profile">' +
-          '<span class="material-symbols-outlined">info</span>Full profile</button>' +
+        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="More details">' +
+          '<span class="material-symbols-outlined">info</span>More details</button>' +
         /* Chat mirrors the sidebar card: "is it fed?" is immediately followed
            by "who is looking after it?", and the pin you just clicked IS the
            animal you are looking at - so the thread is one tap away instead of
@@ -1346,83 +1346,71 @@
     }
   }
 
-  /* --------------------------- opening view --------------------------- */
-  /* Fallback frame when we have no position for the visitor. A wide slice of
-     New York State reads as "a map somewhere sensible" and stays recognisable
-     at every zoom, which beats leaving the camera on a demo park in another
-     state entirely. */
-  const FALLBACK_VIEW = { lat: 43.0, lng: -75.5, zoom: 7 };
+  /* ------------------------ location onboarding ---------------------- */
+  const LOCATION_PROMPT_DISMISSED_KEY = 'fta.location-prompt-dismissed.v1';
 
-  function flyToFallback(reason) {
-    if (!state.map) return;
-    state.map.flyTo([FALLBACK_VIEW.lat, FALLBACK_VIEW.lng], FALLBACK_VIEW.zoom, { duration: 0.9 });
-    if (reason) toast(reason + ' - showing New York State.', 'info');
+  function hideLocationPrompt(dismissed) {
+    const prompt = $('#location-prompt');
+    if (prompt) prompt.hidden = true;
+    if (dismissed) {
+      try { sessionStorage.setItem(LOCATION_PROMPT_DISMISSED_KEY, '1'); } catch (e) {}
+    }
   }
 
-  /* Refreshes the opening frame with a LIVE fix.
+  function showLocationPromptError(error) {
+    const prompt = $('#location-prompt');
+    const errorNode = $('#location-prompt-error');
+    const enableButton = $('#location-enable-btn');
+    if (!prompt || !errorNode) return;
 
-     initMap() has already framed the map on state.userLocation (or on the
-     park), so this does not move the camera by itself - that would be a second
-     full screen of tiles for the position the map just opened on. It asks the
-     browser for a fresh position and only flies when the new fix lands more
-     than 50m from the one we opened on.
-
-     Geolocation is best effort and can fail in four different ways - no API,
-     insecure origin (browsers block it outside https/localhost), a refused
-     permission, or a timeout. Every one of those paths has to land somewhere
-     deliberate, so they all fall back rather than leaving the camera wherever
-     initMap() happened to put it. This runs silently on success: a toast on
-     every page load would be noise. */
-  function openAtVisitor() {
-    if (!state.map) return;
-
-    /* The position the map opened on, kept as the baseline: a fresh fix a few
-       metres away must not make the map jitter between two spots. */
-    const cached = state.userLocation;
-
+    let message;
     if (!navigator.geolocation) {
-      if (!cached) flyToFallback('This browser cannot share your location');
-      return;
+      message = 'This browser does not support location. Try a modern browser to use nearby and reporting features.';
+    } else if (window.isSecureContext === false) {
+      message = 'Location requires a secure connection. Open this site using HTTPS or localhost, then try again.';
+    } else if (error && error.code === 1) {
+      message = 'Location is blocked. Allow it in this site’s browser permissions, then try again.';
+    } else if (error && error.code === 3) {
+      message = 'Location is taking too long. Check your device’s location services and try again.';
+    } else {
+      message = 'We could not get a location fix. Check your device’s location services and try again.';
     }
 
-    setLocatePending(true);
-    /* Guards against the success and failure paths both running if a late fix
-       arrives after a timeout has already been reported. */
-    let settled = false;
+    errorNode.textContent = message;
+    errorNode.hidden = false;
+    prompt.hidden = false;
+    if (enableButton) {
+      const icon = enableButton.querySelector('.material-symbols-outlined');
+      enableButton.innerHTML = '';
+      if (icon) enableButton.appendChild(icon);
+      else {
+        const retryIcon = document.createElement('span');
+        retryIcon.className = 'material-symbols-outlined';
+        retryIcon.setAttribute('aria-hidden', 'true');
+        retryIcon.textContent = 'my_location';
+        enableButton.appendChild(retryIcon);
+      }
+      enableButton.appendChild(document.createTextNode('Try again'));
+    }
+  }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (settled) return;
-        settled = true;
-        setLocatePending(false);
+  function requestReportLocation() {
+    state.pendingReportOpen = true;
+    const prompt = $('#location-prompt');
+    const copy = $('#location-prompt-copy');
+    const error = $('#location-prompt-error');
+    if (copy) copy.textContent = 'Your location is required to place this report accurately. Allow location access to continue.';
+    if (error) error.hidden = true;
+    if (prompt) prompt.hidden = false;
+  }
 
-        state.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-        writeOverlay();
-        renderUserMarker(position.coords.accuracy);
-        /* Distances now measure from the visitor, so the list and the pin
-           labels have to be rebuilt from the new reference. */
-        renderFeed();
-        renderMarkers();
-
-        /* Skip the second fly when the cached frame was already right (common
-           on a return visit - the browser usually re-serves the same fix), so
-           the map does not jitter between two spots metres apart. */
-        const moved = cached ? haversine(cached, state.userLocation) : Infinity;
-        if (moved > 50) {
-          state.map.flyTo([state.userLocation.lat, state.userLocation.lng], 16, { duration: 0.9 });
-        }
-      },
-      () => {
-        if (settled) return;
-        settled = true;
-        setLocatePending(false);
-        if (cached) return; /* already framed on the cached position */
-        flyToFallback('Location unavailable');
-      },
-      /* maximumAge lets a returning visitor get an instant cached fix with no
-         permission prompt; a cold start still has to wait for the GPS. */
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
-    );
+  function initLocationPrompt() {
+    const prompt = $('#location-prompt');
+    if (!prompt || state.userLocation) return;
+    try {
+      if (sessionStorage.getItem(LOCATION_PROMPT_DISMISSED_KEY) === '1') return;
+    } catch (e) {}
+    prompt.hidden = false;
   }
 
   /* Finds where the visitor is, drops the blue "you are here" dot, and takes
@@ -1434,6 +1422,7 @@
      The desktop "Current Location" pill and the mobile circle share this flow. */
   function locateMe() {
     if (!navigator.geolocation) {
+      showLocationPromptError();
       toast('This browser cannot share a location.', 'error');
       return;
     }
@@ -1449,6 +1438,11 @@
         renderFeed();
         renderMarkers();
         setLocatePending(false);
+        hideLocationPrompt(false);
+        if (state.pendingReportOpen) {
+          state.pendingReportOpen = false;
+          void openReportModal();
+        }
 
         /* On a phone the map can be sitting behind the list view. Reveal it
            first, and wait for switchMobileView()'s invalidateSize() so the
@@ -1472,6 +1466,7 @@
       (error) => {
         setLocatePending(false);
         const denied = error && error.code === 1;
+        showLocationPromptError(error);
         toast(denied ? 'Location permission denied.' : 'Location unavailable (' + error.message + ').', 'error');
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
@@ -1590,12 +1585,10 @@
     }).addTo(state.map);
   }
 
-  /* Fills the report pin from the device GPS.
+  /* Fills or refreshes the report pin from the device GPS.
 
-     This is the DEFAULT for the form - most people report a stray they are
-     standing in front of - so openReportModal() calls it on its own. The
-     "Use my location" button is there to re-pin or fine-tune, not to be the
-     only way in.
+     The "Use my location" button lets the volunteer refresh or fine-tune the
+     report pin after the required location check has opened the form.
 
      watchPosition (not getCurrentPosition) for the first fix: a single reading
      is often the worst one available while the GPS warms up. We take the
@@ -1884,7 +1877,20 @@
   }
 
   async function openReportModal() {
+    const hasLocation = state.userLocation &&
+      Number.isFinite(Number(state.userLocation.lat)) &&
+      Number.isFinite(Number(state.userLocation.lng));
+    if (!hasLocation) {
+      requestReportLocation();
+      return;
+    }
     if (!(await requireLoginForReport())) return;
+    if (!state.userLocation ||
+        !Number.isFinite(Number(state.userLocation.lat)) ||
+        !Number.isFinite(Number(state.userLocation.lng))) {
+      requestReportLocation();
+      return;
+    }
     const form = $('#report-form');
     if (!form) return;
     form.reset();
@@ -3555,6 +3561,13 @@
 
     const nearMe = $('#near-me-btn');
     if (nearMe) nearMe.addEventListener('click', locateMe);
+    const locationEnableButton = $('#location-enable-btn');
+    if (locationEnableButton) locationEnableButton.addEventListener('click', locateMe);
+    const locationDismissButton = $('#location-dismiss-btn');
+    if (locationDismissButton) locationDismissButton.addEventListener('click', () => {
+      state.pendingReportOpen = false;
+      hideLocationPrompt(true);
+    });
     const zoomIn = $('#zoom-in');
     if (zoomIn) zoomIn.addEventListener('click', () => state.map && state.map.zoomIn());
     const zoomOut = $('#zoom-out');
@@ -3726,13 +3739,7 @@
        view, so the side menu is there from the first frame. The desktop pill
        can still collapse it to a full-bleed map on demand. */
     switchMobileView(isNarrow() ? 'map' : 'list');
-    /* initMap() has already framed the opening view; openAtVisitor() only
-       refines it with a LIVE fix (and takes the fallback paths when there is
-       none). On a phone the sidebar hides here, so wait for
-       switchMobileView()'s invalidateSize() (260ms) or its flyTo aims at a
-       zero-size container. The desktop map keeps its size, so it can fly
-       straight away. */
-    window.setTimeout(openAtVisitor, isNarrow() ? 300 : 0);
+    initLocationPrompt();
     wireEvents();
     wireReportPhoto();
     syncProfileFromAuth();

@@ -90,6 +90,33 @@
 .fta-station .material-symbols-outlined { font-size: 17px; }
 .fta-me { position: relative; width: 20px; height: 20px; border-radius: 9999px; background: #006194; border: 3px solid #fff8f6; box-shadow: 0 3px 10px rgba(30, 27, 26, .35); }
 .fta-me span { position: absolute; inset: -8px; border-radius: 9999px; border: 2px solid rgba(0, 97, 148, .45); animation: fta-pulse 2.4s ease-out infinite; }
+.fta-location-prompt {
+  position: absolute; z-index: 15; top: 64px; left: 50%; transform: translateX(-50%);
+  width: min(360px, calc(100% - 24px)); padding: 13px 14px;
+  border: 1px solid #efe6e4; border-radius: 16px; background: rgba(255,255,255,.97);
+  box-shadow: 0 10px 28px rgba(30,27,26,.18); color: #1e1b1a;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+.fta-location-prompt[hidden] { display: none; }
+.fta-location-prompt__content { min-width: 0; }
+.fta-location-prompt__title { margin: 0; display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 750; line-height: 1.3; }
+.fta-location-prompt__title-icon { color: #a03b0e; font-size: 16px; line-height: 1; }
+.fta-location-prompt__copy { margin: 3px 0 0; color: #75645d; font-size: 11px; line-height: 1.4; }
+.fta-location-prompt__error { margin: 6px 0 0; color: #93000a; font-size: 11px; line-height: 1.4; }
+.fta-location-prompt__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.fta-location-prompt__enable {
+  min-height: 34px; padding: 0 12px; border: 0; border-radius: 9999px;
+  background: #a03b0e; color: #fff; font: inherit; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+}
+.fta-location-prompt__enable:hover { background: #c15326; }
+.fta-location-prompt__dismiss {
+  min-height: 34px; padding: 0 9px; border: 0; border-radius: 9999px;
+  background: transparent; color: #75645d; font: inherit; font-size: 11px;
+  font-weight: 650; cursor: pointer;
+}
+.fta-location-prompt__dismiss:hover { background: #f7f5f4; color: #1e1b1a; }
+.fta-location-prompt button:focus-visible { outline: 2px solid #006194; outline-offset: 2px; }
 .fta-pick {
   width: 28px; height: 28px; border-radius: 9999px; background: #ba1a1a; color: #fff;
   box-shadow: 0 6px 14px rgba(30, 27, 26, .35); display: flex; align-items: center; justify-content: center;
@@ -425,6 +452,25 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <div id="map" role="application" aria-label="Interactive map of Oakwood Park animal locations"></div>
   <div class="absolute inset-0 bg-gradient-to-t from-surface-dim/25 via-transparent to-surface/10 pointer-events-none z-[1]"></div>
 
+  <section id="location-prompt" class="fta-location-prompt" aria-labelledby="location-prompt-title" aria-live="polite" hidden>
+    <div class="fta-location-prompt__content">
+      <h2 id="location-prompt-title" class="fta-location-prompt__title">
+        <span class="fta-location-prompt__title-icon material-symbols-outlined" aria-hidden="true">location_on</span>
+        Find animals near you
+      </h2>
+      <p id="location-prompt-copy" class="fta-location-prompt__copy">
+        Share your location to center the map and see distances. It’s also needed to place a stray report.
+      </p>
+      <p id="location-prompt-error" class="fta-location-prompt__error" hidden></p>
+      <div class="fta-location-prompt__actions">
+        <button id="location-enable-btn" type="button" class="fta-location-prompt__enable">
+          <span class="material-symbols-outlined" aria-hidden="true">my_location</span>Use my location
+        </button>
+        <button id="location-dismiss-btn" type="button" class="fta-location-prompt__dismiss">Not now</button>
+      </div>
+    </div>
+  </section>
+
   <!-- Floating status pills (desktop only - mobile keeps the map clean like the mock) -->
   <div class="hidden md:flex absolute top-space-md left-space-md right-space-md z-10 flex items-start justify-between gap-3 pointer-events-none">
     <div class="pointer-events-auto flex flex-col items-start gap-2">
@@ -460,8 +506,9 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
       <span>Filters</span>
     </button>
     <button id="mobile-locate-btn" type="button" title="Show my location" aria-label="Show my location"
-      class="h-11 w-11 rounded-full bg-white text-on-surface flex items-center justify-center shadow-xl border border-surface-container-highest active:scale-95 transition-all">
+      class="h-11 px-3 rounded-full bg-white text-on-surface flex items-center justify-center gap-1.5 shadow-xl border border-surface-container-highest active:scale-95 transition-all">
       <span id="mobile-locate-icon" class="material-symbols-outlined text-[20px] text-primary">my_location</span>
+      <span class="text-xs font-semibold">Near me</span>
     </button>
   </div>
 
