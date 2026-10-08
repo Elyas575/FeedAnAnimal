@@ -161,8 +161,8 @@
     '#site-bottom-nav .fta-bn-pill{display:flex;align-items:center;gap:6px;flex-shrink:0;align-self:center;height:44px;',
     'padding:0 16px;border:0;border-radius:9999px;background:#f4511e;color:#fff;',
     'font-family:inherit;font-size:13px;font-weight:800;text-decoration:none;position:relative;z-index:10;',
-    'box-shadow:0 10px 20px rgba(244,81,30,.40);cursor:pointer;-webkit-tap-highlight-color:transparent;',
-    'transition:transform .15s ease}',
+    'box-shadow:0 1px 2px rgba(30,27,26,.20);cursor:pointer;-webkit-tap-highlight-color:transparent;',
+    'transition:transform .15s ease, background .15s ease}',
     '#site-bottom-nav .fta-bn-pill:active{transform:scale(.95)}',
     '#site-bottom-nav .fta-bn-pill .material-symbols-outlined{font-size:20px;color:#fff}',
     /* ---- account card (profile + log out, opened from the signed-in chip) ---- */
@@ -304,7 +304,7 @@
   /* The elevated orange centre pill: List/Map switch on the map page,
      a link back to the map everywhere else. index.js binds the button by id. */
   function centerPillHtml() {
-    var cls = 'fta-bn-pill flex shrink-0 items-center gap-1.5 h-11 px-4 self-center rounded-full text-white text-[13px] font-extrabold shadow-xl active:scale-95 transition-all relative z-10';
+    var cls = 'fta-bn-pill flex shrink-0 items-center gap-1.5 h-11 px-4 self-center rounded-full text-white text-[13px] font-extrabold shadow-none active:scale-95 transition-all relative z-10';
     var style = ' style="background:' + BOTTOM_ACCENT + '"';
     if (onMapPage()) {
       return '<button id="mobile-view-toggle" type="button" aria-label="Switch between the map and the list" class="' + cls + '"' + style + '>'
