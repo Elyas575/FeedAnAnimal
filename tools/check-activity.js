@@ -109,6 +109,8 @@ check('auth.html shows the password field up front', '<div id="group-password" c
 check('auth.html shows the Sign In button up front', 'class="fa-btn-primary">Sign In to Account', authPage);
 check('auth.html keeps password sign-in', 'signInWithPassword', authPage);
 check('auth.html keeps forgot-password recovery', 'resetPassword', authPage);
+rows.push([/provider:\s*'google'[\s\S]*?queryParams:\s*\{\s*prompt:\s*'select_account'/.test(sc) ? 'OK  ' : 'MISS',
+  'Google OAuth asks the user to choose an account']);
 rows.push([/@media \(max-width: 600px\)\s*\{\s*#toast-wrap\s*\{[^}]*left:\s*50%;[^}]*right:\s*auto;[^}]*transform:\s*translateX\(-50%\)/s.test(authPage) ? 'OK  ' : 'MISS',
   'auth toast notifications are centered on mobile']);
 rows.push([sc.indexOf('signInWithEmailLink') === -1 ? 'OK  ' : 'MISS', 'supabase-client.js no longer defines signInWithEmailLink']);
