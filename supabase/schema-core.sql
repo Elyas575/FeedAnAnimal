@@ -100,6 +100,10 @@ create table if not exists reports (
   photo_url text,
   description text,
   status text default 'open' check (status in ('open','verified','closed')),
+  feed_count int not null default 0,
+  water_count int not null default 0,
+  last_fed_at timestamptz,
+  last_watered_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -167,15 +171,33 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users for each row execute function public.handle_new_user();
 
--- Trigger: keep animals.last_fed_at in sync when feed event arrives
+-- Care events update either a seeded animal or a community report. Reports
+-- have IDs like "report-<uuid>" in the frontend and are not stored in animals.
 create or replace function public.touch_animal_on_event()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  report_id uuid;
 begin
   if new.animal_id is null then return new; end if;
+  if left(new.animal_id, 7) = 'report-' then
+    begin
+      report_id := substring(new.animal_id from 8)::uuid;
+    exception when invalid_text_representation then
+      return new;
+    end;
+    if new.kind = 'feed' then
+      update public.reports set last_fed_at = new.created_at, feed_count = coalesce(feed_count, 0) + 1
+        where id = report_id;
+    elsif new.kind = 'water' then
+      update public.reports set last_watered_at = new.created_at, water_count = coalesce(water_count, 0) + 1
+        where id = report_id;
+    end if;
+    return new;
+  end if;
   if new.kind = 'feed' then
-    update animals set last_fed_at = new.created_at, feed_count = feed_count + 1 where id = new.animal_id;
+    update public.animals set last_fed_at = new.created_at, feed_count = feed_count + 1 where id = new.animal_id;
   elsif new.kind = 'water' then
-    update animals set last_watered_at = new.created_at, water_count = water_count + 1 where id = new.animal_id;
+    update public.animals set last_watered_at = new.created_at, water_count = water_count + 1 where id = new.animal_id;
   end if;
   return new;
 end; $$;

@@ -60,6 +60,10 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
 - "Feed"/"Water" one-tap logging updates `lastFedAt`/`lastWateredAt`, feed counts,
   the pin colour, the filter counters and the activity ticker, then writes to
   `localStorage` (`fta.overlay.v1`) so it survives a reload.
+- For cloud reports to keep those care times and counts across devices, run
+  `supabase/migration-report-care.sql` in the Supabase SQL Editor after the core
+  schema and `migration-drop-events-fk.sql`. It backfills existing feed/water
+  events and updates report care fields for future events.
 - "Near Me" and the floating "Current Location" pill use the browser Geolocation
   API, fly the map to where you are and re-measure every distance from there.
 - "+ Report a Stray" opens a full form. You can drop the pin on the map (the
@@ -208,4 +212,3 @@ Maps API key, swap `initMap()` for the Google Maps JS API; `index.js` only depen
 
 - Photos, stations and activity entries all come from the JSON file, so the whole
   demo can be re-skinned by editing data instead of markup.
-

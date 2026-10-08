@@ -52,6 +52,17 @@ check('activity.html has .initials styles', '.initials{', ah);
 const core = fs.readFileSync(path.join(ROOT, 'supabase', 'schema-core.sql'), 'utf8');
 check('schema-core adds events.actor_avatar', 'alter table events add column if not exists actor_avatar', core);
 check('schema-core adds profiles.avatar_url', 'alter table profiles add column if not exists avatar_url', core);
+check('schema-core routes care events for community reports', "left(new.animal_id, 7) = 'report-'", core);
+check('schema-core persists report feed timestamps', 'last_fed_at = new.created_at, feed_count = coalesce(feed_count, 0) + 1', core);
+
+const careMig = path.join(ROOT, 'supabase', 'migration-report-care.sql');
+const careSql = fs.existsSync(careMig) ? fs.readFileSync(careMig, 'utf8') : '';
+check('report care migration exists', '', fs.existsSync(careMig) ? 'ok' : 'missing');
+check('report care migration backfills existing feed events', "e.animal_id = 'report-' || r0.id::text", careSql);
+check('report care migration stores feed and water history', 'last_watered_at timestamptz', careSql);
+check('cloud reports load saved care times', 'row.last_fed_at ||', sc);
+check('cloud reports load saved care counts', 'feedCount: Number(row.feed_count) || 0', sc);
+check('cloud refresh replaces stale cached report data', 'Object.assign({}, local, animal)', js);
 
 const mig = path.join(ROOT, 'supabase', 'migration-avatar.sql');
 check('migration-avatar.sql exists', '', fs.existsSync(mig) ? 'ok' : 'missing');

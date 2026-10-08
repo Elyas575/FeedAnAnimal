@@ -983,8 +983,10 @@ async function sbLoadReports(limit = 200) {
         species: row.species || 'cat',
         description: description,
         health: needsVet ? 'critical' : 'healthy',
-        lastFedAt: new Date(nowMs - (needsFood ? rule.food : 5) * MIN).toISOString(),
-        lastWateredAt: new Date(nowMs - (needsWater ? rule.water : 5) * MIN).toISOString(),
+        lastFedAt: row.last_fed_at || new Date(nowMs - (needsFood ? rule.food : 5) * MIN).toISOString(),
+        lastWateredAt: row.last_watered_at || new Date(nowMs - (needsWater ? rule.water : 5) * MIN).toISOString(),
+        feedCount: Number(row.feed_count) || 0,
+        waterCount: Number(row.water_count) || 0,
         notes: 'Reported by the community - log what you see here.',
         caretakers: ['Community'],
         tags: ['community-report'],
@@ -1193,4 +1195,3 @@ try {
     window.sbDisplayName = (typeof sbDisplayName === 'function') ? sbDisplayName : window.sbDisplayName;
   }
 } catch (e) { /* ignore */ }
-

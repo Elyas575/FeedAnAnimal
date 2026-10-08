@@ -3781,22 +3781,36 @@
           if (!rows || !rows.length) return;
           /* Match the id convention used in hydrate(), so a report this device
              made locally and the same row from the cloud collapse into one
-             pin instead of doubling up. */
+             pin instead of doubling up. Cloud care totals are authoritative,
+             while a newer local timestamp/count preserves offline actions. */
           const merged = new Map(state.animals.map((a) => [a.id, a]));
           let added = 0;
+          let changed = false;
           rows.forEach((raw) => {
             const animal = normalizeAnimal(raw, 'report');
-            if (merged.has(animal.id)) return;
-            merged.set(animal.id, animal);
-            added += 1;
+            const local = merged.get(animal.id);
+            if (!local) {
+              merged.set(animal.id, animal);
+              added += 1;
+              changed = true;
+              return;
+            }
+            const cloud = Object.assign({}, local, animal);
+            const latest = (a, b) => (Date.parse(a) || 0) >= (Date.parse(b) || 0) ? a : b;
+            cloud.lastFedAt = latest(local.lastFedAt, animal.lastFedAt);
+            cloud.lastWateredAt = latest(local.lastWateredAt, animal.lastWateredAt);
+            cloud.feedCount = Math.max(Number(local.feedCount) || 0, Number(animal.feedCount) || 0);
+            cloud.waterCount = Math.max(Number(local.waterCount) || 0, Number(animal.waterCount) || 0);
+            merged.set(animal.id, cloud);
+            changed = true;
           });
-          if (!added) return;
+          if (!changed) return;
           state.animals = Array.from(merged.values());
           state.fitted = true; /* the opening fit already ran; keep the camera */
           renderFeed();
           renderMarkers();
           renderStatusBar();
-          toast(added + ' community report' + (added === 1 ? '' : 's') + ' on the map.', 'info');
+          if (added) toast(added + ' community report' + (added === 1 ? '' : 's') + ' on the map.', 'info');
         }).catch(() => {});
       }
 
