@@ -62,7 +62,6 @@ async function main() {
     id: a.id,
     name: a.name,
     species: a.species,
-    breed: a.breed,
     sex: a.sex || null,
     age_class: a.ageClass || null,
     color: a.color || null,

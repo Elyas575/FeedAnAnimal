@@ -14,11 +14,11 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 
 - Theme: bg cream `#fff8f6`, cards `#fff`, accent burnt-orange `#a03b0e` (hover `#c15326`), browns `#8b7269` / `#57423b`, borders `#efe6e4`.
 - Fonts: `Plus Jakarta Sans` + `Inter` + `Material Symbols Outlined`. Paw favicon (orange circle + paw, inline SVG).
-- Top navbar from ONE file (`site-header.js` -> `div#site-header`): Map, Cities (`index.html#cities`), Community, Activity, Chats (badge + popover, `inbox.html`), About, auth avatar. Active pill from `location.pathname`.
+- Top navbar from ONE file (`site-header.js` -> `div#site-header`): Map, Cities (`cities.html`), Community, Activity, Chats (badge + popover, `inbox.html`), About, auth avatar. Active pill from `location.pathname`.
 - Mobile bottom bar: Cities, Community, center List/Map pill, Activity, Chats.
 - Desktop `index.html`: Leaflet map (right) + volunteer sidebar (left). Phones: full map + bottom sheet.
 - Map: `Leaflet 1.9.4 + markercluster 1.5.3`, Google Streets default / Satellite / CARTO Light / OSM. Custom divIcon pins: photo or emoji, ring green ok / orange needs refill / red urgent, `empty Nh` badge, name label. Clusters break on zoom. Blue visitor dot + scale.
-- Popup: status dot + kicker, distance, photo, breed/sex/age, food/water meters, notes, station + feed count, coords + Copy + Google directions, Feed / Water / Details / Chat buttons.
+- Popup: status dot + kicker, distance, photo, sex/age, food/water meters, notes, station + feed count, coords + Copy + Google directions, Feed / Water / Details / Chat buttons.
 - Modals: details drawer (z-75), chat DM (z-85), report form (docks bottom so map clickable), photo lightbox.
 
 ## 3. Architecture
@@ -31,19 +31,20 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 
 ## 4. Pages
 
-- `index.html` (+ `index.js` ~3600 lines): core map + sidebar + report + details + chat. Deep links: `#animal=<id>`, `#station=<id>`, `#chat=<animal>&conversation=<id>`, `#cities`. Search matches name/breed/city/country/area/notes/caretakers/tags.
+- `index.html` (+ `index.js` ~3600 lines): core map + sidebar + report + details + chat. Deep links: `#animal=<id>`, `#station=<id>`, `#chat=<animal>&conversation=<id>`, `#city=<name>` (prefills sidebar search + flies to the city). Search matches name/city/country/area/notes/caretakers/tags.
+- `cities.html`: live city directory. Groups seed + local + cloud reports (`sbLoadReports(200)`) by `location.citySlug|country`, needs-help counts via `meta.urgencyPolicy`, search + sort chips (Most strays / Needs help / Near me / A–Z). Cards link to `index.html#city=<name>`.
 - `community.html` (+ `community.js` + `forum.js`): leaderboard ladder + Wakie-style forum (composer, sort Newest/Active/Liked, thread, replies, likes).
 - `activity.html`: live feed = local (`fta.overlay.v1`) + cloud (`sbLoadRecentEvents(100)`). Search + kind filter + chips All/Mine/Live/This device. Newest 200.
 - `inbox.html` (+ `inbox.js`): all DM threads, unread first. Rows are `<button data-conversation data-animal>` -> map.
-- `auth.html`: email + anon auth. Feed works anon, chat needs real email (`sbRequireEmail`, `sbEnsureAuth` auto-anon otherwise).
+- `auth.html`: password/Google sign-in (magic link removed) + anon auth. Feed works anon, chat needs real email (`sbRequireEmail`, `sbEnsureAuth` auto-anon otherwise).
 - `about.html`, `privacy.html`, `terms.html`, `404.html`: static, same header.
 
 ## 5. What users can do
 
-1. Browse: chips `All 48 / Cats 28 / Dogs 16 / Needs Help 12`, sort Urgent / Closest (haversine) / Recently Fed, debounced search name/breed/area/notes/caretakers/tags. Enter flies to hit, Esc clears.
+1. Browse: chips `All 48 / Cats 28 / Dogs 16 / Needs Help 12`, sort Urgent / Closest (haversine) / Recently Fed, debounced search name/area/notes/caretakers/tags. Enter flies to hit, Esc clears.
 2. Near Me: Geolocation flies map + re-measures distance; Reset to `47.671236,-122.343184` (Seattle demo: Oakwood Park & West End).
 3. Log care 1-tap: Feed/Water updates times, counts, pin colour, ticker (9s rotate), writes local + Supabase `events` for points.
-4. Report Stray: pin-drop or GPS, species, needs flags as `[NEEDS_*]` prefix in `reports.description` (strip vet->water->food on load), photo compress+upload, nearest station, instant + shared (`sbSubmitReport` / `sbLoadReports(200)`). City/country auto-detected via BigDataCloud reverse-geocode (cached per ~1km grid in `fta.geo.v1`, never blocks submit) into `reports.city/country/city_slug` — run `supabase/migration-report-city.sql` once.
+4. Report Stray: pin-drop or GPS, species, needs flags as `[NEEDS_*]` prefix in `reports.description` (strip vet->water->food on load), photo compress+upload, nearest station, instant + shared (`sbSubmitReport` / `sbLoadReports(200)`). City/country auto-detected via BigDataCloud reverse-geocode (cached per ~1km grid in `fta.geo.v1`, never blocks submit) into `reports.city/country/city_slug` — run `supabase/migration-report-city.sql` once. Editing is reporter-only: `openEditReport()` reopens the same form (photo replace/remove, name, species, description, needs, location) and saves through `sbUpdateReport` + RLS policy `reporter update reports` — run `supabase/migration-report-edit.sql` once. Popup content is built at open time (`bindPopup(() => popupHtml(row))`) so the Edit button appears as soon as auth resolves `state.myId`.
 5. Details: profile, health/sterilized/vaccinated flags, device history, log vet/medicine/rescue.
 6. Stations: 6 stations, log check/refill raises capacity.
 7. Points: feed 10 / water 8 / station 12 / medicine 18 / vet 20 / report 25 / rescue 30 (Postgres `schema-leaderboard.sql` + `community.js`). Tiers Stray 0, Scout 100, Feeder 250, Carer 500, Guardian 900, Angel 1500, Saint 2500, Legend 4000.
@@ -51,8 +52,8 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 
 ## 6. Data model
 
-- `data/animals.json`: `{ meta: { center, tileLayers, urgencyPolicy, species }, animals: [{ id, name, species, breed, sex, ageClass, description, health, sterilized/vaccinated/microchipped, caretakers[], tags[], notes, photoUrl|null, stationId, location:{label,area,lat,lng}, lastFedMinutesAgo, lastWateredMinutesAgo, feedCount, waterCount, reportedDaysAgo }], stations[6], activity[] }`. Times are relative offsets (never stale), converted to absolute ISO in memory.
-- Supabase: `reports (lat,lng,location_label,description,photo_url,species,name)`, `events (actor_name,kind,note,place,animal_id,station_id)`, `topics/replies/likes`, `conversations/participants/messages/blocks/profiles`. See `supabase/*.sql`.
+- `data/animals.json`: `{ meta: { center, tileLayers, urgencyPolicy, species }, animals: [{ id, name, species, sex, ageClass, description, health, sterilized/vaccinated/microchipped, caretakers[], tags[], notes, photoUrl|null, stationId, location:{label,area,lat,lng}, lastFedMinutesAgo, lastWateredMinutesAgo, feedCount, waterCount, reportedDaysAgo }], stations[6], activity[] }`. Times are relative offsets (never stale), converted to absolute ISO in memory.
+- Supabase: `reports (reporter_id,lat,lng,location_label,photo_url,species,name,city,country,city_slug,description)`, `events (actor_name,kind,note,place,animal_id,station_id)`, `topics/replies/likes`, `conversations/participants/messages/blocks/profiles`. See `supabase/*.sql`.
 - Counts: 48 animals — 28 cats, 16 dogs, 4 small pets — 12 needing help. After editing JSON run `node tools/build-data.js` to refresh `data/animals-data.js`.
 
 ## 7. Key files + commands

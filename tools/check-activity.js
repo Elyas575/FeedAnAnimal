@@ -74,6 +74,30 @@ const checkInline = (file) => {
 };
 checkInline('activity.html');
 checkInline('auth.html');
+checkInline('activity.html');
+checkInline('auth.html');
+
+/* --- magic-link login removed ---------------------------------------- *
+ * Sign-in is password / OAuth only now. The Magic Link tab, the emailed
+ * code fallback and the OTP helper they called are all gone, and the page
+ * must open on the Sign In tab with the password field showing. */
+const authPage = fs.readFileSync(path.join(ROOT, 'auth.html'), 'utf8');
+rows.push([authPage.indexOf('tab-magic') === -1 ? 'OK  ' : 'MISS', 'auth.html has no Magic Link tab']);
+rows.push([authPage.indexOf('btn-magic') === -1 ? 'OK  ' : 'MISS', 'auth.html has no "Send magic link" button']);
+rows.push([authPage.indexOf('id="group-code"') === -1 ? 'OK  ' : 'MISS', 'auth.html has no emailed-code box']);
+rows.push([authPage.indexOf('toggleCodeSection') === -1 ? 'OK  ' : 'MISS', 'auth.html dropped the code toggle helper']);
+rows.push([authPage.indexOf('verifyOtp') === -1 ? 'OK  ' : 'MISS', 'auth.html never calls verifyOtp']);
+rows.push([authPage.indexOf('signInWithEmailLink') === -1 ? 'OK  ' : 'MISS', 'auth.html never calls signInWithEmailLink']);
+check('auth.html opens on the Sign In tab', 'id="tab-login" class="segment-btn active"', authPage);
+check('auth.html shows the password field up front', '<div id="group-password" class="fa-input-group">', authPage);
+check('auth.html shows the Sign In button up front', 'class="fa-btn-primary">Sign In to Account', authPage);
+check('auth.html keeps password sign-in', 'signInWithPassword', authPage);
+check('auth.html keeps forgot-password recovery', 'resetPassword', authPage);
+rows.push([sc.indexOf('signInWithEmailLink') === -1 ? 'OK  ' : 'MISS', 'supabase-client.js no longer defines signInWithEmailLink']);
+rows.push([sc.indexOf('signInWithOtp') === -1 ? 'OK  ' : 'MISS', 'supabase-client.js never calls signInWithOtp']);
+const chatSnip = fs.readFileSync(path.join(ROOT, 'supabase', 'chat-snippets.js'), 'utf8');
+rows.push([chatSnip.indexOf('signInWithOtp') === -1 ? 'OK  ' : 'MISS', 'chat-snippets.js no longer sends a chat magic link']);
+
 
 /* --- layering regression --------------------------------------------- *
  * Bug: the fallback (species emoji / initials) was painted ON TOP of the
@@ -331,7 +355,11 @@ check('"Near Me" flies to the visitor, not the park',
 check('"Near Me" confirms where it took you', 'Showing your location', js);
 rows.push([/renderFeed\(\)/.test(locateBlock) ? 'OK  ' : 'MISS',
   '"Near Me" re-measures the list from the visitor']);
-rows.push([/inside the mapped area|outside the mapped area/.test(js) === false ? 'OK  ' : 'MISS',
+/* Scolding the volunteer for WHERE they are was removed on purpose. The
+   phrase still appears in an explanatory comment in index.js, so test the
+   CODE, not the prose: strip comments first (same trick as jsCode below). */
+const scoldFreeJs = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+rows.push([/inside the mapped area|outside the mapped area/.test(scoldFreeJs) === false ? 'OK  ' : 'MISS',
   'the park inside/outside scolding is gone']);
 check('reset clears the stored location', 'state.userLocation = null;', js);
 check('reset re-frames the whole park', 'showing the whole', js);
@@ -400,6 +428,35 @@ check('a shared report keeps the cloud row id', "'report-' + shared :", js);
 check('sbUploadReportPhoto returns null with no file', 'if (!file) return null;', sc);
 check('sbSubmitReport exposed on window', 'window.sbSubmitReport = sbSubmitReport;', sc);
 check('sbCompressImage exposed on window', 'window.sbCompressImage = sbCompressImage;', sc);
+/* --- editing a report must reach the shared copy ---------------------- *
+ * index.js calls window.sbUpdateReport() when an edit saves. It did not
+ * exist: the typeof guard skipped the write while sharedOk stayed true, so
+ * the toast claimed "Saved - on the map for everyone" and the next reload
+ * restored the old photo and name. These assert the writer exists, is
+ * exported, and that a missing writer fails the save honestly. */
+check('sbUpdateReport() defined', 'async function sbUpdateReport', sc);
+check('sbUpdateReport patches the reports row', "from('reports').update(", sc);
+check('sbUpdateReport asks which rows changed', "update(patch).eq('id', report.id).select('id')", sc);
+check('sbUpdateReport writes photo_url', 'photo_url: report.photoUrl || null', sc);
+check('sbUpdateReport encodes the needs markers', "'[NEEDS_VET] ' + description", sc);
+check('sbUpdateReport exposed on window', 'window.sbUpdateReport = sbUpdateReport;', sc);
+check('a cloud-id edit always attempts the shared save', 'if (isCloudReportId(editing.id)) {', js);
+check('a missing writer fails the shared save instead of lying', 'sharedOk = false;', js);
+/* Owner-only in the DATABASE, not just in the button. */
+check('reports allow only their reporter to update', 'create policy "reporter update reports" on reports for update', core);
+check('the update policy matches auth.uid() to reporter_id', 'using (auth.uid() = reporter_id)', core);
+const editMigPath = path.join(ROOT, 'supabase', 'migration-report-edit.sql');
+const editMig = fs.existsSync(editMigPath) ? fs.readFileSync(editMigPath, 'utf8') : '';
+check('migration-report-edit.sql carries the owner policy', 'reporter update reports', editMig);
+check('the migration adds reporter_id when the table predates it', 'add column if not exists reporter_id', editMig);
+/* Popups must build their content at OPEN time: popupHtml() embeds
+   canManageReport() (the Edit button) and state.myId only resolves once
+   auth answers - a string bound at marker-render time froze "no edit
+   button" into every popup opened before that. */
+check('popup content is rebuilt on every open', 'bindPopup(() => popupHtml(row)', js);
+/* "Remove photo" during an edit must clear photo_url on save, not silently
+   keep the old file. */
+check('removing a photo in edit mode clears it on save', 'reportPhotoRemoved ? null : (editing.photoUrl || null)', js);
 check('sbFormatBytes exposed on window', 'window.sbFormatBytes = sbFormatBytes;', sc);
 // Regression guard: sbSearchQuality calls sbEncodeCanvas. A missing definition
 // would be swallowed by sbCompressImage's catch, silently uploading the
@@ -561,7 +618,7 @@ const BUDGET = 110 * 1024;
 /* --- Phase 6: deploy surface (MVP blocker) ---------------------------- *
  * A broken internal link is a 404 in production, so assert every local
  * href/src in every shipped page actually exists on disk. */
-const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', 'community.html', '404.html', 'inbox.html'];
+const pages = ['index.html', 'activity.html', 'auth.html', 'privacy.html', 'terms.html', 'community.html', '404.html', 'inbox.html', 'cities.html'];
 // The shared navbar must exist on EVERY shipped page.
 rows.push([fs.existsSync(path.join(ROOT, 'site-header.js')) ? 'OK  ' : 'MISS', 'deploy file present: site-header.js']);
 pages.forEach((file) => {
@@ -580,10 +637,20 @@ check('the navbar has a Map link', "label: 'Map'", header);
 rows.push([header.toLowerCase().indexOf('leaderboard') === -1 ? 'OK  ' : 'MISS',
   'the navbar has no Leaderboard link']);
 check('the navbar has an Activity link', "label: 'Activity'", header);
+check('the navbar has a Cities link', "label: 'Cities'", header);
+/* Cities is a real page now - a dead index.html#cities href would 404-adjacent
+   (it never opened anything), so pin both entries to the shipped file. */
+check('the Cities links point at the real page', "href: 'cities.html'", header);
+check('the map accepts a #city= deep link from cities.html', "params.get('city')", js);
 check('the navbar has a Community link', "label: 'Community'", header);
 check('the navbar keeps the Support button', 'Support Animal Relief', header);
 check('the navbar keeps the brand', 'FeedAnAnimalMap', header);
-check('the navbar keeps the paw logo', '\uD83D\uDC3E', header);
+/* The brand mark graduated from a 🐾 glyph to logo/logo.png - assert the
+   navbar still RENDERS a logo and that the file actually ships, otherwise
+   every page shows a broken image where the paw used to be. */
+check('the navbar keeps the logo image', 'logo/logo.png', header);
+rows.push([fs.existsSync(path.join(ROOT, 'logo/logo.png')) ? 'OK  ' : 'MISS',
+  'the shipped logo file exists']);
 check('the active nav item is derived, not hard-coded', 'function currentId(', header);
 check('the Sign in label is wired on every page', 'auth-link-label', header);
 
@@ -615,8 +682,26 @@ rows.push([js.indexOf('Demo pins use fictional') === -1 ? 'OK  ' : 'MISS',
   'the stale "fictional Seattle coords" note is gone']);
 check('the reporter name is stored', 'reporterName:', js);
 check('the drawer credits the reporter', "detailRow('Reported'", js);
-check('the breed header drops unknown colour',
-  'animal.breed, animal.color].filter((part) => !isUnknown(part))', js);
+check('the drawer subtitle still drops unknown colour',
+  'animal.color].filter((part) => !isUnknown(part))', js);
+
+/* --- breed removed from the UI, tools and schema ---------------------- *
+ * The popup used to print "Cat (breed unknown) - unknown - unknown": a field
+ * the report form never fills in. Nothing may reintroduce it anywhere in the
+ * stack; the database column itself goes away via migration-drop-breed.sql. */
+[
+  ['index.js', js],
+  ['index.html', fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')],
+  ['supabase-client.js', sc],
+  ['supabase/schema-core.sql', core],
+  ['tools/seed-supabase.js', fs.readFileSync(path.join(ROOT, 'tools', 'seed-supabase.js'), 'utf8')],
+  ['tools/build-data.js', fs.readFileSync(path.join(ROOT, 'tools', 'build-data.js'), 'utf8')]
+].forEach(function (entry) {
+  rows.push([entry[1].indexOf('breed') === -1 ? 'OK  ' : 'MISS', entry[0] + ' has no breed']);
+});
+const dropBreedMig = path.join(ROOT, 'supabase', 'migration-drop-breed.sql');
+check('migration-drop-breed.sql drops the column', 'drop column if exists breed',
+  fs.existsSync(dropBreedMig) ? fs.readFileSync(dropBreedMig, 'utf8') : '');
 
 /* --- modal close buttons are real controls ------------------------------ *
  * The X used to be a bare 32px glyph in the title row with no border, so it

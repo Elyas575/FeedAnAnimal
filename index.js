@@ -362,7 +362,7 @@
     if (!query) return true;
     const loc = animal.location || {};
     const haystack = [
-      animal.name, animal.breed, animal.color, animal.description, animal.notes,
+      animal.name, animal.color, animal.description, animal.notes,
       animal.temperament, animal.health, loc.area, loc.label,
       loc.city, loc.country,
       animal.caretakers.join(' '), animal.tags.join(' ')
@@ -635,7 +635,7 @@
 
   function avatarHtml(animal) {
     if (animal.photoUrl) {
-      return '<img alt="' + esc(animal.name + ' the ' + animal.breed) + '" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="' + esc(animal.photoUrl) + '">';
+      return '<img alt="' + esc(animal.name + ' the ' + speciesInfo(animal.species).singular) + '" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="' + esc(animal.photoUrl) + '">';
     }
     return '<div class="fta-avatar w-full h-full flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-105" data-species="' + esc(animal.species) + '" aria-hidden="true">' + speciesInfo(animal.species).emoji + '</div>';
   }
@@ -758,7 +758,6 @@
           '<div class="flex items-center justify-between gap-1">' +
             '<div class="flex items-center gap-1.5 truncate">' +
               '<h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">' + esc(animal.name) + '</h3>' +
-              '<span class="text-xs text-outline font-normal">• ' + esc(animal.breed) + '</span>' +
             '</div>' +
             '<span class="font-label-sm text-xs text-outline shrink-0 flex items-center gap-0.5">' +
               '<span class="material-symbols-outlined text-[13px]">near_me</span> ' + formatDistance(row.status.distance) +
@@ -945,7 +944,12 @@
           : '<div class="fta-popup__thumb">' + avatarHtml(animal) + '</div>') +
         '<div class="fta-popup__id">' +
           '<h4>' + esc(animal.name) + '</h4>' +
-          '<p>' + esc(animal.breed) + ' • ' + esc(animal.sex || 'sex unknown') + ' • ' + esc(animal.ageClass || 'unknown') + '</p>' +
+          (function () {
+            /* Sex/age only when they were actually observed - the report form
+               never asks, so "unknown - unknown" would just be noise. */
+            const facts = [animal.sex, animal.ageClass].filter((part) => !isUnknown(part));
+            return facts.length ? '<p>' + esc(facts.join(' • ')) + '</p>' : '';
+          })() +
           '<p class="fta-popup__place"><span class="material-symbols-outlined">pin_drop</span>' + esc(animal.location.label) + '</p>' +
         '</div>' +
       '</div>' +
@@ -1205,12 +1209,17 @@
         iconAnchor: [24, 56],
         popupAnchor: [0, -52]
       }),
-      title: animal.name + ' • ' + animal.breed,
-      alt: animal.name + ', ' + animal.breed,
+      title: animal.name + ' • ' + speciesInfo(animal.species).singular,
+      alt: animal.name + ', ' + speciesInfo(animal.species).singular,
       riseOnHover: true,
       keyboard: true
     });
-    marker.bindPopup(popupHtml(row), { maxWidth: 340, minWidth: 296, autoPanPadding: [28, 28], className: 'fta-popup' });
+    /* Built LAZILY: popupHtml() embeds canManageReport() (the Edit button),
+       and state.myId only resolves once auth answers - which is AFTER the
+       markers are drawn. Binding the HTML string up front froze "no edit
+       button" into every popup opened before that moment; Leaflet calls a
+       Function content on every open, so ownership is re-checked each time. */
+    marker.bindPopup(() => popupHtml(row), { maxWidth: 340, minWidth: 296, autoPanPadding: [28, 28], className: 'fta-popup' });
     marker.on('click', () => setSelected(animal.id, true));
     marker.on('popupopen', () => setSelected(animal.id, false));
     return marker;
@@ -1989,7 +1998,7 @@
     const photoHint = $('#report-photo-hint');
     if (photoHint) {
       photoHint.textContent = animal.photoUrl
-        ? 'Current photo shown. Choose a new one to replace it.'
+        ? 'Current photo shown. Choose a new one to replace it, or Remove photo to take it off.'
         : 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
     }
     if (animal.photoUrl) setReportPhotoPreview(animal.photoUrl);
@@ -2014,6 +2023,11 @@
   /* Holds the chosen File until submit. We keep the File (not a data URL)
      so it can be uploaded straight to Supabase Storage. */
   let pendingReportPhoto = null;
+  /* Set by "Remove photo" while EDITING: the save then writes photo_url =
+     null instead of quietly keeping the old file - the button says Remove,
+     so it has to mean it. Cleared when a new file is chosen and by
+     resetReportPhoto() (every modal open, every save). */
+  let reportPhotoRemoved = false;
 
   function setReportPhotoPreview(src) {
     const box = $('#report-photo-preview');
@@ -2040,6 +2054,7 @@
         return;
       }
       pendingReportPhoto = file;
+      reportPhotoRemoved = false;
       // Object URL is cheap and instant; the real upload happens on submit.
       setReportPhotoPreview(URL.createObjectURL(file));
       if (clear) clear.classList.remove('hidden');
@@ -2056,13 +2071,14 @@
         setReportPhotoPreview(null);
         clear.classList.add('hidden');
         if (hint) hint.textContent = 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
-        /* In edit mode an empty preview must not read as "the photo is
-           gone": the stored one is kept unless a NEW file replaces it, so
-           put it back on screen. */
+        /* Edit mode: the button says "Remove photo", so removing is what it
+           does - the empty preview is the truth and the save writes
+           photo_url = null (reportPhotoRemoved). Picking a new file clears
+           the flag again, and so does reopening the form. */
         const editing = editingReportId ? animalById(editingReportId) : null;
         if (editing && editing.photoUrl) {
-          setReportPhotoPreview(editing.photoUrl);
-          if (hint) hint.textContent = 'Current photo kept. Choose a new one to replace it.';
+          reportPhotoRemoved = true;
+          if (hint) hint.textContent = 'Photo will be removed when you save.';
         }
       });
     }
@@ -2070,6 +2086,7 @@
 
   function resetReportPhoto() {
     pendingReportPhoto = null;
+    reportPhotoRemoved = false;
     const input = $('#report-photo-file');
     if (input) input.value = '';
     const clear = $('#report-photo-clear');
@@ -2151,7 +2168,9 @@
     const editing = editingReportId ? animalById(editingReportId) : null;
     if (editing) {
       setBusy(true, '<span class="material-symbols-outlined text-[18px]">save</span>Saving changes…');
-      let editedPhoto = editing.photoUrl || null;
+      /* "Remove photo" during an edit means remove: photo_url is cleared.
+         A newly chosen file clears the flag too, so replace still wins. */
+      let editedPhoto = reportPhotoRemoved ? null : (editing.photoUrl || null);
       try {
         if (pendingReportPhoto && typeof window.sbUploadReportPhoto === 'function') {
           editedPhoto = await window.sbUploadReportPhoto(pendingReportPhoto);
@@ -2162,23 +2181,31 @@
         editedPhoto = editing.photoUrl || null;
       }
       let sharedOk = true;
-      if (isCloudReportId(editing.id) && typeof window.sbUpdateReport === 'function') {
-        sharedOk = await window.sbUpdateReport({
-          id: editing.id.replace(/^report-/, ''),
-          name: value('report-name') || 'Unnamed stray',
-          species: species,
-          lat: lat,
-          lng: lng,
-          place: place,
-          city: value('report-city') || editing.location.city || '',
-          country: value('report-country') || editing.location.country || '',
-          citySlug: slugifyCity(value('report-city') || editing.location.city || '', value('report-country') || editing.location.country || '') || editing.location.citySlug || '',
-          photoUrl: editedPhoto,
-          description: value('report-description'),
-          needsFood: needsFood,
-          needsWater: needsWater,
-          needsVet: needsVet,
-        });
+      if (isCloudReportId(editing.id)) {
+        if (typeof window.sbUpdateReport === 'function') {
+          sharedOk = await window.sbUpdateReport({
+            id: editing.id.replace(/^report-/, ''),
+            name: value('report-name') || 'Unnamed stray',
+            species: species,
+            lat: lat,
+            lng: lng,
+            place: place,
+            city: value('report-city') || editing.location.city || '',
+            country: value('report-country') || editing.location.country || '',
+            citySlug: slugifyCity(value('report-city') || editing.location.city || '', value('report-country') || editing.location.country || '') || editing.location.citySlug || '',
+            photoUrl: editedPhoto,
+            description: value('report-description'),
+            needsFood: needsFood,
+            needsWater: needsWater,
+            needsVet: needsVet,
+          });
+        } else {
+          /* The writer lives in supabase-client.js. With it missing the
+             shared copy did NOT change, so the save must say so - the old
+             `true` default toasted "on the map for everyone" and the next
+             reload silently contradicted it. */
+          sharedOk = false;
+        }
       }
       setBusy(false);
 
@@ -2198,9 +2225,6 @@
       Object.assign(editing, {
         name: value('report-name') || 'Unnamed stray',
         species: species,
-        /* The breed string embeds the species, so it has to be rebuilt when
-           the species changes; reports never carry a typed breed. */
-        breed: speciesInfo(species).singular + ' (breed unknown)',
         description: value('report-description') || 'Newly reported by a community volunteer.',
         /* 'critical' when the vet tick is on; otherwise leave whatever state
            a later vet visit recorded rather than resetting it to healthy. */
@@ -2288,7 +2312,6 @@
       id: localId,
       name: value('report-name') || 'Unnamed stray',
       species: species,
-      breed: value('report-breed') || speciesInfo(species).singular + ' (breed unknown)',
       sex: value('report-sex') || 'unknown',
       ageClass: value('report-age') || 'unknown',
       color: value('report-color') || 'Not recorded',
@@ -2334,7 +2357,7 @@
     state.log.unshift({
       id: uid('log'), kind: 'report', animalId: animal.id, stationId: animal.stationId,
       actor: state.profile.name || 'Guest volunteer',
-      note: 'reported a new stray: ' + animal.name + ' (' + animal.breed + ')',
+      note: 'reported a new stray: ' + animal.name,
       place: animal.location.label, at: animal.reportedAt, source: 'user'
     });
 
@@ -2346,7 +2369,7 @@
       if (typeof window.sbLogEvent === 'function') {
         window.sbLogEvent({
           animalId: animal.id, stationId: animal.stationId, kind: 'report',
-          note: 'reported a new stray: ' + animal.name + ' (' + animal.breed + ')',
+          note: 'reported a new stray: ' + animal.name,
           place: animal.location.label,
         });
       }
@@ -2420,7 +2443,7 @@
     const img = $('#photo-img');
     const title = $('#photo-title');
     const caption = $('#photo-caption');
-    const detail = [animal.breed, animal.location.label]
+    const detail = [speciesInfo(animal.species).singular, animal.location.label]
       .filter((part) => !isUnknown(part))
       .join(' • ');
 
@@ -2433,7 +2456,7 @@
         img.classList.add('hidden');
         if (caption) caption.textContent = 'The photo of ' + animal.name + ' could not be loaded right now.';
       };
-      img.alt = animal.name + ' the ' + animal.breed;
+      img.alt = animal.name + ' the ' + speciesInfo(animal.species).singular;
       /* Assigned last: the handlers above must be in place before the
          browser starts the (possibly cached, possibly instant) load. */
       img.src = animal.photoUrl;
@@ -2486,7 +2509,7 @@
         '<div class="flex-1 min-w-0 pr-10">' +
           '<h3 class="font-headline-md text-headline-md text-on-surface truncate">' + esc(animal.name) + '</h3>' +
           '<p class="font-body-sm text-body-sm text-on-surface-variant truncate">' +
-            esc([animal.breed, animal.color].filter((part) => !isUnknown(part)).join(' • ') || speciesInfo(animal.species).singular) +
+            esc([speciesInfo(animal.species).singular, animal.color].filter((part) => !isUnknown(part)).join(' • ') || animal.species) +
           '</p>' +
           '<p class="font-label-sm text-xs text-outline flex items-center gap-1 mt-1">' +
             '<span class="material-symbols-outlined text-[14px] text-primary shrink-0">pin_drop</span>' +
@@ -3613,6 +3636,28 @@
            again navigates to the URL we are already on, which fires no
            hashchange and reopens nothing. */
         try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) { /* older browsers */ }
+        return;
+      }
+      /* cities.html hands a whole city over as #city=<name>. The sidebar
+         search matches location.city, so prefilling the query filters the
+         feed AND the pins in one move. The hash is deliberately KEPT: the
+         URL stays shareable and a refresh keeps the city filter (the chat
+         branch above consumes its hash because re-tapping a thread in the
+         same session is the common case there; here navigation is fresh). */
+      const city = params.get('city');
+      if (city) {
+        state.query = city;
+        const search = $('#sidebar-search');
+        if (search) search.value = city;
+        renderFeed();
+        renderMarkers();
+        /* Fly to the first pin of that city once; if the cloud merge has not
+           landed yet the filter still applies - renderFeed reruns on merge. */
+        const first = selectAnimals()[0];
+        if (first && state.map) {
+          state.map.setView([first.animal.location.lat, first.animal.location.lng], 15, { animate: true });
+        }
+        toast('Showing strays in ' + city, 'info');
         return;
       }
       if (animalId && animalById(animalId)) {

@@ -16,7 +16,6 @@ create table if not exists animals (
   id text primary key,
   name text not null,
   species text not null,
-  breed text,
   sex text,
   age_class text,
   color text,
@@ -131,6 +130,17 @@ create policy "public read open reports" on reports for select using (true);
 drop policy if exists "auth insert reports" on reports;
 create policy "auth insert reports" on reports for insert
   with check (auth.role() = 'authenticated');
+
+-- Editing a report: ONLY the volunteer who filed it (reporter_id) may change
+-- it. index.js hides the Edit button for everyone else (canManageReport) and
+-- this policy is the database-side enforcement - sbUpdateReport() writes
+-- through it. Without it every shared edit is rejected by RLS and the
+-- correction silently lives on one device. Same shape as the other owner
+-- policies in this file. Also shipped as supabase/migration-report-edit.sql
+-- for databases created before this block existed.
+drop policy if exists "reporter update reports" on reports;
+create policy "reporter update reports" on reports for update
+  using (auth.uid() = reporter_id) with check (auth.uid() = reporter_id);
 
 drop policy if exists "public read profiles" on profiles;
 create policy "public read profiles" on profiles for select using (true);

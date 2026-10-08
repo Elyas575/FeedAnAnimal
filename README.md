@@ -46,12 +46,12 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
   location dot and metric scale control.
 
 **Sidebar feed driven by data**
-- Every card is rendered from `data/animals.json` (photos, breed, distance,
+- Every card is rendered from `data/animals.json` (photos, distance,
   status line, station, actions) instead of being hardcoded.
 - Filter chips recompute from the data: All 48, Cats 28, Dogs 16, plus the other
   rescued species, plus "Needs Help 12".
 - Sorting by Most Urgent (scored), Closest (haversine) and Recently Fed.
-- Debounced search across name, breed, colour, area, landmark, notes, caretakers
+- Debounced search across name, colour, area, landmark, notes, caretakers
   and tags; Enter jumps to the first hit on the map, Escape clears it.
 - Live activity ticker merges the seeded community log with your own actions and
   rotates every 9 seconds.
@@ -138,7 +138,7 @@ One document with four top-level keys.
                   "type": "auto-dispenser", "status": "Auto-dispenser active", "capacityPct": 72,
                   "caretaker": "Priya N.", "notes": "…", "lastServicedMinutesAgo": 180,
                   "location": { "label": …, "area": …, "lat": …, "lng": … } } ],
-  "animals": [ { "id": "milo", "name": "Milo", "species": "cat", "breed": "Orange Tabby",
+  "animals": [ { "id": "milo", "name": "Milo", "species": "cat",
                  "sex": "male", "ageClass": "adult", "color": "Ginger with white mittens",
                  "description": "…", "temperament": "friendly",
                  "health": "healthy",                    // healthy | monitor | treatment | critical

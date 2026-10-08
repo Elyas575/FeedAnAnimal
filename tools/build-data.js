@@ -95,7 +95,6 @@ animals.forEach((animal) => {
 
   check(catalog.indexOf(animal.species) !== -1, where + ': species "' + animal.species + '" is not in speciesCatalog');
   check(typeof animal.name === 'string' && animal.name.length > 0, where + ': name is required');
-  check(typeof animal.breed === 'string' && animal.breed.length > 0, where + ': breed is required');
   check(typeof animal.description === 'string' && animal.description.length > 10, where + ': description is too short');
   check(typeof animal.notes === 'string' && animal.notes.length > 5, where + ': notes are required');
   check(Array.isArray(animal.caretakers) && animal.caretakers.length > 0, where + ': at least one caretaker is required');

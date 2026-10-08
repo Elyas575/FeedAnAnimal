@@ -185,8 +185,7 @@ body.has-site-header { padding-top: 68px; }
 
     <!-- Mode Tabs -->
     <div class="segment-bar">
-      <button id="tab-magic" class="segment-btn active" onclick="switchTab('magic')">Magic Link</button>
-      <button id="tab-login" class="segment-btn" onclick="switchTab('login')">Sign In</button>
+      <button id="tab-login" class="segment-btn active" onclick="switchTab('login')">Sign In</button>
       <button id="tab-signup" class="segment-btn" onclick="switchTab('signup')">Sign Up</button>
     </div>
 
@@ -204,7 +203,7 @@ body.has-site-header { padding-top: 68px; }
       </div>
 
       <!-- Password Field (Sign In & Sign Up) -->
-      <div id="group-password" class="hidden fa-input-group">
+      <div id="group-password" class="fa-input-group">
         <input id="auth-password" class="fa-field" type="password" placeholder="••••••••">
       </div>
 
@@ -220,30 +219,14 @@ body.has-site-header { padding-top: 68px; }
       </div>
 
       <!-- Trigger Buttons (Standard Modes) -->
-      <button id="btn-magic" class="fa-btn-primary">Send magic link</button>
-      <button id="btn-login" class="fa-btn-primary hidden">Sign In to Account →</button>
+      <button id="btn-login" class="fa-btn-primary">Sign In to Account →</button>
       <button id="btn-register" class="fa-btn-primary hidden">Create Account →</button>
-
-      <!-- Verification Code Section (Revealed when "Have a code" is clicked) -->
-      <div id="group-code" class="hidden space-y-3 pt-2">
-        <p class="text-xs text-[#786f6a] leading-relaxed">
-          Enter the email you asked us to send to, then the code from that email.
-        </p>
-        <div class="space-y-1">
-          <label class="block text-xs font-medium text-[#2d2a29]">Enter the code from the email</label>
-          <div class="fa-input-group">
-            <input id="auth-code" class="fa-field" type="text">
-          </div>
-        </div>
-        <button id="btn-verify-code" class="fa-btn-primary">Sign in with code</button>
-      </div>
 
     </div>
 
     <!-- Action Secondary Links -->
-    <div class="flex justify-between items-center text-xs text-[#786f6a]">
-      <button type="button" id="link-code" class="hover:text-[#1e1b1a] transition-colors" onclick="toggleCodeSection()">I already have a code</button>
-      <a href="#" id="link-forgot" class="hover:text-[#1e1b1a] transition-colors hidden">Forgot password?</a>
+    <div class="flex justify-end items-center text-xs text-[#786f6a]">
+      <a href="#" id="link-forgot" class="hover:text-[#1e1b1a] transition-colors">Forgot password?</a>
     </div>
 
     <!-- Bottom Navigation & Sign Out -->
@@ -262,7 +245,7 @@ body.has-site-header { padding-top: 68px; }
 <script>
 /* Mode Switcher Logic */
 function switchTab(mode) {
-  var tabs = ['magic', 'login', 'signup'];
+  var tabs = ['login', 'signup'];
   tabs.forEach(function(t) {
     var btn = document.getElementById('tab-' + t);
     if (btn) btn.classList.toggle('active', t === mode);
@@ -270,39 +253,18 @@ function switchTab(mode) {
 
   var nameGroup = document.getElementById('group-name');
   var passGroup = document.getElementById('group-password');
-  var codeGroup = document.getElementById('group-code');
-  var btnMagic = document.getElementById('btn-magic');
   var btnLogin = document.getElementById('btn-login');
   var btnRegister = document.getElementById('btn-register');
-  var linkCode = document.getElementById('link-code');
   var linkForgot = document.getElementById('link-forgot');
 
-  // Reset Code Section on Tab Switch
-  codeGroup.classList.add('hidden');
+  /* Both remaining modes need the password field, so it is never hidden. */
+  passGroup.classList.remove('hidden');
 
   nameGroup.classList.toggle('hidden', mode !== 'signup');
-  passGroup.classList.toggle('hidden', mode === 'magic');
-
-  btnMagic.classList.toggle('hidden', mode !== 'magic');
   btnLogin.classList.toggle('hidden', mode !== 'login');
   btnRegister.classList.toggle('hidden', mode !== 'signup');
 
-  linkCode.classList.toggle('hidden', mode !== 'magic');
   linkForgot.classList.toggle('hidden', mode !== 'login');
-}
-
-function toggleCodeSection() {
-  var codeGroup = document.getElementById('group-code');
-  var btnMagic = document.getElementById('btn-magic');
-  
-  var isHidden = codeGroup.classList.contains('hidden');
-  if (isHidden) {
-    codeGroup.classList.remove('hidden');
-    btnMagic.classList.add('hidden');
-  } else {
-    codeGroup.classList.add('hidden');
-    btnMagic.classList.remove('hidden');
-  }
 }
 
 /* Supabase Auth Script Integration */
@@ -318,7 +280,7 @@ var recoveryMode = !!window.__ftaRecovery;
 function enterResetMode(){
   recoveryMode = true;
   var seg = document.querySelector('.segment-bar'); if (seg) seg.classList.add('hidden');
-  ['group-name','group-password','group-code','btn-magic','btn-login','btn-register','link-code','link-forgot']
+  ['group-name','group-password','btn-login','btn-register','link-forgot']
     .forEach(function(id){ var el = $(id); if (el) el.classList.add('hidden'); });
   var g = $('group-reset'); if (g) g.classList.remove('hidden');
   status('Reset link verified — choose a new password for your account.', true);
@@ -343,7 +305,7 @@ function status(msg, ok){
 }
 
 function setBusy(b){
-  ['btn-google','btn-facebook','btn-magic','btn-login','btn-register','btn-verify-code','btn-save-password'].forEach(function(id){
+  ['btn-google','btn-facebook','btn-login','btn-register','btn-save-password'].forEach(function(id){
     var el = $(id); if (el) el.disabled = !!b;
   });
   if (b) toast('Processing request...', 'info');
@@ -357,7 +319,6 @@ function friendlyError(e){
 }
 
 function email(){ return ($('auth-email').value || '').trim(); }
-function code(){ return ($('auth-code').value || '').trim(); }
 function isSignedIn(u){ return !!u && !u.is_anonymous; }
 
 var leaving = false;
@@ -395,30 +356,6 @@ $('btn-facebook').onclick = async function(){
   setBusy(true);
   try { toast('Connecting to Facebook...', 'info'); await window.sbAuth.signInWithFacebook(); }
   catch(e){ var m = friendlyError(e); status('Facebook Auth Error: ' + m, false); toast(m, 'err'); }
-  setBusy(false);
-};
-
-$('btn-magic').onclick = async function(){
-  setBusy(true);
-  try { 
-    await window.sbAuth.signInWithEmailLink(email()); 
-    status('Magic link/code dispatched! Check your email inbox.', true); 
-    toast('Magic link sent!', 'ok');
-    toggleCodeSection(); // Reveal code box right after sending
-  }
-  catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
-  setBusy(false);
-};
-
-$('btn-verify-code').onclick = async function(){
-  setBusy(true);
-  try {
-    toast('Verifying code...', 'info');
-    await window.sbAuth.verifyOtp(email(), code());
-    status('Authenticated! Returning to map…', true);
-    toast('Welcome back!', 'ok');
-    goHome(800);
-  } catch(e){ var m = friendlyError(e); status(m, false); toast(m, 'err'); }
   setBusy(false);
 };
 

@@ -23,6 +23,7 @@ try {
     window.sbLiveTicker = sbLiveTicker;
     window.sbUploadReportPhoto = sbUploadReportPhoto;
     window.sbSubmitReport = sbSubmitReport;
+    window.sbUpdateReport = sbUpdateReport;
     window.sbLoadReports = sbLoadReports;
     window.sbCompressImage = sbCompressImage;
     window.sbFormatBytes = sbFormatBytes;
@@ -980,7 +981,6 @@ async function sbLoadReports(limit = 200) {
         id: 'report-' + String(row.id),
         name: row.name || 'Unnamed stray',
         species: row.species || 'cat',
-        breed: (row.species || 'cat') + ' (reported)',
         description: description,
         health: needsVet ? 'critical' : 'healthy',
         lastFedAt: new Date(nowMs - (needsFood ? rule.food : 5) * MIN).toISOString(),
@@ -1077,6 +1077,50 @@ async function sbSubmitReport(report) {
   }
 }
 
+/* The write half of EDITING a report: apply the corrections from the SAME
+   form (photo, name, species, description, needs flags, location) to the
+   shared row, so every volunteer sees the fix instead of only this device.
+
+   index.js calls this guarded by `typeof window.sbUpdateReport === 'function'`
+   - which for a long time evaluated to false, silently skipping the shared
+   save while the UI toasted "Saved - the updated report is on the map for
+   everyone". The function now exists, and the guard's else-branch reports
+   honestly when it cannot run.
+
+   The description is encoded exactly like sbSubmitReport() (NEEDS markers
+   prepended vet -> water -> food) because sbLoadReports() strips them in that
+   order. Returns true only when a row really changed: PostgREST reports 0
+   rows (not an error) when RLS rejects the update, so the .select('id') echo
+   is what tells an owner-only-policy denial apart from a real save. */
+async function sbUpdateReport(report) {
+  if (!sb || !report || !report.id) return false;
+  try {
+    await sbEnsureAuth();
+    let description = report.description || '';
+    if (report.needsFood) description = '[NEEDS_FOOD] ' + description;
+    if (report.needsWater) description = '[NEEDS_WATER] ' + description;
+    if (report.needsVet) description = '[NEEDS_VET] ' + description;
+    const patch = {
+      name: report.name || null,
+      species: report.species || null,
+      lat: Number.isFinite(report.lat) ? report.lat : null,
+      lng: Number.isFinite(report.lng) ? report.lng : null,
+      location_label: report.place || null,
+      city: (report.city || '').slice(0, 80) || null,
+      country: (report.country || '').slice(0, 80) || null,
+      city_slug: (report.citySlug || '').slice(0, 80) || null,
+      photo_url: report.photoUrl || null,
+      description: description || null,
+    };
+    const { data, error } = await sb.from('reports').update(patch).eq('id', report.id).select('id');
+    if (error) throw error;
+    return !!(data && data.length);
+  } catch (err) {
+    console.warn('[sb] report update failed:', err.message);
+    return false;
+  }
+}
+
 /* ---------- Auth helpers used by auth.html + header account button ---------- */
 const sbAuth = {
   client() { return sb; },
@@ -1089,17 +1133,6 @@ const sbAuth = {
     if (!sb) return () => {};
     const { data } = sb.auth.onAuthStateChange((_evt, session) => cb(session && session.user ? session.user : null));
     return () => { try { data.subscription.unsubscribe(); } catch (e) {} };
-  },
-  // Magic-link (works NOW — you already enabled Email provider)
-  async signInWithEmailLink(email) {
-    const clean = String(email || '').trim();
-    if (!clean) throw new Error('Enter your email first.');
-    const { error } = await sb.auth.signInWithOtp({
-      email: clean,
-      options: { emailRedirectTo: window.location.origin + '/auth.html' },
-    });
-    if (error) throw error;
-    return true;
   },
   // Email + password (requires Supabase Auth > Providers > Email > Confirm OFF for instant login,
   // or user clicks confirm link if Confirm ON)

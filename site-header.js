@@ -16,7 +16,7 @@
      derived from location.pathname, never hard-coded per page. */
   var LINKS = [
     { id: 'index',       label: 'Map',         icon: 'location_on',  href: 'index.html' },
-    { id: 'cities',      label: 'Cities',      icon: 'public',       href: 'index.html#cities' },
+    { id: 'cities',      label: 'Cities',      icon: 'public',       href: 'cities.html' },
     { id: 'community',   label: 'Community',   icon: 'chat_bubble',  href: 'community.html' },
     { id: 'activity',    label: 'Activity',    icon: 'history',      href: 'activity.html' },
     /* Chats is the LinkedIn-style Messaging entry: a button (not a link) that
@@ -35,7 +35,7 @@
      by centerPillHtml(): on the map page it is the List/Map view switch,
      everywhere else it is a link back to the map. */
   var BOTTOM_TABS = [
-    { id: 'cities',    label: 'Cities',    icon: 'public',      href: 'index.html#cities' },
+    { id: 'cities',    label: 'Cities',    icon: 'public',      href: 'cities.html' },
     { id: 'community', label: 'Community', icon: 'chat_bubble',  href: 'community.html' },
     { id: 'activity',  label: 'Activity',  icon: 'history',      href: 'activity.html' },
     /* Chats replaces About here. On a phone the bottom bar is the only

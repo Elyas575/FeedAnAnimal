@@ -133,7 +133,7 @@ if (hasActivity) {
 
 /* --------------------------- new community report ---------------------- */
 const report = app.normalizeAnimal({
-  id: 'report-test', name: 'Test stray', species: 'cat', breed: 'Unknown', health: 'healthy',
+  id: 'report-test', name: 'Test stray', species: 'cat', health: 'healthy',
   caretakers: ['Tester'], tags: ['community-report'], notes: 'notes', description: 'description',
   stationId: null, photoUrl: null, lastFedAt: new Date().toISOString(),
   lastWateredAt: app.isoFromMinutes(30), reportedAt: new Date().toISOString(),

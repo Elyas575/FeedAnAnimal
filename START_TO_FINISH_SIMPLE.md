@@ -13,7 +13,7 @@ Goal: feedanimals.com live with map + backend + chat. Cost: ~$12/year (domain on
 2. New Project: name feed-animals, region West US, save DB password
 3. Wait 2 min for green Active
 4. Settings > API: copy Project URL + anon key to notepad
-5. Auth > Providers: turn ON Anonymous + Email (Magic Link)
+5. Auth > Providers: turn ON Anonymous + Email
 6. SQL Editor > New Query: paste supabase/schema-core.sql > Run
 7. SQL Editor > New Query: paste supabase/schema-chat.sql > Run
 8. Database > Replication: turn on for events + messages tables

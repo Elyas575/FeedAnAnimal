@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explore Cities — FeedAnAnimalMap</title>
+<meta name="description" content="Find stray animals that need food and water in cities around the world. Live counts built from real community reports.">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;color:#1e1b1a}
+.fta-field{height:42px;padding:0 14px;border-radius:9999px;border:1px solid #dec0b6;background:#fff;font-size:13px;width:100%}
+.chip{padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:600;background:#f5ecea;white-space:nowrap;border:none;cursor:pointer}
+.chip.on{background:#a03b0e;color:#fff}
+/* Cards are rendered by script, so their styles live here - the Tailwind Play
+   CDN cannot be relied on to compile utilities for markup injected later. */
+.city-card{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:14px;text-decoration:none;color:inherit;transition:border-color .15s,transform .1s}
+.city-card:hover{border-color:#dec0b6}
+.city-card:active{transform:scale(.995)}
+.city-ico{width:46px;height:46px;border-radius:14px;background:#f5ecea;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.city-body{flex:1;min-width:0;display:block}
+.city-name{display:block;font-weight:700;font-size:15px}
+.city-country{font-weight:600;color:#8b7269;font-size:12px;margin-left:6px}
+.city-meta{display:block;font-size:12px;color:#57423b;margin-top:3px}
+.pill-help{display:inline-block;background:#fdecea;color:#c62828;font-size:11px;font-weight:700;padding:2px 8px;border-radius:9999px}
+.pill-count{margin-left:auto;background:#f4511e;color:#fff;min-width:42px;height:42px;padding:0 6px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.cta{display:inline-flex;align-items:center;gap:8px;background:#f4511e;color:#fff;padding:11px 20px;border-radius:9999px;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 1px 2px rgba(30,27,26,.2)}
+.cta:hover{background:#ff6a3d}
+  /* clear the shared fixed navbar */
+  body.has-site-header{padding-top:68px}
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<main class="max-w-2xl mx-auto p-4 pb-28">
+<header class="mt-1">
+  <h1 class="text-2xl font-bold">Explore Cities</h1>
+  <p class="text-sm text-[#57423b] mt-1">Find strays that need food and water &mdash; anywhere in the world.</p>
+  <p id="stats" class="text-xs text-[#8a6b60] mt-1.5">Loading strays&hellip;</p>
+  <p id="geo-note" class="text-xs text-[#c62828] mt-1 hidden"></p>
+</header>
+<div class="mt-4">
+  <input id="q" class="fta-field" placeholder="Search city or country...">
+</div>
+<div id="chips" class="flex gap-2 mt-3 overflow-x-auto pb-1">
+  <button class="chip on" data-sort="count">Most strays</button>
+  <button class="chip" data-sort="help">Needs help</button>
+  <button class="chip" data-sort="near">Near me</button>
+  <button class="chip" data-sort="az">A&ndash;Z</button>
+</div>
+<div id="list" class="flex flex-col gap-2 mt-3"></div>
+<div id="empty" class="hidden text-center mt-8">
+  <p class="text-4xl mb-2">🐾</p>
+  <p class="text-sm font-bold">No cities mapped yet</p>
+  <p class="text-sm text-[#57423b] mt-1">Be the first &mdash; report a stray and your city appears here with live counts.</p>
+  <a class="cta mt-4" href="index.html"><span class="material-symbols-outlined" style="font-size:20px">add</span>Report a Stray</a>
+</div>
+<p id="unplaced" class="hidden text-center text-xs text-[#8a6b60] mt-4"></p>
+<p class="text-center text-xs text-[#8a6b60] mt-6">Counts come from the live map &mdash; community reports on this device and shared via Supabase.</p>
+</main>
+<script src="data/animals-data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+
+<script>
+(function(){
+var $ = function(id){ return document.getElementById(id); };
+var cities = [];        /* grouped rows, one per city */
+var unplaced = 0;       /* strays with no city label on their report */
+var policy = {};        /* meta.urgencyPolicy, mirrored from index.js */
+var catalog = {};       /* meta.speciesCatalog, for the city emoji */
+var sort = 'count';
+var geo = null;         /* {lat,lng} once "Near me" succeeds */
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function slugify(s){ return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+
+/* --- urgency, mirroring computeStatus() in index.js ------------------- *
+   needsHelp = food or water past the species okHours, or sick. The report
+   paths backdate lastFedAt/lastWateredAt with the SAME thresholds, so a
+   report submitted as "needs food" reads as needing help here too. */
+function rule(species){ return policy[species] || policy.default || { food:{okHours:8}, water:{okHours:6} }; }
+function needsHelp(a){
+  var r = rule(a.species);
+  var okF = ((r.food && r.food.okHours) || 8) * 3600000;
+  var okW = ((r.water && r.water.okHours) || 6) * 3600000;
+  var food = Date.now() - Date.parse(a.lastFedAt);
+  var water = Date.now() - Date.parse(a.lastWateredAt);
+  var sick = a.health === 'treatment' || a.health === 'critical';
+  return (isFinite(food) && food > okF) || (isFinite(water) && water > okW) || sick;
+}
+function rel(t){
+  var ms = Date.now() - Date.parse(t);
+  if (!isFinite(ms)) return '';
+  var m = Math.round(ms/60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + 'm ago';
+  var h = Math.round(m/60);
+  if (h < 24) return h + 'h ago';
+  var d = Math.round(h/24);
+  if (d < 30) return d + 'd ago';
+  var mo = Math.round(d/30);
+  if (mo < 12) return mo + 'mo ago';
+  return Math.round(mo/12) + 'y ago';
+}
+function haversine(a, b){
+  var R = 6371, toRad = function(v){ return v * Math.PI / 180; };
+  var dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  var x = Math.sin(dLat/2)*Math.sin(dLat/2) +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+function km(d){ return d < 1 ? Math.round(d*1000) + 'm away' : Math.round(d) + ' km away'; }
+function emoji(species){ return (catalog[species] || {}).emoji || '🐾'; }
+/* speciesCatalog is an ARRAY of {id,emoji,...}; index it by id once. */
+function setCatalog(list){
+  catalog = {};
+  (list || []).forEach(function(s){ if (s && s.id) catalog[s.id] = s; });
+}
+
+/* --- the three real sources, same ones the map itself loads ----------- */
+async function loadSeed(){
+  try {
+    var res = await fetch('data/animals.json', { cache:'no-store' });
+    if (!res.ok) throw new Error('http ' + res.status);
+    var doc = await res.json();
+    policy = (doc.meta && doc.meta.urgencyPolicy) || {};
+    setCatalog(doc.meta && doc.meta.speciesCatalog);
+    return doc.animals || [];
+  } catch (e) {
+    /* file:// double-click mode: the embedded copy index.html also uses. */
+    var embedded = window.FEED_THE_ANIMALS_DATA;
+    if (embedded && embedded.animals) {
+      policy = (embedded.meta && embedded.meta.urgencyPolicy) || {};
+      setCatalog(embedded.meta && embedded.meta.speciesCatalog);
+      return embedded.animals;
+    }
+    return [];
+  }
+}
+function loadLocal(){
+  try {
+    var raw = localStorage.getItem('fta.overlay.v1');
+    if (!raw) return [];
+    var overlay = JSON.parse(raw) || {};
+    return Array.isArray(overlay.reports) ? overlay.reports : [];
+  } catch (e) { return []; }
+}
+async function loadCloud(){
+  try {
+    if (window.sbEnsureAuth) await window.sbEnsureAuth();
+    if (!window.sbLoadReports) return [];
+    return await window.sbLoadReports(200);
+  } catch (e) { return []; }
+}
+/* Seeds first, then cloud, then this device: a local copy of a shared
+   report is richer (mine flags, reporter name), so it wins on collision.
+   Every source is passed through normalize() first, mirroring
+   normalizeAnimal() in index.js: the seed dataset stores RELATIVE times
+   (lastFedMinutesAgo etc.), while cloud/local reports are already ISO. */
+function isoFromMinutes(m){ return new Date(Date.now() - m * 60000).toISOString(); }
+function isoFromDays(d){ return new Date(Date.now() - d * 86400000).toISOString(); }
+function normalize(a){
+  var x = Object.assign({}, a);
+  x.health = x.health || 'healthy';
+  x.location = Object.assign({}, x.location || {});
+  x.location.city = x.location.city || x.city || '';
+  x.location.country = x.location.country || x.country || '';
+  x.location.citySlug = x.location.citySlug || x.city_slug || x.citySlug || '';
+  x.lastFedAt = x.lastFedAt || isoFromMinutes(x.lastFedMinutesAgo || 0);
+  x.lastWateredAt = x.lastWateredAt || isoFromMinutes(x.lastWateredMinutesAgo || 0);
+  x.reportedAt = x.reportedAt || isoFromDays(x.reportedDaysAgo || 0);
+  return x;
+}
+function mergeAll(lists){
+  var map = new Map();
+  lists.forEach(function(arr){ (arr||[]).forEach(function(a){ if (a && a.id) map.set(a.id, normalize(a)); }); });
+  return Array.from(map.values());
+}
+
+/* --- group by city ---------------------------------------------------- *
+   Keyed on citySlug|country so "Springfield" in two countries never
+   merges, and strays without a city are counted honestly, never faked. */
+function group(list){
+  var byKey = new Map();
+  unplaced = 0;
+  list.forEach(function(a){
+    var loc = a.location || {};
+    var city = String(loc.city || '').trim();
+    if (!city) { unplaced++; return; }
+    var country = String(loc.country || '').trim();
+    var key = (loc.citySlug || slugify(city)) + '|' + country.toLowerCase();
+    var g = byKey.get(key);
+    if (!g) {
+      g = { key:key, city:city, country:country, count:0, help:0, last:0,
+            lat:0, lng:0, pts:0, species:{} };
+      byKey.set(key, g);
+    }
+    g.count++;
+    if (needsHelp(a)) g.help++;
+    [a.reportedAt, a.lastFedAt, a.lastWateredAt].forEach(function(t){
+      var ms = Date.parse(t);
+      if (isFinite(ms) && ms > g.last) g.last = ms;
+    });
+    if (isFinite(Number(loc.lat)) && isFinite(Number(loc.lng))) {
+      g.lat += Number(loc.lat); g.lng += Number(loc.lng); g.pts++;
+    }
+    var sp = a.species || 'other';
+    g.species[sp] = (g.species[sp] || 0) + 1;
+  });
+  cities = Array.from(byKey.values()).map(function(g){
+    if (g.pts) { g.lat = g.lat / g.pts; g.lng = g.lng / g.pts; }
+    /* The city's dominant species decides its emoji (2 cats > 1 dog -> 🐱). */
+    var top = 'other', best = 0;
+    Object.keys(g.species).forEach(function(k){ if (g.species[k] > best) { best = g.species[k]; top = k; } });
+    g.emoji = emoji(top);
+    return g;
+  });
+  return unplaced;
+}
+
+function match(g){
+  var q = ($('q').value || '').trim().toLowerCase();
+  if (!q) return true;
+  return (g.city + ' ' + g.country).toLowerCase().indexOf(q) !== -1;
+}
+function distanceOf(g){ return (geo && g.pts) ? haversine(geo, { lat:g.lat, lng:g.lng }) : Infinity; }
+function sorted(){
+  var rows = cities.filter(match);
+  if (sort === 'az') rows.sort(function(a,b){ return a.city.localeCompare(b.city); });
+  else if (sort === 'help') rows.sort(function(a,b){ return (b.help - a.help) || (b.count - a.count); });
+  else if (sort === 'near' && geo) rows.sort(function(a,b){ return distanceOf(a) - distanceOf(b); });
+  else rows.sort(function(a,b){ return (b.count - a.count) || (b.last - a.last); });
+  return rows;
+}
+function statsLine(){
+  var total = cities.reduce(function(n,g){ return n + g.count; }, 0) + unplaced;
+  var countries = new Set(cities.map(function(g){ return g.country.toLowerCase(); }).filter(Boolean));
+  if (!total) return 'No strays reported yet - be the first.';
+  return total + ' stray' + (total===1?'':'s') + ' mapped in ' + cities.length + ' cit' + (cities.length===1?'y':'ies')
+    + ' across ' + countries.size + ' countr' + (countries.size===1?'y':'ies') + ' - live from Supabase + this device';
+}
+function render(){
+  var rows = sorted();
+  $('list').innerHTML = rows.map(function(g){
+    var meta = g.count + ' stray' + (g.count===1?'':'s');
+    if (g.help) meta += ' &middot; <span class="pill-help">' + g.help + ' need' + (g.help===1?'s':'') + ' help</span>';
+    if (g.last) meta += ' &middot; last activity ' + esc(rel(g.last));
+    if (sort === 'near' && geo && g.pts) meta += ' &middot; ' + esc(km(distanceOf(g)));
+    /* #city= is read by wireDeepLink() on the map: it prefills the sidebar
+       search (which matches location.city) and flies to the first pin. */
+    return '<a class="city-card" href="index.html#city=' + encodeURIComponent(g.city) + '">'
+      + '<span class="city-ico">' + g.emoji + '</span>'
+      + '<span class="city-body"><span class="city-name">' + esc(g.city)
+      + (g.country ? '<span class="city-country">' + esc(g.country) + '</span>' : '')
+      + '</span><span class="city-meta">' + meta + '</span></span>'
+      + '<span class="pill-count">' + g.count + '</span></a>';
+  }).join('');
+  $('empty').classList.toggle('hidden', cities.length > 0);
+  var note = $('unplaced');
+  note.classList.toggle('hidden', unplaced === 0);
+  note.textContent = unplaced + ' stray' + (unplaced===1?' is':'s are') + ' on the map without a city label yet (reported before location tagging).';
+  $('stats').textContent = statsLine();
+}
+
+async function boot(){
+  var seed = await loadSeed();
+  var cloud = await loadCloud();
+  var local = loadLocal();
+  group(mergeAll([seed, cloud, local]));
+  render();
+}
+
+/* Near me: measure straight-line distance to each city's pin centroid.
+   No geocoder needed - the coordinates are already on every report. */
+function noteGeo(msg){ $('geo-note').textContent = msg; $('geo-note').classList.toggle('hidden', !msg); }
+function askNear(){
+  if (!navigator.geolocation) { noteGeo('Location is not available in this browser.'); return; }
+  noteGeo('');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    setSort('near');
+  }, function(){ noteGeo('Could not get your location - check browser permissions.'); }, { timeout: 8000 });
+}
+function setSort(next){
+  sort = next;
+  var chips = document.querySelectorAll('#chips .chip');
+  for (var i = 0; i < chips.length; i++) chips[i].classList.toggle('on', chips[i].getAttribute('data-sort') === next);
+  render();
+}
+
+$('q').oninput = render;
+var chips = document.querySelectorAll('#chips .chip');
+for (var i = 0; i < chips.length; i++) {
+  (function(c){
+    c.onclick = function(){
+      var wanted = c.getAttribute('data-sort');
+      if (wanted === 'near') { askNear(); return; }
+      setSort(wanted);
+    };
+  })(chips[i]);
+}
+boot();
+})();
+</script>
+<script src="site-header.js"></script>
+</body>
+</html>
+
+

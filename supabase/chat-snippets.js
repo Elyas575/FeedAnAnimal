@@ -2,13 +2,13 @@
 
 async function sbRequireEmail() {
   const { data } = await sb.auth.getSession();
-  if (data.session && data.session.user.email) return data.session.user;
-  const email = prompt('Enter email for chat login (magic link):');
-  if (!email) throw new Error('email required for chat');
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
-  if (error) throw error;
-  alert('Check your email for login link, then click Message again.');
-  throw new Error('magic link sent');
+  const user = data && data.session && data.session.user;
+  /* No magic link: chat requires an existing email session. The UI links to
+     auth.html (password or Google) when this comes back empty. */
+  if (!user || user.is_anonymous || !user.email) {
+    throw new Error('sign in required for chat - open auth.html');
+  }
+  return user;
 }
 
 async function sbOpenDm(otherUserId, animalId, reportId) {
