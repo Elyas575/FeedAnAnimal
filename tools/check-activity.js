@@ -749,7 +749,7 @@ check('the popup directions goes full width', 'a.fta-btn--go.is-block { width: 1
 /* The popup head must leave room for Leaflet's absolutely-positioned X, which
    otherwise sits on top of the distance and renders "30m" as "30X". */
 check('the popup head reserves room for the close X',
-  /fta-popup__head\s*\{[^}]*padding-right:\s*26px/.test(html), html);
+  /fta-popup__head\s*\{[^}]*padding-right:\s*30px/.test(html), html);
 check('the popup close X is a real circular control',
   /leaflet-popup-close-button\s*\{[\s\S]*?border-radius:\s*9999px/.test(html), html);
 /* The details drawer once used its own Tailwind utilities including

@@ -923,19 +923,24 @@
   }
   function popupHtml(row) {
     const animal = row.animal;
-    const issue = primaryIssue(row);
     const station = stationById(animal.stationId);
     const directions = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
     const mapsSearch = 'https://www.google.com/maps/search/?api=1&query=' + animal.location.lat + ',' + animal.location.lng;
     const myCare = historyFor(animal.id).length;
     const foodWidth = row.status.food === 'ok' ? 100 : row.status.food === 'needs' ? 40 : 15;
     const waterWidth = row.status.water === 'ok' ? 100 : row.status.water === 'needs' ? 40 : 15;
-    const issueClass = issue.tone === 'error' ? 'is-alert' : issue.tone === 'tertiary' ? 'is-water' : 'is-ok';
+    const facts = animal.source === 'report'
+      ? ['Community report', speciesInfo(animal.species).singular].join(' · ')
+      : [animal.sex, animal.ageClass].filter((part) => !isUnknown(part)).join(' · ');
+    const note = String(animal.notes || '').trim();
+    const hideNote = !note || /^(reported by (the )?community( volunteer)?|reported by a community volunteer - log what you see here)\.?$/i.test(note);
+    const foodLabel = row.status.food === 'ok' ? 'Good' : row.status.food === 'needs' ? 'Needs' : 'Urgent';
+    const waterLabel = row.status.water === 'ok' ? 'Good' : row.status.water === 'needs' ? 'Needs' : 'Urgent';
 
     return '<div class="fta-popup__card">' +
       '<div class="fta-popup__head">' +
         '<span class="fta-popup__dot ' + (row.status.needsHelp ? 'is-alert' : 'is-ok') + '"></span>' +
-        '<span class="fta-popup__kicker">' + (row.status.needsHelp ? 'Urgent attention needed' : 'Doing fine') + '</span>' +
+        '<span class="fta-popup__kicker">' + (row.status.needsHelp ? 'Needs attention' : 'Doing fine') + '</span>' +
         '<span class="fta-popup__distance">' + formatDistance(row.status.distance) + '</span>' +
       '</div>' +
       '<div class="fta-popup__body">' +
@@ -944,30 +949,25 @@
           : '<div class="fta-popup__thumb">' + avatarHtml(animal) + '</div>') +
         '<div class="fta-popup__id">' +
           '<h4>' + esc(animal.name) + '</h4>' +
-          (function () {
-            /* Sex/age only when they were actually observed - the report form
-               never asks, so "unknown - unknown" would just be noise. */
-            const facts = [animal.sex, animal.ageClass].filter((part) => !isUnknown(part));
-            return facts.length ? '<p>' + esc(facts.join(' • ')) + '</p>' : '';
-          })() +
-          '<p class="fta-popup__place"><span class="material-symbols-outlined">pin_drop</span>' + esc(animal.location.label) + '</p>' +
+          (facts ? '<p>' + esc(facts) + '</p>' : '') +
+          '<p class="fta-popup__place"><span class="material-symbols-outlined">pin_drop</span><span class="truncate">' +
+            '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open this location in Google Maps">' +
+              esc(animal.location.label || 'View location') + '</a></span></p>' +
         '</div>' +
       '</div>' +
-      '<p class="fta-popup__issue ' + issueClass + '">' +
-        '<span class="material-symbols-outlined">' + issue.icon + '</span>' + esc(issue.text) + '</p>' +
       '<div class="fta-popup__meters">' +
-        '<div class="fta-popup__meter"><span>Food</span><span>' + relativeTime(animal.lastFedAt) + '</span></div>' +
-        '<div class="fta-bar"><i class="' + (row.status.food === 'ok' ? 'is-ok' : 'is-alert') + '" style="width:' + foodWidth + '%"></i></div>' +
-        '<div class="fta-popup__meter"><span>Water</span><span>' + relativeTime(animal.lastWateredAt) + '</span></div>' +
-        '<div class="fta-bar"><i class="' + (row.status.water === 'ok' ? 'is-ok' : 'is-water') + '" style="width:' + waterWidth + '%"></i></div>' +
+        '<div class="fta-popup__need"><div class="fta-popup__meter"><span>Food</span><span>' + esc(foodLabel) +
+          '</span></div><div class="fta-popup__time">' + relativeTime(animal.lastFedAt) +
+          '</div><div class="fta-bar"><i class="' + (row.status.food === 'ok' ? 'is-ok' : 'is-alert') +
+          '" style="width:' + foodWidth + '%"></i></div></div>' +
+        '<div class="fta-popup__need"><div class="fta-popup__meter"><span>Water</span><span>' + esc(waterLabel) +
+          '</span></div><div class="fta-popup__time">' + relativeTime(animal.lastWateredAt) +
+          '</div><div class="fta-bar"><i class="' + (row.status.water === 'ok' ? 'is-ok' : 'is-water') +
+          '" style="width:' + waterWidth + '%"></i></div></div>' +
       '</div>' +
-      '<p class="fta-popup__notes">' + esc(animal.notes) + '</p>' +
-      '<p class="fta-popup__meta">' + esc(station ? station.name : 'No station assigned') + ' • ' + animal.feedCount + ' feeds logged' +
-        (myCare ? ' • ' + myCare + ' by you' : '') + '</p>' +
-      /* Coordinates are background data: this link opens the pin in Google
-         Maps without ever printing the numbers on screen. */
-      '<p class="fta-popup__meta"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">location_on</span> ' +
-        '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open this location in Google Maps">View on Google Maps</a></p>' +
+      (hideNote ? '' : '<p class="fta-popup__notes">' + esc(note) + '</p>') +
+      '<p class="fta-popup__meta">' + esc(station ? station.name : 'No station') + ' · ' + animal.feedCount +
+        ' feeds' + (myCare ? ' · ' + myCare + ' by you' : '') + '</p>' +
       /* Directions gets its OWN full-width row above the care actions. "Walk to
          this animal" is the reason someone opened the popup, so it should not
          compete with Feed/Water for horizontal space on one row.
@@ -980,24 +980,26 @@
       '<a class="fta-btn fta-btn--go is-block" style="color:#ffffff" target="_blank" rel="noopener" ' +
         'href="' + esc(directions) + '" title="Walking directions to this animal">' +
         '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
-      '<div class="fta-popup__actions">' +
+      '<div class="fta-popup__actions fta-popup__care">' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--primary">' +
-          '<span class="material-symbols-outlined">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
+          '<span class="material-symbols-outlined">restaurant</span>I fed</button>' +
         '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--water">' +
-          '<span class="material-symbols-outlined">water_drop</span>Water</button>' +
+          '<span class="material-symbols-outlined">water_drop</span>I watered</button>' +
+      '</div>' +
+      '<div class="fta-popup__secondary">' +
         (canManageReport(animal)
           ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Edit your report">' +
-            '<span class="material-symbols-outlined">edit</span></button>'
+            '<span class="material-symbols-outlined">edit</span>Edit</button>'
           : '') +
         '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Full profile">' +
-          '<span class="material-symbols-outlined">info</span></button>' +
+          '<span class="material-symbols-outlined">info</span>Full profile</button>' +
         /* Chat mirrors the sidebar card: "is it fed?" is immediately followed
            by "who is looking after it?", and the pin you just clicked IS the
            animal you are looking at - so the thread is one tap away instead of
            two (drawer) plus a scroll. openChat() resolves the poster/caretaker
            and explains every dead end, so the icon is never a trap. */
         '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Message whoever posted or cared for ' + esc(animal.name) + '" aria-label="Message whoever posted or cared for ' + esc(animal.name) + '">' +
-          '<span class="material-symbols-outlined">chat</span></button>' +
+          '<span class="material-symbols-outlined">chat</span>Message caretaker</button>' +
       '</div>' +
     '</div>';
   }
@@ -1894,9 +1896,9 @@
     const title = $('#report-title');
     if (title) title.textContent = 'Report a stray';
     const subtitle = $('#report-subtitle');
-    if (subtitle) subtitle.textContent = 'Everything you add here stays on this device and appears on the map instantly.';
+    if (subtitle) subtitle.textContent = 'Adds a pin on the map right away. Shared with other volunteers when you’re signed in.';
     const submit = $('#report-submit');
-    if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span>Save to the map';
+    if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span>Save to map';
 
     const hint = $('#report-pick-hint');
     if (hint) hint.textContent = 'We pin your location from the device GPS - coordinates stay in the background and are never shown.';
@@ -1999,7 +2001,7 @@
     if (photoHint) {
       photoHint.textContent = animal.photoUrl
         ? 'Current photo shown. Choose a new one to replace it, or Remove photo to take it off.'
-        : 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+        : 'Camera or gallery · compressed to ~110 KB on upload';
     }
     if (animal.photoUrl) setReportPhotoPreview(animal.photoUrl);
 
@@ -2031,19 +2033,30 @@
 
   function setReportPhotoPreview(src) {
     const box = $('#report-photo-preview');
+    const pick = $('#report-photo-pick');
+    const action = $('#report-photo-action');
     if (!box) return;
     if (!src) {
-      box.innerHTML = '<span class="material-symbols-outlined text-[26px]">photo_camera</span>';
+      box.innerHTML = '<span class="material-symbols-outlined text-[28px]">add_a_photo</span>';
+      if (pick) pick.classList.remove('has-image');
+      if (action) action.textContent = 'Add a photo';
       return;
     }
     box.innerHTML = '<img alt="Selected stray photo" class="w-full h-full object-cover" src="' + esc(src) + '">';
+    if (pick) pick.classList.add('has-image');
+    if (action) action.textContent = 'Change photo';
   }
 
   function wireReportPhoto() {
     const input = $('#report-photo-file');
+    const pick = $('#report-photo-pick');
     const clear = $('#report-photo-clear');
     const hint = $('#report-photo-hint');
     if (!input) return;
+
+    if (pick) {
+      pick.addEventListener('click', () => input.click());
+    }
 
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
@@ -2070,7 +2083,7 @@
         input.value = '';
         setReportPhotoPreview(null);
         clear.classList.add('hidden');
-        if (hint) hint.textContent = 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+        if (hint) hint.textContent = 'Camera or gallery · compressed to ~110 KB on upload';
         /* Edit mode: the button says "Remove photo", so removing is what it
            does - the empty preview is the truth and the save writes
            photo_url = null (reportPhotoRemoved). Picking a new file clears
@@ -2092,7 +2105,7 @@
     const clear = $('#report-photo-clear');
     if (clear) clear.classList.add('hidden');
     const hint = $('#report-photo-hint');
-    if (hint) hint.textContent = 'Take or choose a photo. It is shrunk to 1200px and uploaded automatically.';
+    if (hint) hint.textContent = 'Camera or gallery · compressed to ~110 KB on upload';
     setReportPhotoPreview(null);
   }
 
@@ -3888,4 +3901,3 @@
     };
   }
 }());
-

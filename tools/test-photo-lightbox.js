@@ -71,7 +71,7 @@ ok('the map popup thumb opens the lightbox', js.indexOf('class="fta-popup__thumb
 /* --------------------------- the sizes ------------------------------- */
 ok('sidebar thumbnails grew to 80px', js.indexOf('w-20 h-20 rounded-xl overflow-hidden shrink-0') !== -1);
 ok('the drawer thumbnail grew to 112px', js.indexOf('w-28 h-28 rounded-xl overflow-hidden shrink-0') !== -1);
-ok('popup thumbnails grew to 64px', /\.fta-popup__thumb \{ width: 64px; height: 64px;/.test(html));
+ok('popup thumbnail stays compact at 56px', /\.fta-popup__thumb \{ width: 56px; height: 56px;/.test(html));
 ok('a bigger thumb can never push the close button out', /drawerThumb[\s\S]{0,400}truncate/.test(js));
 
 /* --------------------------- supporting plumbing --------------------- */
