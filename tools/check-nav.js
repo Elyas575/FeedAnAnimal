@@ -9,6 +9,7 @@ global.document = {
   readyState: 'complete',
   addEventListener: function () {},
   getElementById: function () { return null; },
+  querySelector: function () { return null; },
   querySelectorAll: function () { return []; },
   body: null,
 };
@@ -39,6 +40,21 @@ t('/inbox.html', '', 'inbox');
 t('/auth.html', '', 'auth');
 t('/privacy.html', '', 'privacy');
 t('/terms.html', '', 'terms');
+
+/* Clicking the logo while already on the map should not restart the map
+   bootstrap (dataset and Supabase report requests); it remains a home link
+   everywhere else. */
+console.log('\nbrand navigation:');
+{
+  const src = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
+  const html = header.headerHtml();
+  const okRow = html.indexOf('class="fta-hd-brandlink') !== -1 &&
+    /function wireBrandHome\(\)[\s\S]{0,300}currentId\(\) === 'index'\) event\.preventDefault\(\)/.test(src) &&
+    /injectBottomNav\(\);\s*wireBrandHome\(\);/.test(src);
+  if (!okRow) failed++;
+  console.log((okRow ? 'OK  ' : 'FAIL') +
+    'logo avoids reloading when already on the map and navigates home elsewhere');
+}
 
 /* Every pill id in the LINKS nav must be reachable through currentId(),
    otherwise some tabs can never be highlighted. */

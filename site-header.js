@@ -802,6 +802,7 @@
       if (document.body) document.body.classList.add('has-site-header');
     }
     injectBottomNav();
+    wireBrandHome();
     wireAuthLink();
     wireChatBell();
     wireCommunityNotifications();
@@ -812,6 +813,14 @@
     // must move the pill without a reload.
     window.addEventListener('hashchange', refreshActive);
     window.addEventListener('hashchange', refreshBottom);
+  }
+
+  function wireBrandHome() {
+    var brand = document.querySelector('#site-top-header .fta-hd-brandlink');
+    if (!brand) return;
+    brand.addEventListener('click', function (event) {
+      if (currentId() === 'index') event.preventDefault();
+    });
   }
 
   /* Re-apply the active state after in-page hash navigation. Covers both
