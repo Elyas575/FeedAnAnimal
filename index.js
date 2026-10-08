@@ -3679,13 +3679,18 @@
     wireReportPhoto();
     syncProfileFromAuth();
     /* Back from auth.html after the login gate: the guest wanted to report,
-       so re-open the form now that they're signed in. */
+       so re-open the form — BUT only if they're actually signed in now.
+       The old code re-opened unconditionally, so "Return to Map" without
+       logging in looped: boot -> openReportModal -> gate fails -> redirect
+       back to auth.html forever. Now we quiet-check first and drop the
+       intent when the visitor is still a guest. */
     try {
       const want = sessionStorage.getItem('fta-after-login');
       if (want) {
         sessionStorage.removeItem('fta-after-login');
-        window.setTimeout(() => {
+        window.setTimeout(async () => {
           try {
+            if (!(await requireLoginForReport(true))) return;
             if (want.indexOf('edit:') === 0) openEditReport(want.slice(5));
             else openReportModal();
           } catch (e) {}

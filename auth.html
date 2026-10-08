@@ -248,7 +248,7 @@ body.has-site-header { padding-top: 68px; }
 
     <!-- Bottom Navigation & Sign Out -->
     <div class="pt-4 border-t border-[#f4f0ed] flex justify-between items-center text-xs">
-      <a href="index.html" class="font-semibold text-[#f06548] hover:underline flex items-center gap-1">
+      <a id="link-return-map" href="index.html" class="font-semibold text-[#f06548] hover:underline flex items-center gap-1">
         <span>←</span> Return to Map
       </a>
       <button id="btn-logout" class="text-rose-600 hover:text-rose-700 font-medium hidden">Sign Out</button>
@@ -479,6 +479,18 @@ $('btn-save-password').onclick = async function(){
 };
 
 $('btn-logout').onclick = async function(){ await window.sbAuth.signOut(); location.reload(); };
+
+/* "Return to Map" without signing in = the pending report intent is
+   abandoned. Clear it so index.html boots to a plain map instead of
+   re-triggering the gate (which used to bounce the guest back here). */
+(function(){
+  var back = $('link-return-map');
+  if (back && back.addEventListener) {
+    back.addEventListener('click', function(){
+      try { sessionStorage.removeItem('fta-after-login'); } catch(e){}
+    });
+  }
+})();
 
 if (recoveryMode) enterResetMode();
 watchSession();
