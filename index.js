@@ -2629,6 +2629,7 @@
     const issue = primaryIssue(row);
     const station = stationById(animal.stationId);
     const history = historyFor(animal.id).slice(0, 6);
+    const reporterFirstName = String(animal.reporterName || '').trim().split(/\s+/)[0] || 'Community volunteer';
     const host = $('#details-content');
     if (!host) return;
 
@@ -2640,7 +2641,7 @@
           '<span class="font-body-sm text-xs text-on-surface-variant flex-1">' + esc(entry.note) + '</span>' +
           '<span class="font-label-sm text-[11px] text-outline shrink-0">' + relativeTime(entry.at) + '</span>' +
         '</li>').join('') + '</ul>'
-      : '<p class="font-body-sm text-xs text-on-surface-variant">No care logged from this device yet. Your first feed or water log will show up here.</p>';
+      : '';
 
     const mapsUrl2 = 'https://www.google.com/maps/search/?api=1&query=' + animal.location.lat + ',' + animal.location.lng;
     const directions2 = 'https://www.google.com/maps/dir/?api=1&destination=' + animal.location.lat + ',' + animal.location.lng;
@@ -2703,7 +2704,6 @@
         '</div>' +
       '</div>' +
       '<div class="mt-4">' +
-        detailRow('Species', speciesInfo(animal.species).singular) +
         /* Sex/age and temperament are only meaningful for animals someone has
            actually observed up close; a report never has them. */
         detailRow('Sex / age', [animal.sex, animal.ageClass].every(isUnknown)
@@ -2718,9 +2718,9 @@
         detailRow('First reported', relativeTime(animal.reportedAt) + ' (' + clockTime(animal.reportedAt) + ')') +
         countRow('Feeds logged', animal.feedCount) +
         countRow('Water refills logged', animal.waterCount) +
-        detailRow('Caretakers', animal.caretakers.length ? animal.caretakers.join(', ') : '') +
+        (animal.source !== 'report' ? detailRow('Caretakers', animal.caretakers.length ? animal.caretakers.join(', ') : '') : '') +
         detailRow('Feeding station', station ? station.name : '') +
-        (animal.source === 'report' ? detailRow('Reported', animal.reporterName || 'by a community volunteer') : '') +
+        (animal.source === 'report' ? detailRow('Reported by', reporterFirstName) : '') +
       '</div>' +
 
       /* Exact coordinates are background data - the link opens the pin in
@@ -2730,18 +2730,24 @@
         '<p class="font-body-sm text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">Open this location in Google Maps</a></p>' +
       '</div>' +
 
-      '<p class="mt-4 font-body-sm text-body-sm text-on-surface">' + esc(animal.description) + '</p>' +
+      (isUnknown(animal.description) || ['reported by community', 'reported by a community volunteer'].indexOf(
+        String(animal.description || '').trim().toLowerCase().replace(/[.]$/, '')
+      ) !== -1
+        ? ''
+        : '<p class="mt-4 font-body-sm text-body-sm text-on-surface">' + esc(animal.description) + '</p>') +
       '<p class="mt-2 p-2.5 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface-variant">' +
         '<span class="material-symbols-outlined text-[14px] text-primary align-middle mr-1">lightbulb</span>' + esc(animal.notes) + '</p>' +
-      (animal.tags.length
-        ? '<div class="flex flex-wrap gap-1.5 mt-3">' + animal.tags.map((tag) =>
+      (animal.tags.some((tag) => tag !== 'community-report')
+        ? '<div class="flex flex-wrap gap-1.5 mt-3">' + animal.tags.filter((tag) => tag !== 'community-report').map((tag) =>
             '<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-[11px]">#' + esc(tag) + '</span>').join('') + '</div>'
         : '') +
 
-      '<div class="mt-4">' +
-        '<p class="font-label-md text-label-md text-on-surface font-semibold mb-2">Care log from this device</p>' +
-        historyHtml +
-      '</div>' +
+      (historyHtml
+        ? '<div class="mt-4">' +
+            '<p class="font-label-md text-label-md text-on-surface font-semibold mb-2">Recent care on this device</p>' +
+            historyHtml +
+          '</div>'
+        : '') +
 
       /* Directions leads the row. It now uses the SAME .fta-btn--go class as the
          map popups instead of hand-rolled Tailwind utilities - those included

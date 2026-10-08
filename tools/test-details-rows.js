@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Renders the details-drawer fact block for a realistic community report and
    for a well-observed animal, to confirm unknown values are dropped. */
+const assert = require('node:assert/strict');
 const isUnknown = (value) => {
   const text = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
   return !text || text === 'unknown' || text === 'not recorded' ||
@@ -19,8 +20,8 @@ function countRow(label, count) {
 function rows(a, station) {
   const sexAge = [a.sex, a.ageClass].every(isUnknown)
     ? '' : (isUnknown(a.sex) ? '' : a.sex) + ' • ' + (isUnknown(a.ageClass) ? '' : a.ageClass);
+  const reporterFirstName = String(a.reporterName || '').trim().split(/\s+/)[0] || 'Community volunteer';
   return [
-    detailRow('Species', a.speciesLabel),
     detailRow('Sex / age', sexAge),
     detailRow('Temperament', a.temperament),
     detailRow('Health', a.health),
@@ -30,9 +31,9 @@ function rows(a, station) {
     detailRow('First reported', a.reported),
     countRow('Feeds logged', a.feedCount),
     countRow('Water refills logged', a.waterCount),
-    detailRow('Caretakers', a.caretakers && a.caretakers.length ? a.caretakers.join(', ') : ''),
+    !a.isReport ? detailRow('Caretakers', a.caretakers && a.caretakers.length ? a.caretakers.join(', ') : '') : '',
     detailRow('Feeding station', station || ''),
-    a.isReport ? detailRow('Reported', a.reporterName || 'by a community volunteer') : ''
+    a.isReport ? detailRow('Reported by', reporterFirstName) : ''
   ].filter(Boolean);
 }
 
@@ -53,3 +54,9 @@ var observed = {
   console.log('\n' + c[0] + ' (' + rows(c[1], c[2]).length + ' rows):');
   rows(c[1], c[2]).forEach(function (r) { console.log(r); });
 });
+
+assert(!rows(report, '').some((row) => row.startsWith('  Species:')), 'species is already in the drawer heading');
+assert(!rows(report, '').some((row) => row.startsWith('  Caretakers:')), 'community reports do not repeat the reporter as caretaker');
+assert(rows(report, '').some((row) => row === '  Reported by: Alex'), 'community report shows only the reporter first name');
+assert(rows(observed, 'Station #02').some((row) => row === '  Caretakers: Alex R., Priya N.'), 'observed animals retain caretaker details');
+console.log('\nSimplified detail facts passed.');

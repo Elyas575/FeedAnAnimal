@@ -767,7 +767,12 @@ check('the yesNo helper is gone', js.indexOf('const yesNo =') === -1 ? true : fa
 rows.push([js.indexOf('Demo pins use fictional') === -1 ? 'OK  ' : 'MISS',
   'the stale "fictional Seattle coords" note is gone']);
 check('the reporter name is stored', 'reporterName:', js);
-check('the drawer credits the reporter', "detailRow('Reported'", js);
+check('the drawer credits the reporter once', "detailRow('Reported by'", js);
+check('community reports do not repeat caretaker as reporter', "animal.source !== 'report' ? detailRow('Caretakers'", js);
+check('species is not repeated in the detail rows', js.indexOf("detailRow('Species'") === -1 ? true : false, js);
+check('device-only care history is conditionally rendered', '(historyHtml', js);
+check('community-report tag is not displayed as a detail', "animal.tags.filter((tag) => tag !== 'community-report')", js);
+check('generic report description is omitted', "['reported by community', 'reported by a community volunteer']", js);
 check('the drawer subtitle still drops unknown colour',
   'animal.color].filter((part) => !isUnknown(part))', js);
 
