@@ -35,6 +35,11 @@ check('normalizeActivity keeps actorAvatar', 'raw.actorAvatar', js);
 check('local feed entries store actorAvatar', 'state.profile.avatarUrl', js);
 check('syncAvatar() mirrors photo to profiles', 'function syncAvatar', js);
 check('syncAvatar writes profiles.avatar_url', "avatar_url: clean", js);
+check('display name is requested once for new signed-in accounts', '!metadata.fta_display_name && !metadata.fta_display_name_prompted', js);
+check('display name prompt is wired into the map', 'wireDisplayNameModal();', js);
+check('display name can be edited from account menu', 'edit-display-name', js);
+check('display name saves through Supabase profile/auth metadata', 'window.sbSaveDisplayName', js);
+check('display name has an app-specific persisted metadata field', 'fta_display_name: cleanName', fs.readFileSync(path.join(ROOT, 'supabase-client.js'), 'utf8'));
 check('photos fall back when the URL is dead', 'this.remove()', js);
 
 const sc = fs.readFileSync(path.join(ROOT, 'supabase-client.js'), 'utf8');

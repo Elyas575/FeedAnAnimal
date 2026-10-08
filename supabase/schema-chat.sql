@@ -37,6 +37,20 @@ create table if not exists messages (
   is_deleted boolean default false
 );
 
+-- Inbox badges and previews use a single user-scoped messages subscription.
+-- RLS controls which message changes each authenticated client receives.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
+
 create table if not exists blocks (
   blocker_id uuid references profiles(id) on delete cascade,
   blocked_id uuid references profiles(id) on delete cascade,

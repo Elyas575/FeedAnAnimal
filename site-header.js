@@ -175,6 +175,9 @@
     '#site-top-header .fta-account-text{min-width:0}',
     '#site-top-header .fta-account-name{display:block;font-size:15px;font-weight:800;color:#2e1c12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '#site-top-header .fta-account-email{display:block;font-size:12.5px;color:#8b7269;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#site-top-header .fta-account-edit-name{display:flex;align-items:center;gap:8px;margin-top:12px;padding:9px 10px;border-radius:10px;color:#8a3514;text-decoration:none;font-size:13px;font-weight:700}',
+    '#site-top-header .fta-account-edit-name:hover{background:#fff4ef}',
+    '#site-top-header .fta-account-edit-name .material-symbols-outlined{font-size:17px}',
     '#site-top-header .fta-account-signout{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;',
     'padding:10px 14px;border-radius:12px;border:1px solid #f0d9d2;background:#fff5f2;color:#ba1a1a;font-weight:800;font-size:14px;cursor:pointer}',
     '#site-top-header .fta-account-signout:hover{background:#ffe9e3}',
@@ -273,6 +276,10 @@
               + '<small class="fta-account-email" id="fta-account-email"></small>'
             + '</span>'
           + '</div>'
+          + '<a href="index.html?edit-display-name=1" class="fta-account-edit-name">'
+            + '<span class="material-symbols-outlined" aria-hidden="true">edit</span>'
+            + '<span>Change display name</span>'
+          + '</a>'
           + '<button type="button" id="fta-account-signout" class="fta-account-signout">'
             + '<span class="material-symbols-outlined" aria-hidden="true">logout</span>'
             + '<span>Log out</span>'
@@ -361,7 +368,8 @@
         if (!auth) return;
         var user = await auth.currentUser();
         if (user && user.email) {
-          label.textContent = user.email.split('@')[0];
+          var metadata = user.user_metadata || {};
+          label.textContent = metadata.fta_display_name || user.email.split('@')[0];
           link.setAttribute('title', 'Signed in as ' + user.email);
         } else if (user && !user.is_anonymous) {
           label.textContent = 'Account';
@@ -459,7 +467,7 @@
     if (btn) btn.setAttribute('aria-expanded', 'false');
   }
 
-  async function loadChatBell() {
+  async function loadChatBell(updateInbox) {
     var inbox = window.sbInbox;
     if (typeof inbox !== 'function') return;
     var rows = [];
@@ -467,6 +475,9 @@
 
     var unread = rows.reduce(function (sum, t) { return sum + (Number(t.unread) || 0); }, 0);
     paintBadges(unread);
+    if (updateInbox) {
+      try { window.dispatchEvent(new Event('fta:inbox-updated')); } catch (e) { /* older browsers */ }
+    }
 
     var list = document.getElementById('fta-chat-list');
     if (!list) return;
@@ -480,6 +491,7 @@
   function wireChatBell() {
     var btn = document.getElementById('fta-chat-btn');
     var pop = document.getElementById('fta-chat-pop');
+    var refreshTimer = null;
     if (!btn || !pop) return;
 
     btn.addEventListener('click', function (event) {
@@ -525,15 +537,30 @@
       window.location.href = href;
     });
 
-    /* Badge on load, then roughly every minute. Deliberately not realtime:
-       a volunteer is not watching the bell, and polling keeps the socket
-       budget for the open thread itself. */
+    /* Keep the periodic read as a recovery path for dropped realtime events. */
     loadChatBell();
     setTimeout(loadChatBell, 2000);
     setInterval(loadChatBell, 60000);
 
     /* Opening a thread from the inbox clears its badge on the way out. */
     window.addEventListener('fta:chat-opened', loadChatBell);
+
+    var subscribeInbox = window.sbSubscribeInbox;
+    var channel = typeof subscribeInbox === 'function'
+      ? subscribeInbox(function () {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(function () { loadChatBell(true); }, 150);
+      })
+      : null;
+    if (channel && window.sb && typeof window.sb.removeChannel === 'function') {
+      window.addEventListener('pagehide', function () {
+        window.sb.removeChannel(channel);
+      }, { once: true });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) loadChatBell(true);
+    });
   }
 
   /* ------------------------------------------------------------------ *
@@ -555,6 +582,7 @@
   /* profiles.display_name > email prefix - the same name the chip shows. */
   function accountNameOf(user) {
     if (!user) return 'Account';
+    if (user.user_metadata && user.user_metadata.fta_display_name) return user.user_metadata.fta_display_name;
     if (user.user_metadata && user.user_metadata.display_name) return user.user_metadata.display_name;
     if (user.email) return user.email.split('@')[0];
     return 'Volunteer';

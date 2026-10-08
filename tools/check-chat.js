@@ -365,6 +365,20 @@ ok('a popover row shows the animal', /about ' \+ esc\(t\.animalName\)/.test(head
 ok('the popover row escapes names', /esc\(who\)/.test(headerSrc));
 ok('the bell degrades without sbInbox',
   /if \(typeof inbox !== 'function'\) return;/.test(headerSrc));
+ok('the client exposes a live inbox message subscription',
+  /function sbSubscribeInbox\(onChange\)/.test(client) &&
+  /event: 'INSERT', schema: 'public', table: 'messages'/.test(client));
+ok('the header refreshes the badge when a message arrives',
+  /subscribeInbox\(function \(\)[\s\S]{0,250}?setTimeout\(function \(\) \{ loadChatBell\(true\); \}, 150\)/.test(headerSrc));
+ok('the inbox page reloads after a live inbox update',
+  /addEventListener\('fta:inbox-updated', load\)/.test(inboxSrc) &&
+  /dispatchEvent\(new Event\('fta:inbox-updated'\)\)/.test(headerSrc));
+ok('messages are included in Supabase Realtime',
+  /alter publication supabase_realtime add table public\.messages/.test(sql));
+const realtimeMigration = fs.readFileSync(path.join(ROOT, 'supabase', 'migration-chat-realtime.sql'), 'utf8');
+ok('an idempotent Realtime migration exists for existing databases',
+  /pg_publication_tables/.test(realtimeMigration) &&
+  /alter publication supabase_realtime add table public\.messages/.test(realtimeMigration));
 
 /* --------------------------- the mobile tab ------------------------- *
  * Chats replaces About in the bottom bar: on a phone that bar is the only

@@ -73,6 +73,12 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
   station, and are shared with other volunteers through Supabase.
 - Details drawer with the full profile, health/sterilisation flags, care history
   from this device and shortcuts to log a feed, water or vet check.
+- First-time signed-in volunteers can choose an app display name for reports
+  and care updates; it is independent of their Google/Facebook account name and
+  can be changed later from the account menu.
+- Direct messages update the chat badge and open inbox live. For an existing
+  Supabase project, run `supabase/migration-chat-realtime.sql` in the SQL Editor
+  after `supabase/schema-chat.sql` so message changes are included in Realtime.
 - Station popups let you log a container check, which raises the capacity level
   and is remembered on reload.
 - Toasts, keyboard <kbd>Esc</kbd> handling, backdrop-click closing and a
@@ -198,10 +204,13 @@ Maps API key, swap `initMap()` for the Google Maps JS API; `index.js` only depen
 
 ## Known limitations
 
-- **No backend.** Feeds, water top-ups and reports are stored in this browser's
-  `localStorage` (`fta.overlay.v1`). Two visitors do not see each other's
-  actions, and clearing site data resets everything. Swapping `loadDataset()` and
-  the write in `writeOverlay()` for real API calls is the natural next step.
+- **Persistence is mixed.** Community reports, report-care history, and
+  messaging use Supabase; demo-animal actions and some visitor state remain in
+  this browser's `localStorage` (`fta.overlay.v1`) and are not shared between
+  visitors.
+- **Supabase setup is manual.** Apply the core, chat, storage, and required
+  migration SQL files to the hosted project; the repository cannot confirm
+  which migrations have been applied to a particular database.
 - **CDN dependency.** Tailwind, Leaflet and the map tiles need internet access.
   If the tiles never load, check the console: the app degrades to a message in
   the map area but the sidebar keeps working.

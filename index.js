@@ -1821,6 +1821,10 @@
   function closeModal(id) {
     const modal = document.getElementById(id);
     if (!modal) return;
+    if (id === 'display-name-modal' && displayNameModalOpen) {
+      saveDisplayName(displayNameFallback);
+      return;
+    }
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     /* The photo lightbox is usually opened FROM the details drawer, so
@@ -1837,6 +1841,10 @@
   }
 
   function closeAllModals() {
+    if (displayNameModalOpen) {
+      saveDisplayName(displayNameFallback);
+      return;
+    }
     $$('[data-modal]').forEach((modal) => {
       modal.classList.add('hidden');
       modal.classList.remove('flex');
@@ -3480,32 +3488,109 @@
       const getName = (typeof window !== 'undefined' && typeof window.sbDisplayName === 'function')
         ? window.sbDisplayName : null;
       if (!auth || !getName) return;
-      const user = await auth.currentUser();
-      if (user && !user.is_anonymous) {
+      const syncUser = async (user) => {
+        if (!user || user.is_anonymous) return;
         state.myId = user.id;
         const name = await getName(state.profile.name || 'Guest volunteer');
         const avatarUrl = await syncAvatar(user);
-        if (name && name !== state.profile.name) {
-          state.profile = { name: name, avatarUrl: avatarUrl || state.profile.avatarUrl || null };
+        if (name) {
+          state.profile = Object.assign({}, state.profile, {
+            name: name,
+            avatarUrl: avatarUrl || state.profile.avatarUrl || null,
+          });
           writeOverlay();
           renderTicker();
         }
-      }
+        const metadata = user.user_metadata || {};
+        const editRequested = new URLSearchParams(window.location.search).get('edit-display-name') === '1';
+        if (editRequested) {
+          showDisplayNameModal(name, false);
+          const cleanUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState(null, '', cleanUrl);
+        } else if (!metadata.fta_display_name && !metadata.fta_display_name_prompted) {
+          showDisplayNameModal(name, true);
+        }
+      };
+      const user = await auth.currentUser();
+      await syncUser(user);
       try {
         const client = auth.client();
         if (client && client.auth && client.auth.onAuthStateChange) {
           client.auth.onAuthStateChange(async () => {
-            const u = await auth.currentUser();
-            if (u && !u.is_anonymous) {
-              state.myId = u.id;
-              const n = await getName(state.profile.name || 'Guest volunteer');
-              const av = await syncAvatar(u);
-              if (n) { state.profile = { name: n, avatarUrl: av || state.profile.avatarUrl || null }; writeOverlay(); renderTicker(); }
-            }
+            await syncUser(await auth.currentUser());
           });
         }
       } catch (e) {}
     } catch (e) { /* stay as guest */ }
+  }
+
+  let displayNameModalOpen = false;
+  let displayNameFallback = 'Volunteer';
+  let displayNameFirstName = 'Volunteer';
+  function showDisplayNameModal(currentName, isFirstSignIn) {
+    const modal = $('#display-name-modal');
+    const input = $('#display-name-input');
+    if (!modal || displayNameModalOpen) return;
+    const fullName = String(currentName || '').trim().replace(/\s+/g, ' ');
+    displayNameFirstName = fullName.split(/\s+/)[0] || 'Volunteer';
+    displayNameFallback = isFirstSignIn ? displayNameFirstName : (fullName || 'Volunteer');
+    if (input) input.value = isFirstSignIn ? displayNameFirstName : (fullName || displayNameFirstName);
+    const title = $('#display-name-title');
+    if (title) title.textContent = isFirstSignIn ? 'What should we call you?' : 'Change your display name';
+    displayNameModalOpen = true;
+    openModal('display-name-modal');
+    window.setTimeout(() => { if (input) input.focus(); }, 50);
+  }
+
+  async function saveDisplayName(value) {
+    const input = $('#display-name-input');
+    const error = $('#display-name-error');
+    const saveButton = $('#display-name-save');
+    const clean = String(value || '').trim().replace(/\s+/g, ' ');
+    if (error) {
+      error.textContent = '';
+      error.classList.add('hidden');
+    }
+    if (clean.length < 2 || clean.length > 40) {
+      if (error) {
+        error.textContent = 'Choose a display name between 2 and 40 characters.';
+        error.classList.remove('hidden');
+      }
+      if (input) input.focus();
+      return;
+    }
+    if (saveButton) saveButton.disabled = true;
+    try {
+      const save = window.sbSaveDisplayName;
+      if (typeof save !== 'function') throw new Error('Profile service is unavailable. Please try again later.');
+      const savedName = await save(clean);
+      state.profile = Object.assign({}, state.profile, { name: savedName });
+      writeOverlay();
+      renderTicker();
+      displayNameModalOpen = false;
+      closeModal('display-name-modal');
+      toast('Your display name is now ' + savedName + '.', 'ok');
+    } catch (err) {
+      if (error) {
+        error.textContent = err && err.message ? err.message : 'Could not save your name. Please try again.';
+        error.classList.remove('hidden');
+      }
+    } finally {
+      if (saveButton) saveButton.disabled = false;
+    }
+  }
+
+  function wireDisplayNameModal() {
+    const form = $('#display-name-form');
+    const input = $('#display-name-input');
+    const useFirstName = $('#display-name-use-first');
+    if (form) form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      saveDisplayName(input ? input.value : '');
+    });
+    if (useFirstName) useFirstName.addEventListener('click', () => {
+      saveDisplayName(displayNameFirstName);
+    });
   }
 
   /* ============================ event wiring ========================= */
@@ -3887,6 +3972,7 @@
     initLocationPrompt();
     wireEvents();
     wireReportPhoto();
+    wireDisplayNameModal();
     syncProfileFromAuth();
     /* Back from auth.html after the login gate: the guest wanted to report,
        so re-open the form — BUT only if they're actually signed in now.

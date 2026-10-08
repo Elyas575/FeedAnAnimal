@@ -64,6 +64,8 @@ console.log('\naccount card:');
       hdr.indexOf('id="fta-account-name"') !== -1 &&
       hdr.indexOf('id="fta-account-email"') !== -1],
     ['card has a Log out button', hdr.indexOf('id="fta-account-signout"') !== -1],
+    ['account card links to display-name editing', hdr.indexOf('index.html?edit-display-name=1') !== -1],
+    ['account card displays the app-specific name first', src.indexOf('user.user_metadata.fta_display_name') !== -1],
     ['sign out goes through the Supabase client', src.indexOf('sbAuth.signOut') !== -1],
     ['signed-out chips still reach auth.html', hdr.indexOf('href="auth.html"') !== -1],
   ];

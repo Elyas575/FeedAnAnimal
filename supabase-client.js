@@ -28,6 +28,7 @@ try {
     window.sbCompressImage = sbCompressImage;
     window.sbFormatBytes = sbFormatBytes;
     window.sbDisplayName = sbDisplayName;
+    window.sbSaveDisplayName = sbSaveDisplayName;
     window.sbLeaderboard = sbLeaderboard;
     window.sbMyRank = sbMyRank;
     window.sbForumTopics = sbForumTopics;
@@ -44,6 +45,7 @@ try {
     window.sbDmPeers = sbDmPeers;
     window.sbSetBlock = sbSetBlock;
     window.sbSubscribeDm = sbSubscribeDm;
+    window.sbSubscribeInbox = sbSubscribeInbox;
     window.sbInbox = sbInbox;
     window.sbMarkConversationRead = sbMarkConversationRead;
   }
@@ -602,6 +604,28 @@ function sbSubscribeDm(conversationId, onMsg) {
   }
 }
 
+/* Inbox notifications are driven by message inserts across all conversations.
+   RLS on messages limits postgres_changes rows to conversations the user can
+   read; the caller refreshes the inbox aggregate rather than trusting the
+   change payload to calculate unread counts. */
+function sbSubscribeInbox(onChange) {
+  if (!sb) return null;
+  try {
+    return sb.channel('inbox-live')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages'
+      }, (payload) => {
+        if (onChange) {
+          try { onChange(payload.new); } catch (e) { console.warn('[sb] inbox handler failed', e.message); }
+        }
+      })
+      .subscribe();
+  } catch (err) {
+    console.warn('[sb] inbox subscribe failed:', err.message);
+    return null;
+  }
+}
+
 async function sbEnsureAuth() {
   if (!sb) return null;
   try {
@@ -624,10 +648,35 @@ async function sbDisplayName(fallback) {
     if (!user) return fallback || 'Guest volunteer';
     if (user.is_anonymous) return fallback || 'Guest volunteer';
     const meta = user.user_metadata || {};
-    return meta.display_name || meta.full_name || meta.name ||
+    return meta.fta_display_name || meta.display_name || meta.full_name || meta.name ||
       (user.email ? user.email.split('@')[0] : null) ||
       fallback || 'Guest volunteer';
   } catch (e) { return fallback || 'Guest volunteer'; }
+}
+
+async function sbSaveDisplayName(displayName) {
+  if (!sb) throw new Error('Profile service is unavailable. Please try again later.');
+  const cleanName = String(displayName || '').trim().replace(/\s+/g, ' ');
+  if (cleanName.length < 2 || cleanName.length > 40) {
+    throw new Error('Choose a display name between 2 and 40 characters.');
+  }
+
+  const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+  if (sessionError) throw sessionError;
+  const user = sessionData && sessionData.session && sessionData.session.user;
+  if (!user || user.is_anonymous) throw new Error('Sign in to save your display name.');
+
+  const { error: authError } = await sb.auth.updateUser({
+    data: { fta_display_name: cleanName, fta_display_name_prompted: true },
+  });
+  if (authError) throw authError;
+
+  const { error: profileError } = await sb.from('profiles').upsert(
+    { id: user.id, display_name: cleanName },
+    { onConflict: 'id' }
+  );
+  if (profileError) throw profileError;
+  return cleanName;
 }
 
 /* Real profile photo when the provider gave us one (Google sets

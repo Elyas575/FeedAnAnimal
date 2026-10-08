@@ -150,7 +150,10 @@
     window.location.href = target2;
   }
 
-  function boot() { load(); }
+  function boot() {
+    load();
+    window.addEventListener('fta:inbox-updated', load);
+  }
 
   /* Guard the DOM wiring for browsers. Under Node (tools/check-chat.js
      exercises this file's pure functions headlessly) there is no document,
