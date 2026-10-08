@@ -2031,6 +2031,7 @@
   /* Holds the chosen File until submit. We keep the File (not a data URL)
      so it can be uploaded straight to Supabase Storage. */
   let pendingReportPhoto = null;
+  let pendingReportPhotoPreviewUrl = null;
   /* Set by "Remove photo" while EDITING: the save then writes photo_url =
      null instead of quietly keeping the old file - the button says Remove,
      so it has to mean it. Cleared when a new file is chosen and by
@@ -2051,6 +2052,12 @@
     box.innerHTML = '<img alt="Selected stray photo" class="w-full h-full object-cover" src="' + esc(src) + '">';
     if (pick) pick.classList.add('has-image');
     if (action) action.textContent = 'Change photo';
+  }
+
+  function releaseReportPhotoPreview() {
+    if (!pendingReportPhotoPreviewUrl) return;
+    URL.revokeObjectURL(pendingReportPhotoPreviewUrl);
+    pendingReportPhotoPreviewUrl = null;
   }
 
   function wireReportPhoto() {
@@ -2074,8 +2081,10 @@
       }
       pendingReportPhoto = file;
       reportPhotoRemoved = false;
-      // Object URL is cheap and instant; the real upload happens on submit.
-      setReportPhotoPreview(URL.createObjectURL(file));
+      // Preview with an object URL; release the previous one when replacing it.
+      releaseReportPhotoPreview();
+      pendingReportPhotoPreviewUrl = URL.createObjectURL(file);
+      setReportPhotoPreview(pendingReportPhotoPreviewUrl);
       if (clear) clear.classList.remove('hidden');
       if (hint) {
         const mb = typeof window.sbFormatBytes === 'function' ? window.sbFormatBytes(file.size) : (file.size / 1048576).toFixed(1) + ' MB';
@@ -2087,6 +2096,7 @@
       clear.addEventListener('click', () => {
         pendingReportPhoto = null;
         input.value = '';
+        releaseReportPhotoPreview();
         setReportPhotoPreview(null);
         clear.classList.add('hidden');
         if (hint) hint.textContent = 'Camera or gallery · compressed to ~110 KB on upload';
@@ -2106,6 +2116,7 @@
   function resetReportPhoto() {
     pendingReportPhoto = null;
     reportPhotoRemoved = false;
+    releaseReportPhotoPreview();
     const input = $('#report-photo-file');
     if (input) input.value = '';
     const clear = $('#report-photo-clear');

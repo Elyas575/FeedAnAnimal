@@ -123,6 +123,14 @@ body {
   max-width: 380px;
   width: 100%;
 }
+@media (max-width: 600px) {
+  #toast-wrap {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+  }
+}
 .toast {
   background: #2d2a29;
   color: #ffffff;

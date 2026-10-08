@@ -799,6 +799,7 @@ async function sbSearchQuality(canvas, format, budget, minQuality, maxQuality) {
    or when compression would not actually help. */
 async function sbCompressImage(file, options = {}) {
   const cfg = Object.assign({}, SB_IMAGE_DEFAULTS, options || {});
+  let bitmap = null;
   try {
     if (!file || !file.type || !/^image\//.test(file.type)) return file;
 
@@ -808,7 +809,13 @@ async function sbCompressImage(file, options = {}) {
     // Already tiny and in a modern format: re-encoding cannot beat it.
     if (file.size && file.size <= cfg.targetBytes && /(webp|avif)/.test(file.type)) return file;
 
-    const bitmap = await createImageBitmap(file);
+    const maxDecodeWidth = Math.min(cfg.maxEdge, Math.max.apply(null, cfg.dimensionSteps));
+    const decodeOptions = file.size > 1024 * 1024
+      ? { resizeWidth: maxDecodeWidth, resizeQuality: 'high' }
+      : undefined;
+    bitmap = decodeOptions
+      ? await createImageBitmap(file, decodeOptions)
+      : await createImageBitmap(file);
     const sourceLongEdge = Math.max(bitmap.width, bitmap.height);
     const format = await sbBestImageFormat();
 
@@ -831,9 +838,14 @@ async function sbCompressImage(file, options = {}) {
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
-
-      const found = await sbSearchQuality(canvas, format, cfg.targetBytes, cfg.minQuality, cfg.maxQuality);
+      let found;
+      try {
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+        found = await sbSearchQuality(canvas, format, cfg.targetBytes, cfg.minQuality, cfg.maxQuality);
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
       if (found && (!smallest || found.blob.size < smallest.blob.size)) smallest = found;
       // Only stop shrinking once we are genuinely inside the budget. An
       // encode that still overflows means this dimension is too large, so
@@ -841,7 +853,10 @@ async function sbCompressImage(file, options = {}) {
       if (found && found.blob.size <= cfg.targetBytes) break;
     }
 
-    try { bitmap.close(); } catch (e) { /* older browsers */ }
+    if (bitmap) {
+      try { bitmap.close(); } catch (e) { /* older browsers */ }
+      bitmap = null;
+    }
 
     if (!smallest || !smallest.blob) return file;
     if (file.size && smallest.blob.size >= file.size) return file;
@@ -867,6 +882,10 @@ async function sbCompressImage(file, options = {}) {
   } catch (err) {
     console.warn('[sb] image compression skipped:', err.message);
     return file;
+  } finally {
+    if (bitmap) {
+      try { bitmap.close(); } catch (e) { /* older browsers */ }
+    }
   }
 }
 

@@ -104,6 +104,8 @@ check('auth.html shows the password field up front', '<div id="group-password" c
 check('auth.html shows the Sign In button up front', 'class="fa-btn-primary">Sign In to Account', authPage);
 check('auth.html keeps password sign-in', 'signInWithPassword', authPage);
 check('auth.html keeps forgot-password recovery', 'resetPassword', authPage);
+rows.push([/@media \(max-width: 600px\)\s*\{\s*#toast-wrap\s*\{[^}]*left:\s*50%;[^}]*right:\s*auto;[^}]*transform:\s*translateX\(-50%\)/s.test(authPage) ? 'OK  ' : 'MISS',
+  'auth toast notifications are centered on mobile']);
 rows.push([sc.indexOf('signInWithEmailLink') === -1 ? 'OK  ' : 'MISS', 'supabase-client.js no longer defines signInWithEmailLink']);
 rows.push([sc.indexOf('signInWithOtp') === -1 ? 'OK  ' : 'MISS', 'supabase-client.js never calls signInWithOtp']);
 const chatSnip = fs.readFileSync(path.join(ROOT, 'supabase', 'chat-snippets.js'), 'utf8');
@@ -539,6 +541,7 @@ function loadEncoder(box) {
 function makeEncoderBox(opts) {
   const o = opts || {};
   const calls = [];
+  let decodeOptions = null;
   const encode = (type, quality, width, height) => {
     calls.push({ type, quality, width, height });
     if (o.unsupported && o.unsupported.indexOf(type) !== -1) {
@@ -551,7 +554,11 @@ function makeEncoderBox(opts) {
   };
   return {
     calls,
-    createImageBitmap: async () => ({ width: o.w || 4000, height: o.h || 3000, close() {} }),
+    decodeOptions: () => decodeOptions,
+    createImageBitmap: async (_file, options) => {
+      decodeOptions = options || null;
+      return { width: o.w || 4000, height: o.h || 3000, close() {} };
+    },
     document: {
       createElement: () => {
         const canvas = {
@@ -594,6 +601,8 @@ const BUDGET = 110 * 1024;
   {
     const box = makeEncoderBox({});
     const out = await loadEncoder(box).sbCompressImage({ name: 'cat.jpg', type: 'image/jpeg', size: 6_000_000 });
+    rows.push([box.decodeOptions() && box.decodeOptions().resizeWidth <= 1200 ? 'OK  ' : 'MISS',
+      'large photos are downsampled by the decoder before canvas processing']);
     rows.push([out.type === 'image/avif' ? 'OK  ' : 'MISS', 'picks AVIF when supported (got ' + out.type + ')']);
     rows.push([out.size <= BUDGET ? 'OK  ' : 'MISS', 'hits the ~110KB budget: 6MB -> ' + Math.round(out.size / 1024) + 'KB']);
     rows.push([longestEdge(box) <= 1200 ? 'OK  ' : 'MISS', 'never exceeds the 1200px long edge (got ' + longestEdge(box) + ')']);
