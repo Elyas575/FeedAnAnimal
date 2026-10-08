@@ -32,6 +32,9 @@ try {
     window.sbLeaderboard = sbLeaderboard;
     window.sbMyRank = sbMyRank;
     window.sbForumTopics = sbForumTopics;
+    window.sbForumLatestAt = sbForumLatestAt;
+    window.sbForumUnreadCount = sbForumUnreadCount;
+    window.sbSubscribeForumTopics = sbSubscribeForumTopics;
     window.sbForumCreateTopic = sbForumCreateTopic;
     window.sbForumReplies = sbForumReplies;
     window.sbForumCreateReply = sbForumCreateReply;
@@ -73,6 +76,53 @@ async function sbForumTopics(sort) {
     return data || [];
   } catch (err) {
     console.warn('[sb] forum topics unavailable (run supabase/schema-forum.sql):', err.message);
+    return null;
+  }
+}
+
+async function sbForumLatestAt() {
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.from('topics')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return data && data[0] ? data[0].created_at : null;
+  } catch (err) {
+    console.warn('[sb] latest forum topic unavailable:', err.message);
+    return null;
+  }
+}
+
+async function sbForumUnreadCount(since) {
+  if (!sb || !since) return 0;
+  try {
+    const { count, error } = await sb.from('topics')
+      .select('id', { count: 'exact', head: true })
+      .gt('created_at', since);
+    if (error) throw error;
+    return count || 0;
+  } catch (err) {
+    console.warn('[sb] forum notification count unavailable:', err.message);
+    return null;
+  }
+}
+
+function sbSubscribeForumTopics(onTopic) {
+  if (!sb) return null;
+  try {
+    return sb.channel('community-topics')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'topics'
+      }, (payload) => {
+        if (onTopic) {
+          try { onTopic(payload.new); } catch (e) { console.warn('[sb] community notification handler failed:', e.message); }
+        }
+      })
+      .subscribe();
+  } catch (err) {
+    console.warn('[sb] community notifications unavailable:', err.message);
     return null;
   }
 }
@@ -272,37 +322,13 @@ async function sbInbox(limit) {
         m.sender_id !== me.id && Date.parse(m.created_at) > since).length;
     }));
 
-    /* Step 5: animal names, so a row says "about Milo" not "about report-x". */
-    const animalIds = convos.map((c) => c.animal_id).filter(Boolean);
-    const animalNames = {};
-    if (animalIds.length) {
-      /* Reports use ids of the form 'report-<uuid>' and live in `reports`,
-         not `animals`, so both are read and matched by suffix. */
-      const seedIds = animalIds.filter((a) => a.indexOf('report-') !== 0);
-      if (seedIds.length) {
-        const { data: animals } = await sb.from('animals')
-          .select('id, name').in('id', seedIds);
-        (animals || []).forEach((a) => { animalNames[a.id] = a.name; });
-      }
-      const reportUuids = animalIds
-        .filter((a) => a.indexOf('report-') === 0)
-        .map((a) => a.slice('report-'.length));
-      if (reportUuids.length) {
-        const { data: reports } = await sb.from('reports')
-          .select('id, name').in('id', reportUuids);
-        (reports || []).forEach((r) => {
-          animalNames['report-' + r.id] = r.name || 'Reported stray';
-        });
-      }
-    }
-
     return convos.map((c) => {
       const peerId = peerOf[c.id] || null;
       const last = lastOf[c.id] || null;
       return {
         id: c.id,
-        animalId: c.animal_id || null,
-        animalName: animalNames[c.animal_id] || null,
+        animalId: null,
+        animalName: null,
         peerId: peerId,
         peerName: peerId ? (names[peerId] || 'Volunteer') : null,
         lastBody: last ? last.body : '',
@@ -429,7 +455,7 @@ async function sbProfileName(userId) {
   }
 }
 
-/* Find the existing 1-to-1 thread about this animal, or open one.
+/* Find the existing 1-to-1 thread for this person, or open one.
    The RPC is SECURITY DEFINER, so it can match the two participants
    without re-entering the RLS policy that used to recurse.
    Returns the conversation id, { error: 'signin' }, or null. */

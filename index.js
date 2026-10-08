@@ -1781,12 +1781,37 @@
   }
 
   /* ------------------------------ modals ----------------------------- */
+  function isDesktopChatWidget() {
+    return typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(min-width: 640px)').matches;
+  }
+
+  function setChatWidgetCollapsed(collapsed) {
+    const modal = document.getElementById('chat-modal');
+    const button = document.getElementById('chat-collapse');
+    if (!modal || !button) return;
+    modal.classList.toggle('chat-widget-collapsed', collapsed);
+    button.setAttribute('aria-expanded', String(!collapsed));
+    button.setAttribute('aria-label', collapsed ? 'Expand chat' : 'Minimize chat');
+    button.title = collapsed ? 'Expand chat' : 'Minimize chat';
+    const icon = button.querySelector('.material-symbols-outlined');
+    if (icon) icon.textContent = collapsed ? 'expand_less' : 'expand_more';
+  }
+
   function openModal(id) {
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    document.body.style.overflow = 'hidden';
+    if (id === 'chat-modal') {
+      const desktop = isDesktopChatWidget();
+      modal.setAttribute('aria-modal', String(!desktop));
+      if (desktop) setChatWidgetCollapsed(false);
+      else document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'hidden';
+    }
   }
 
   /* Releases the DM realtime subscription. Called from BOTH closeModal and
@@ -2817,7 +2842,7 @@
     return null;
   }
 
-  /* LinkedIn-style delivery state, derived from one number.
+  /* Message delivery state, derived from one number.
 
      A message is SENT as soon as the insert succeeds - there is no delivery
      receipt in this schema, and inventing one would be a lie. It is READ
@@ -2842,57 +2867,17 @@
         (read ? 'done_all' : 'done') + '</span></span>';
   }
 
-  /* LinkedIn-style thread renderer.
-   *
-   * LinkedIn does NOT use filled bubbles. Each message is plain body text on
-   * the panel surface, headed by the sender's name and the time, with a
-   * hairline rule and an uppercase label separating days. Bubbles were
-   * fighting the design: a coloured pill per line makes a long note read as a
-   * stack of fragments, and the saturated fill pulled the eye away from the
-   * words, which are the actual content.
-   *
-   * The structure that earns the "professional" read:
-   *   - one header per GROUP, not per line (avatar + name + time)
-   *   - continuation lines indent under it and carry no header at all
-   *   - generous leading and full measure, nothing squeezed into 78%
-   *   - a real rule for days, not a chip floating in the flow
-   *
-   * `grouped` means "this continues the message above", so the group has
-   * already introduced its sender and needs no header of its own.
-   * `peerReadAt` is the other volunteer's read cursor, used for the tick. */
+  /* WhatsApp-style thread: compact, aligned message bubbles with the time
+     and sender's read receipt tucked into each outgoing bubble. */
   function chatBubble(row, mine, grouped, endsGroup, peerReadAt) {
-    /* Header once per group: avatar, name, time. Repeating the name on every
-       line is exactly what makes a transcript look like a transcript. */
-    const header = grouped ? '' :
-      '<div class="flex items-center gap-2 mb-1.5">' +
-        personAvatarHtml(row.senderName || 'Volunteer', null, 'w-7 h-7 shrink-0') +
-        '<span class="font-label-md text-[12px] font-bold text-on-surface truncate">' +
-          esc(mine ? 'You' : (row.senderName || 'Volunteer')) + '</span>' +
-        '<span class="font-label-sm text-[11px] text-outline shrink-0">' +
-          esc(chatTime(row.created_at)) + '</span>' +
-      '</div>';
+    const receipt = endsGroup && mine ? chatReceipt(row, peerReadAt) : '';
+    const bubble = '<div class="chat-message__bubble">' +
+      '<span class="chat-message__text whitespace-pre-wrap">' + esc(row.body) + '</span>' +
+      '<span class="chat-message__meta"><time>' + esc(chatTime(row.created_at)) + '</time>' +
+        receipt + '</span></div>';
 
-    /* The message itself: full measure, comfortable leading, no fill. */
-    const body = '<div class="font-body-sm text-body-sm text-on-surface break-words">' +
-      '<span class="whitespace-pre-wrap">' + esc(row.body) + '</span></div>';
-
-    /* Read tick, once per group, right-aligned under my own messages. Only
-       ever on mine - what the other person did or did not read is not
-       something I can claim to know. */
-    const receipt = endsGroup && mine
-      ? '<div class="flex justify-end mt-1">' + chatReceipt(row, peerReadAt) + '</div>'
-      : '';
-
-    /* Continuations indent under the header so the thread keeps one clean
-       left edge; a group opener aligns with it. Both sides share that
-       column, which is what makes it read as one conversation rather than
-       two interleaved sides. */
-    const indent = grouped ? 'pl-9' : '';
-    const groupGap = grouped ? 'mt-1.5' : 'mt-4';
-
-    return '<div class="' + groupGap + '">' + header +
-      '<div class="' + indent + '">' + body + receipt + '</div>' +
-    '</div>';
+    return '<div class="chat-message ' + (mine ? 'chat-message--mine' : 'chat-message--theirs') +
+      (grouped ? ' chat-message--grouped' : '') + '">' + bubble + '</div>';
   }
 
   /* Chat timestamps, not "5m ago" everywhere. Inside a live thread the exact
@@ -3009,7 +2994,7 @@
     chatScrollToEnd();
   }
 
-  /* LinkedIn's date rule: a full-width hairline with the date sitting ON the
+  /* Messenger-style date rule: a full-width hairline with the date sitting ON the
      line, centred. A filled chip floating in the flow reads as a message;
      a rule with a label reads as a section break, which is what it is.
      The line runs edge to edge so the date is unambiguously a divider and
@@ -3075,6 +3060,13 @@
       input.disabled = false;
       input.value = '';
     }
+    syncChatSendButton();
+  }
+
+  function syncChatSendButton() {
+    const input = $('#chat-input');
+    const sendBtn = $('#chat-send');
+    if (sendBtn) sendBtn.hidden = !input || !String(input.value || '').trim();
   }
 
   /* The scroll container and the flow container are different elements on
@@ -3220,9 +3212,12 @@
   async function openChat(animalId, conversationId) {
     const animal = animalById(animalId);
     stopChat();
+    setChatWidgetCollapsed(false);
     state.chat.animalName = animal ? animal.name : '';
 
     openModal('chat-modal');
+    const withEl = $('#chat-with');
+    if (withEl) withEl.textContent = 'Loading chat...';
     chatEmptyLog('Loading messages...');
 
     const requireEmail = chatFn('sbRequireEmail');
@@ -3338,10 +3333,7 @@
        sender_id, and a name lookup per bubble would be a query each. */
     const nameFor = (senderId) => (senderId === me.id ? 'You' : state.chat.peerName);
 
-    const withEl = $('#chat-with');
-    if (withEl) {
-      withEl.textContent = state.chat.peerName + (state.chat.animalName ? ' · about ' + state.chat.animalName : '');
-    }
+    if (withEl) withEl.textContent = 'Chat with ' + (state.chat.peerName || 'Volunteer');
     /* Avatar in the thread header, matching the inbox and the popover. */
     const avatarEl = $('#chat-avatar');
     if (avatarEl) avatarEl.innerHTML = personAvatarHtml(state.chat.peerName, null, 'w-9 h-9');
@@ -3410,8 +3402,11 @@
     } catch (e) {
       result = { error: 'failed' };
     }
+    if (result && !result.error) {
+      if (input) input.value = '';
+      syncChatSendButton();
+    }
     if (sendBtn) sendBtn.disabled = false;
-    if (input) input.value = '';
 
     if (!result) { toast('Message not sent - could not reach the server.', 'error'); return; }
     if (result.error === 'blocked') {
@@ -3719,7 +3714,7 @@
         }
       });
       /* Grow with the content, between the textarea's min-height (two rows,
-         LinkedIn's default) and the max-h-32 cap in the stylesheet, then
+         two-row default) and the max-h-32 cap in the stylesheet, then
          scroll. Resetting to 'auto' first is what makes scrollHeight
          measurable - without it the box can only ever grow, never shrink
          back after deleting text. */
@@ -3728,10 +3723,17 @@
         const MAX = 128;
         chatInput.style.height = 'auto';
         chatInput.style.height = Math.min(Math.max(chatInput.scrollHeight, MIN), MAX) + 'px';
+        syncChatSendButton();
       });
     }
     const chatBlock = $('#chat-block');
     if (chatBlock) chatBlock.addEventListener('click', toggleChatBlock);
+    const chatCollapse = $('#chat-collapse');
+    if (chatCollapse) {
+      chatCollapse.addEventListener('click', () => {
+        setChatWidgetCollapsed(chatCollapse.getAttribute('aria-expanded') === 'true');
+      });
+    }
 
     /* Returning to the tab catches the thread up. Bound once here rather
        than per-open, because the listener is about the DOCUMENT, not the

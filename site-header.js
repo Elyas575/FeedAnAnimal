@@ -17,7 +17,7 @@
   var LINKS = [
     { id: 'index',       label: 'Map',         icon: 'location_on',  href: 'index.html' },
     { id: 'cities',      label: 'Cities',      icon: 'public',       href: 'cities.html' },
-    { id: 'community',   label: 'Community',   icon: 'chat_bubble',  href: 'community.html' },
+    { id: 'community',   label: 'Community',   icon: 'chat_bubble',  href: 'community.html', communityBadge: true },
     { id: 'activity',    label: 'Activity',    icon: 'history',      href: 'activity.html' },
     /* Chats is the LinkedIn-style Messaging entry: a button (not a link) that
        toggles the thread popover. The popover's "See all" hands off to the
@@ -36,7 +36,7 @@
      everywhere else it is a link back to the map. */
   var BOTTOM_TABS = [
     { id: 'cities',    label: 'Cities',    icon: 'public',      href: 'cities.html' },
-    { id: 'community', label: 'Community', icon: 'chat_bubble',  href: 'community.html' },
+    { id: 'community', label: 'Community', icon: 'chat_bubble',  href: 'community.html', communityBadge: true },
     { id: 'activity',  label: 'Activity',  icon: 'history',      href: 'activity.html' },
     /* Chats replaces About here. On a phone the bottom bar is the only
        persistent nav, and a volunteer with a waiting reply should not have
@@ -75,7 +75,7 @@
     '#site-nav .fta-nav-item .material-symbols-outlined{font-size:22px;line-height:1}',
     '#site-nav .fta-nav-item .fta-nav-label{font-size:11px;white-space:nowrap}',
     '#site-nav button.fta-nav-item{background:none;border:0;cursor:pointer;font:inherit}',
-    '#site-nav [data-chat-badge]{position:absolute;top:2px;right:8px;z-index:1}',
+    '#site-nav [data-chat-badge],#site-nav [data-community-badge]{position:absolute;top:2px;left:auto;right:8px;margin-left:0;z-index:1}',
     '#site-nav .fta-nav-item.fta-nav-on{color:#1e1b1a;font-weight:700}',
     '#site-nav .fta-nav-item.fta-nav-on .material-symbols-outlined{color:#a03b0e}',
     '#site-nav .fta-nav-item.fta-nav-off{color:#8b7269;font-weight:500}',
@@ -235,7 +235,9 @@
       + (on ? ' aria-current="page"' : '')
       + ' class="fta-nav-item ' + (on ? NAV_ON : NAV_OFF) + '">'
       + '<span class="material-symbols-outlined">' + esc(l.icon) + '</span>'
-      + '<span class="fta-nav-label">' + esc(l.label) + '</span></a>';
+      + '<span class="fta-nav-label">' + esc(l.label) + '</span>'
+      + (l.communityBadge ? '<span class="fta-chat-badge" data-community-badge="desktop" hidden></span>' : '')
+      + '</a>';
   }
 
   function headerHtml() {
@@ -305,6 +307,7 @@
       + '<span class="material-symbols-outlined text-[22px]">' + esc(l.icon) + '</span>'
       + '<span class="fta-bn-label text-[10px] font-bold tracking-tight whitespace-nowrap">' + esc(l.label) + '</span>'
       + (l.badge ? '<span class="fta-chat-badge" data-chat-badge="mobile" hidden></span>' : '')
+      + (l.communityBadge ? '<span class="fta-chat-badge" data-community-badge="mobile" hidden></span>' : '')
       + '</a>';
   }
 
@@ -443,7 +446,6 @@
         + '</span>'
         + '<span style="display:block;font-size:12px;color:#57423b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
           + esc(preview) + '</span>'
-        + (t.animalName ? '<span style="font-size:10.5px;color:#a03b0e;font-weight:700">about ' + esc(t.animalName) + '</span>' : '')
       + '</span>'
       + (t.unread ? '<span class="fta-chat-badge" style="position:static;box-shadow:none">' + (t.unread > 99 ? '99+' : t.unread) + '</span>' : '')
     + '</button>';
@@ -560,6 +562,89 @@
 
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) loadChatBell(true);
+    });
+  }
+
+  var COMMUNITY_LAST_SEEN_KEY = 'fta.community.lastSeenAt.v1';
+
+  function paintCommunityBadge(count) {
+    var n = Number(count) || 0;
+    var nodes = document.querySelectorAll('[data-community-badge]');
+    Array.prototype.forEach.call(nodes, function (el) {
+      el.textContent = n > 99 ? '99+' : String(n);
+      if (n > 0) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
+    });
+  }
+
+  function ensureForumClient(onReady) {
+    if (!document.body || typeof document.createElement !== 'function') return;
+    if (typeof window.sbForumLatestAt === 'function' &&
+        typeof window.sbForumUnreadCount === 'function' &&
+        typeof window.sbSubscribeForumTopics === 'function') {
+      onReady();
+      return;
+    }
+    var clientScript = document.createElement('script');
+    clientScript.src = 'supabase-client.js';
+    clientScript.onload = onReady;
+    clientScript.onerror = function () {
+      console.warn('[site-header] Could not load the community notification client.');
+    };
+    if (window.supabase) {
+      document.body.appendChild(clientScript);
+      return;
+    }
+    var sdkScript = document.createElement('script');
+    sdkScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    sdkScript.onload = function () { document.body.appendChild(clientScript); };
+    sdkScript.onerror = function () {
+      console.warn('[site-header] Could not load Supabase for community notifications.');
+    };
+    document.body.appendChild(sdkScript);
+  }
+
+  function wireCommunityNotifications() {
+    var refreshTimer = null;
+    ensureForumClient(function () {
+      var latestAt = window.sbForumLatestAt;
+      var unreadCount = window.sbForumUnreadCount;
+      var subscribe = window.sbSubscribeForumTopics;
+
+      async function refresh(markSeen) {
+        var since = null;
+        try { since = localStorage.getItem(COMMUNITY_LAST_SEEN_KEY); } catch (e) {
+          console.warn('[site-header] Community notification storage unavailable:', e.message);
+        }
+
+        if (markSeen || !since) {
+          var latest = await latestAt();
+          since = latest || new Date().toISOString();
+          try { localStorage.setItem(COMMUNITY_LAST_SEEN_KEY, since); } catch (e) {
+            console.warn('[site-header] Could not save community notification cursor:', e.message);
+          }
+          paintCommunityBadge(0);
+          return;
+        }
+
+        var count = await unreadCount(since);
+        if (count !== null) paintCommunityBadge(count);
+      }
+
+      var channel = subscribe(function () {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(function () { refresh(false); }, 150);
+      });
+      if (channel && window.sb && typeof window.sb.removeChannel === 'function') {
+        window.addEventListener('pagehide', function () {
+          clearTimeout(refreshTimer);
+          window.sb.removeChannel(channel);
+        }, { once: true });
+      }
+
+      refresh(currentId() === 'community');
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) refresh(false);
+      });
     });
   }
 
@@ -703,6 +788,7 @@
     injectBottomNav();
     wireAuthLink();
     wireChatBell();
+    wireCommunityNotifications();
     wireAccountCard();
     refreshActive();
     refreshBottom();

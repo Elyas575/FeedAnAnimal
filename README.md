@@ -76,9 +76,17 @@ No API keys, no build step, no package.json. Everything runs from CDN assets
 - First-time signed-in volunteers can choose an app display name for reports
   and care updates; it is independent of their Google/Facebook account name and
   can be changed later from the account menu.
-- Direct messages update the chat badge and open inbox live. For an existing
-  Supabase project, run `supabase/migration-chat-realtime.sql` in the SQL Editor
-  after `supabase/schema-chat.sql` so message changes are included in Realtime.
+- Direct messages are one conversation per pair of volunteers, styled as
+  compact WhatsApp-like bubbles. On desktop the chat docks in the lower-right
+  corner and can be minimized and expanded; on phones it remains a full-height
+  sheet. The header identifies who the conversation is with. To upgrade an
+  existing Supabase project, run
+  `supabase/migration-one-dm-per-person.sql` to merge old animal-specific
+  threads, then run `supabase/migration-chat-realtime.sql` to enable live chat
+  badge updates.
+- The Community nav badge counts new topics since your last visit. Run
+  `supabase/migration-community-notifications.sql` in Supabase SQL Editor to
+  enable live topic notifications.
 - Station popups let you log a container check, which raises the capacity level
   and is remembered on reload.
 - Toasts, keyboard <kbd>Esc</kbd> handling, backdrop-click closing and a

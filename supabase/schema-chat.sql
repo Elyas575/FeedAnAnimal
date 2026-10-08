@@ -163,26 +163,41 @@ create policy "participants send messages" on messages for insert with check (
 drop policy if exists "own blocks" on blocks;
 create policy "own blocks" on blocks for all using (blocker_id = auth.uid()) with check (blocker_id = auth.uid());
 
--- RPC: find existing 1-to-1 DM about same animal, or create it
+-- RPC: find one 1-to-1 DM per participant pair, or create it.
 create or replace function get_or_create_dm(other_user uuid, p_animal_id text default null, p_report_id uuid default null)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare cid uuid;
+declare
+  cid uuid;
+  pair_key text;
 begin
   if auth.uid() is null then raise exception 'not authenticated'; end if;
   if other_user = auth.uid() then raise exception 'cannot DM yourself'; end if;
 
-  -- find convo with exactly these 2 participants + same context
+  -- Serialize creation for this unordered pair so two simultaneous opens
+  -- cannot race and create separate conversations.
+  pair_key := least(auth.uid()::text, other_user::text) || ':' ||
+              greatest(auth.uid()::text, other_user::text);
+  perform pg_advisory_xact_lock(hashtextextended(pair_key, 0));
+
+  -- A direct message belongs to its two people, not to an animal report.
   select c.id into cid
   from conversations c
-  join conversation_participants p1 on p1.conversation_id = c.id and p1.user_id = auth.uid()
-  join conversation_participants p2 on p2.conversation_id = c.id and p2.user_id = other_user
-  where coalesce(c.animal_id, '') = coalesce(p_animal_id, '')
-    and coalesce(c.report_id::text, '') = coalesce(p_report_id::text, '')
+  where exists (
+      select 1 from conversation_participants p
+      where p.conversation_id = c.id and p.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from conversation_participants p
+      where p.conversation_id = c.id and p.user_id = other_user
+    )
+    and (select count(*) from conversation_participants p
+         where p.conversation_id = c.id) = 2
+  order by c.created_at, c.id
   limit 1;
 
   if cid is null then
-    insert into conversations (animal_id, report_id, created_by)
-    values (p_animal_id, p_report_id, auth.uid()) returning id into cid;
+    insert into conversations (created_by)
+    values (auth.uid()) returning id into cid;
     insert into conversation_participants (conversation_id, user_id)
     values (cid, auth.uid()), (cid, other_user);
   end if;

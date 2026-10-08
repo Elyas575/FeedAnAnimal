@@ -44,6 +44,19 @@ create table if not exists topic_likes (
   primary key (topic_id, user_id)
 );
 
+-- The shared navigation listens for newly created community topics.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'topics'
+  ) then
+    alter publication supabase_realtime add table public.topics;
+  end if;
+end $$;
+
 -- 4. Keep topics.reply_count / last_reply_at in sync ------------------
 create or replace function public.touch_topic_on_reply()
 returns trigger language plpgsql security definer set search_path = public as $$

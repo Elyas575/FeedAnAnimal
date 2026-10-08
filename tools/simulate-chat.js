@@ -57,7 +57,7 @@ const sentBubble = app.chatBubble({ body: 'hi', created_at: T(T0), senderName: '
 const gotBubble = app.chatBubble({ body: 'hi', created_at: T(T0), senderName: 'Lala' }, false, false, true, T(T0));
 ok('my own message shows a tick', sentBubble.indexOf('chat-tick') !== -1);
 ok("the other person's message shows no tick", gotBubble.indexOf('chat-tick') === -1);
-ok('the bubble still carries its timestamp', sentBubble.indexOf('text-outline') !== -1);
+ok('the bubble still carries its timestamp', sentBubble.indexOf('chat-message__meta') !== -1);
 
 /* ------------------- the invisible-message regression -------------- *
  * Reported symptom: after sending a SECOND message, the bubble turned
@@ -90,36 +90,27 @@ const SHAPES = [];
    strings are assembled by concatenation here, so a missing separator is
    always one edit away. */
 
-/* ------------------- LinkedIn structure: plain text, not bubbles --- *
- * The thread was rebuilt to match LinkedIn: each message is plain body text
- * on the panel surface under a name+time header, with NO filled bubble.
- * Bubbles made a long note read as a stack of fragments and the saturated
- * fill pulled attention off the words.
- *
- * These assert the STRUCTURE that replaces them, so the design cannot
- * silently regress back to pills. */
+/* ------------------- WhatsApp-style compact message bubbles ---------- *
+ * Messages align by sender, carry a compact fill and inline timestamp,
+ * and avoid repeating the sender label on every bubble. */
 const opener = app.chatBubble({ body: 'A', created_at: T0, senderName: 'Lala' }, false, false, true, T0);
 const continuation = app.chatBubble({ body: 'B', created_at: T0, senderName: 'Lala' }, false, true, false, T0);
 
-ok('there is no filled bubble behind the text', opener.indexOf('bg-primary') === -1);
-ok('the message text uses the surface text colour', opener.indexOf('text-on-surface') !== -1);
-ok('an opening message carries a name header', opener.indexOf('Lala') !== -1);
-ok('an opening message carries an avatar', opener.indexOf('title="Lala"') !== -1);
+ok('an incoming message has a filled bubble', opener.indexOf('chat-message__bubble') !== -1);
+ok('an incoming bubble is aligned to the left', opener.indexOf('chat-message--theirs') !== -1);
+ok('an outgoing bubble is aligned to the right',
+  app.chatBubble({ body: 'A', created_at: T0 }, true, false, true, T0).indexOf('chat-message--mine') !== -1);
+ok('a bubble carries its timestamp inline',
+  opener.indexOf('chat-message__meta') !== -1 && opener.indexOf('<time>') !== -1);
+ok('sender names are not repeated inside message bubbles', opener.indexOf('Lala') === -1);
 ok('a continuation carries NO repeated name', continuation.indexOf('Lala') === -1);
-ok('a continuation carries NO repeated avatar', continuation.indexOf('title="Lala"') === -1);
-ok('a continuation is indented under the header', continuation.indexOf('pl-9') !== -1);
-ok('an opening message is not indented', opener.indexOf('pl-9') === -1);
-ok('the header names "You" on your own messages',
-  app.chatBubble({ body: 'A', created_at: T0 }, true, false, true, T0).indexOf('>You<') !== -1);
-/* One header per GROUP is the whole point: the old design repeated the
-   avatar and time on every line, which is what made it read as a log. */
+ok('a continuation carries the grouped-message class',
+  continuation.indexOf('chat-message--grouped') !== -1);
+/* Grouped bubbles stay compact without repeating sender labels. */
 const trio = [false, true, true]
   .map((grouped, i) => app.chatBubble({ body: 'A', created_at: T0, senderName: 'Lala' }, false, grouped, i === 2, T0))
   .join('');
-ok('a run of three messages shows exactly ONE avatar',
-  (trio.match(/title="Lala"/g) || []).length === 1);
-ok('a run of three messages shows exactly ONE name',
-  (trio.match(/>Lala</g) || []).length === 1);
+ok('a run of messages does not repeat sender names', trio.indexOf('Lala') === -1);
 
 /* The invisible-message regression, restated for the new markup. It was a
    missing space fusing two class tokens; the assertion is on real tokens
@@ -135,9 +126,9 @@ ok('message bodies are always escaped', opener.indexOf('&lt;script&gt;') !== -1 
 ok('newlines in a message are preserved',
   app.chatBubble({ body: 'a\nb', created_at: T0 }, false, false, true, T0).indexOf('whitespace-pre-wrap') !== -1);
 
-/* ------------------- bottom-anchored, LinkedIn-style ---------------- *
+/* ------------------- bottom-anchored messenger layout ---------------- *
  * A thread should rest on the FLOOR of the panel and grow upward, leaving
- * the empty space ABOVE - how LinkedIn and every messenger present it.
+ * the empty space ABOVE, as in familiar messaging apps.
  * Top-anchored, a two-message thread dangles at the top of an otherwise
  * empty panel and reads as broken.
  *
@@ -188,10 +179,9 @@ ok('the day divider is labelled for screen readers',
   /function chatDayDividerHtml[\s\S]{0,400}role="separator"/.test(pageSrc));
 ok('renderChat uses the day-divider helper',
   /chatDayDividerHtml\(day\)/.test(pageSrc));
-/* Plain text carries the FULL measure now. Capping bubbles at 78-85% was a
-   workaround for the old pills; LinkedIn lets the note run. */
-ok('there is no width cap on the message text',
-  !/function chatBubble[\s\S]{0,1800}max-w-\[/.test(pageSrc));
+/* Bubbles stay readable on wide screens without spanning the whole log. */
+ok('message bubbles have a responsive width limit',
+  /#chat-log-inner \.chat-message\{[^}]*max-width:88%/.test(htmlSrc));
 
 /* ------------------- does it actually bottom-anchor? --------------- *
  * The mt-auto rules above only prove the class is present. This proves the
@@ -309,16 +299,11 @@ messages.forEach((m) => {
   ok('renders "' + m.body.slice(0, 20) + '"', html.indexOf(esc(m.body)) !== -1);
 });
 
-/* Both participants must be visible - this is the reported bug. */
+/* Both directions must be visible - this is the reported bug. */
 ok("the peer's messages are present", html.indexOf('Fed Milo at 7am') !== -1);
 ok('my own messages are present', html.indexOf('On my way now') !== -1);
-/* LinkedIn renders one shared column with a name header per group, rather
-   than pushing each side to its own edge. Both names must still appear, so
-   the thread never reads as a monologue. */
-const peerHeaders = (html.match(new RegExp('>' + PEER_NAME + '<', 'g')) || []).length;
-const myHeaders = (html.match(/>You</g) || []).length;
-ok('both speakers are named in the thread', peerHeaders >= 1 && myHeaders >= 1,
-  'peer=' + peerHeaders + ' me=' + myHeaders);
+ok('incoming and outgoing messages use separate alignment classes',
+  /chat-message--theirs/.test(html) && /chat-message--mine/.test(html));
 
 /* ---------------------------- ordering ------------------------------ */
 ok('oldest message renders first',
@@ -336,18 +321,15 @@ ok('today is labelled "Today"', html.indexOf('>Today<') !== -1);
 ok('yesterday is labelled "Yesterday"', html.indexOf('>Yesterday<') !== -1);
 
 /* ---------------------------- grouping ------------------------------ */
-/* The sorted thread is three blocks: [m0] [m1+m2] [m3+m4]. m1 and m2 are
-   the peer four minutes apart, m3 and m4 are me one minute apart. So a
-   correct render has THREE headers and TWO peer avatars - fewer than the
-   five messages, which is the whole point of grouping. */
-const peerAvatars = (html.match(new RegExp('title="' + PEER_NAME + '"', 'g')) || []).length;
-const ticks = (html.match(/text-outline/g) || []).length;
-ok('a time per group, not per message', ticks === 3, ticks + ' for 5 messages in 3 groups');
-ok('the peer burst shows one avatar, not two', peerAvatars === 2,
-  peerAvatars + ' avatars for 3 peer messages in 2 groups');
-/* A continuation is indented under its group header - that, not a bubble
-   tail, is what visually fuses the run together. */
-ok('continuation lines are indented under the header', html.indexOf('pl-9') !== -1);
+/* Every bubble gets a timestamp; one receipt sits on the outgoing group's
+   final bubble, matching familiar messenger behavior. */
+const timestamps = (html.match(/<time>/g) || []).length;
+const ticks = (html.match(/class="chat-tick\b/g) || []).length;
+ok('each message bubble shows its own timestamp', timestamps === messages.length,
+  timestamps + ' timestamps for ' + messages.length + ' messages');
+ok('the outgoing group ends with a receipt', ticks === 1,
+  ticks + ' receipt for one outgoing group');
+ok('grouped messages use tighter spacing', /chat-message--grouped/.test(html));
 
 /* --------------------- the hoisting regression ---------------------- */
 /* The original defect, restated as an executable assertion so it can

@@ -153,6 +153,21 @@ ok('client validates the window argument', /\['week', 'month', 'all'\]\.indexOf\
 // live in the shared header now. The community page is forum-only since the
 // rank ladder was removed from it.
 const sharedHeader = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
+ok('Community has desktop and mobile notification badges',
+  /data-community-badge="desktop"/.test(sharedHeader) &&
+  /data-community-badge="mobile"/.test(sharedHeader));
+ok('new community topics refresh the notification count',
+  /function sbSubscribeForumTopics\(onTopic\)/.test(client) &&
+  /event: 'INSERT', schema: 'public', table: 'topics'/.test(client) &&
+  /function wireCommunityNotifications\(\)/.test(sharedHeader));
+ok('community notification count starts after the saved last-visit cursor',
+  /function sbForumUnreadCount\(since\)/.test(client) &&
+  /\.gt\('created_at', since\)/.test(client) &&
+  /fta\.community\.lastSeenAt\.v1/.test(sharedHeader));
+const notificationMigration = fs.readFileSync(
+  path.join(ROOT, 'supabase', 'migration-community-notifications.sql'), 'utf8');
+ok('Supabase Realtime migration enables new-topic events',
+  /alter publication supabase_realtime add table public\.topics/.test(notificationMigration));
 ok('shared navbar links Community to community.html',
   sharedHeader.indexOf("href: 'community.html'") !== -1);
 ok('shared navbar has no Leaderboard pill',

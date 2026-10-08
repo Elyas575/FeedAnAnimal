@@ -34,34 +34,26 @@ const headerSrc = fs.readFileSync(path.join(ROOT, 'site-header.js'), 'utf8');
 const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'schema-chat.sql'), 'utf8');
 
 /* ---------------------------- message bubbles ----------------------- *
- * The thread follows LinkedIn: plain body text on the panel surface under a
- * name+time header, NOT a filled bubble. A coloured pill per line made a
- * long note read as a stack of fragments and pulled the eye off the words,
- * so the bubbles were replaced by the structure asserted below. Describing
- * the new design here is deliberate: it stops the bubbles creeping back. */
+ * WhatsApp-style aligned bubbles with an inline timestamp and outgoing read
+ * receipt. Keep these assertions to prevent the old oversized text rows
+ * returning. */
 const now = new Date().toISOString();
 const mine = app.chatBubble({ body: 'is Milo still around?', created_at: now }, true, false, true);
 const theirs = app.chatBubble({ body: 'Fed him at 7am', created_at: now }, false, false, true);
 
-ok('messages are NOT filled bubbles',
-  mine.indexOf('bg-primary') === -1 && theirs.indexOf('bg-surface-container') === -1);
-ok('the message text uses the on-surface colour', theirs.indexOf('text-on-surface') !== -1);
-/* One header per GROUP - a name repeated on every line is what makes a
-   transcript look like a transcript. */
-ok('my message is labelled "You"', mine.indexOf('>You<') !== -1);
-ok('their message names the sender',
-  app.chatBubble({ body: 'x', created_at: now, senderName: 'Lala' }, false, false, true).indexOf('>Lala<') !== -1);
-ok('the header shows a time', /just now|Today|\d{1,2}:\d{2}|Jan|Feb|Mar/.test(mine));
-/* Continuations indent under the header rather than repeating it. That
-   indent, not a bubble tail, is what fuses a run together. */
-ok('a grouped message is indented under the header',
-  app.chatBubble({ body: 'x', created_at: now }, false, true, false).indexOf('pl-9') !== -1);
-ok('a grouped message repeats no name',
+ok('messages render in compact bubble cards',
+  mine.indexOf('chat-message__bubble') !== -1 && theirs.indexOf('chat-message__bubble') !== -1);
+ok('mine and theirs have distinct alignment classes',
+  mine.indexOf('chat-message--mine') !== -1 && theirs.indexOf('chat-message--theirs') !== -1);
+ok('the timestamp sits inside the message bubble',
+  mine.indexOf('chat-message__meta') !== -1 && /just now|Today|\d{1,2}:\d{2}|Jan|Feb|Mar/.test(mine));
+/* Continuations stay compact within the same aligned message group. */
+ok('a grouped message uses compact group spacing',
+  app.chatBubble({ body: 'x', created_at: now }, false, true, false).indexOf('chat-message--grouped') !== -1);
+ok('a grouped message repeats no sender name',
   app.chatBubble({ body: 'x', created_at: now, senderName: 'Lala' }, false, true, false).indexOf('Lala') === -1);
-ok('a grouped message repeats no avatar',
-  app.chatBubble({ body: 'x', created_at: now, senderName: 'Lala' }, false, true, false).indexOf('title="Lala"') === -1);
-ok('an opening message is not indented',
-  app.chatBubble({ body: 'x', created_at: now }, false, false, true).indexOf('pl-9') === -1);
+ok('an opening message is not marked as a continuation',
+  app.chatBubble({ body: 'x', created_at: now }, false, false, true).indexOf('chat-message--grouped') === -1);
 /* The read tick still appears only on my own messages. */
 ok('their messages carry no read tick', theirs.indexOf('chat-tick') === -1);
 ok('my message carries a read tick', mine.indexOf('chat-tick') !== -1);
@@ -73,7 +65,8 @@ ok('message bodies escape script tags', evil.indexOf('<script>') === -1);
 ok('message bodies escape injected images', evil.indexOf('<img src=x') === -1);
 ok('message bodies still show the raw text', evil.indexOf('&lt;script&gt;') !== -1);
 ok('the message renders newlines as pre-wrap', mine.indexOf('whitespace-pre-wrap') !== -1);
-ok('their messages show a sender avatar', theirs.indexOf('w-7 h-7') !== -1);
+ok('message bubbles use compact WhatsApp styling',
+  fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').indexOf('background:#d9fdd3') !== -1);
 
 /* ------------------------------ grouping ---------------------------- *
  * The behaviour that makes a thread read as a conversation: bursts from one
@@ -179,13 +172,32 @@ ok('page has the chat modal', html.indexOf('id="chat-modal"') !== -1);
 ok('chat modal opts into the modal system', /id="chat-modal"[^>]*data-modal/.test(html));
 ok('chat modal is labelled for screen readers', html.indexOf('aria-labelledby="chat-title"') !== -1);
 ok('chat modal stacks above the details modal', /id="chat-modal"[^>]*z-\[85\]/.test(html));
+ok('desktop chat is docked at the bottom right',
+  /#chat-modal\{[^}]*inset:auto 24px 0 auto/.test(html) &&
+  /#chat-modal \.chat-widget-panel\{[^}]*border-radius:12px 12px 0 0/.test(html));
+ok('desktop chat does not block clicks outside the widget',
+  /#chat-modal\{[^}]*pointer-events:none/.test(html) &&
+  /#chat-modal \.chat-widget-panel\{[^}]*pointer-events:auto/.test(html));
+ok('desktop chat has an accessible collapse and expand control',
+  /id="chat-collapse"[^>]*aria-expanded="true"[^>]*aria-controls="chat-content"/.test(html));
+ok('collapsed desktop chat hides the conversation while keeping the header',
+  /#chat-modal\.chat-widget-collapsed #chat-content\{display:none\}/.test(html));
+ok('mobile chat retains a full-height sheet',
+  /id="chat-modal"[^>]*items-end sm:items-center/.test(html) &&
+  /chat-widget-panel[^>]*h-\[100dvh\]/.test(html));
 ok('details modal is below it', /id="details-modal"[^>]*z-\[75\]/.test(html));
 ok('page has a message log', html.indexOf('id="chat-log"') !== -1);
 ok('the log is a live region', /id="chat-log"[^>]*aria-live="polite"/.test(html));
 ok('page has a composer form', html.indexOf('id="chat-form"') !== -1);
 ok('page has a message input', html.indexOf('id="chat-input"') !== -1);
 ok('the input caps length at CHAT_MAX', html.indexOf('maxlength="2000"') !== -1);
-ok('page has a send button', html.indexOf('id="chat-send"') !== -1);
+ok('the message field has the requested placeholder', /id="chat-input"[^>]*placeholder="Write a message\.\.\."/.test(html));
+ok('the Send button starts hidden', /id="chat-send"[^>]*hidden[^>]*aria-label="Send message"/.test(html));
+ok('the Send button is centered and uses the primary color',
+  /id="chat-send"[\s\S]{0,260}bg-primary text-on-primary[^"]*items-center justify-center text-center/.test(html));
+ok('the send control uses a text label instead of an icon',
+  /id="chat-send"[\s\S]{0,500}>\s*Send\s*<\/button>/.test(html) &&
+  !/id="chat-send"[\s\S]{0,300}arrow_forward/.test(html));
 ok('page has a block button', html.indexOf('id="chat-block"') !== -1);
 ok('page has a gate for when chat cannot be used', html.indexOf('id="chat-gate"') !== -1);
 ok('the composer starts hidden', /id="chat-form"[^>]*class="hidden/.test(html));
@@ -194,6 +206,13 @@ ok('the gate starts hidden', /id="chat-gate"[^>]*class="hidden/.test(html));
 /* ---------------------------- details drawer ------------------------- */
 ok('details drawer offers Message caretaker',
   js.indexOf('data-action="message"') !== -1 && js.indexOf('Message caretaker') !== -1);
+ok('the thread header identifies the person being messaged',
+  /withEl\.textContent = 'Chat with ' \+ \(state\.chat\.peerName \|\| 'Volunteer'\)/.test(js));
+ok('desktop chat can be expanded and minimized accessibly',
+  /function setChatWidgetCollapsed\(collapsed\)/.test(js) &&
+  /setChatWidgetCollapsed\(chatCollapse\.getAttribute\('aria-expanded'\) === 'true'\)/.test(js));
+ok('desktop chat does not lock the page behind the docked widget',
+  /if \(desktop\) setChatWidgetCollapsed\(false\);[\s\S]{0,100}else document\.body\.style\.overflow = 'hidden'/.test(js));
 ok('the message action opens the thread', /action === 'message'[\s\S]{0,160}openChat\(id\)/.test(js));
 ok('the details modal stays open behind the thread',
   /action === 'message'[\s\S]{0,60}\{\s*\n\s*openChat\(id\);/.test(js));
@@ -241,7 +260,11 @@ ok('the poster display name can be resolved',
 /* ------------------------------- wiring ----------------------------- */
 ok('the send button submits the form', /chatForm\.addEventListener\('submit'/.test(js));
 ok('Enter sends without shift', /event\.key === 'Enter' && !event\.shiftKey/.test(js));
-ok('the composer hints at Shift+Enter', html.indexOf('Shift+Enter') !== -1);
+ok('the send arrow appears only when the message has text',
+  /function syncChatSendButton\(\)[\s\S]{0,240}sendBtn\.hidden = !input \|\| !String\(input\.value \|\| ''\)\.trim\(\)/.test(js) &&
+  /chatInput\.addEventListener\('input'[\s\S]{0,500}syncChatSendButton\(\)/.test(js));
+ok('a failed send keeps the draft available',
+  /if \(result && !result\.error\)[\s\S]{0,130}input\.value = ''/.test(js));
 ok('the block button is wired', js.indexOf('chatBlock.addEventListener') !== -1);
 ok('blocking asks for confirmation', js.indexOf("window.confirm('Block '") !== -1);
 
@@ -295,6 +318,12 @@ ok('messages cap the body length', sql.indexOf('between 1 and 2000') !== -1);
 ok('the DM lookup RPC exists', sql.indexOf('get_or_create_dm') !== -1);
 ok('the RPC refuses self-DMs', sql.indexOf('cannot DM yourself') !== -1);
 ok('the RPC requires authentication', sql.indexOf('not authenticated') !== -1);
+ok('the RPC serializes opens for the same person pair',
+  /pg_advisory_xact_lock\(hashtextextended\(pair_key, 0\)\)/.test(sql));
+ok('the RPC matches people without an animal context',
+  /where exists \([\s\S]{0,400}?p\.user_id = auth\.uid\(\)[\s\S]{0,300}?p\.user_id = other_user[\s\S]{0,220}?\) = 2/.test(sql));
+ok('new conversations do not bind the chat to one animal',
+  /insert into conversations \(created_by\)/.test(sql));
 ok('only participants can read a conversation', sql.indexOf('is_conversation_participant(conversations.id)') !== -1);
 ok('only participants can read messages', sql.indexOf('is_conversation_participant(messages.conversation_id)') !== -1);
 ok('you cannot add yourself to someone elses DM', sql.indexOf('"auth join convo"') !== -1);
@@ -338,7 +367,7 @@ ok('the failure gate points at the console',
   /chatGate\([\s\S]{0,200}F12/.test(js));
 
 /* --------------------------- the header bell ------------------------- *
- * A LinkedIn-style Messaging entry: the Chats nav item IS the bell - an
+ * A shared-navigation chat entry: the Chats nav item IS the bell - an
  * icon-over-label button with an unread pill that drops a thread list.
  * The badge, the popover and inbox.html must all read the SAME sbInbox()
  * or they will disagree about what is unread. */
@@ -361,7 +390,8 @@ ok('both badges are painted from one count', /querySelectorAll\('\[data-chat-bad
 ok('the badge is hidden at zero', /else el\.setAttribute\('hidden', ''\)/.test(headerSrc));
 ok('the badge caps at 99+', /99\+/.test(headerSrc));
 ok('a popover row shows who and when', /chatPopRow/.test(headerSrc) && /chatAgo/.test(headerSrc));
-ok('a popover row shows the animal', /about ' \+ esc\(t\.animalName\)/.test(headerSrc));
+ok('popover does not split a peer chat by animal',
+  !/about ' \+ esc\(t\.animalName\)/.test(headerSrc));
 ok('the popover row escapes names', /esc\(who\)/.test(headerSrc));
 ok('the bell degrades without sbInbox',
   /if \(typeof inbox !== 'function'\) return;/.test(headerSrc));
@@ -379,6 +409,10 @@ const realtimeMigration = fs.readFileSync(path.join(ROOT, 'supabase', 'migration
 ok('an idempotent Realtime migration exists for existing databases',
   /pg_publication_tables/.test(realtimeMigration) &&
   /alter publication supabase_realtime add table public\.messages/.test(realtimeMigration));
+const oneDmMigration = fs.readFileSync(path.join(ROOT, 'supabase', 'migration-one-dm-per-person.sql'), 'utf8');
+ok('an upgrade migration merges duplicate person-to-person chats',
+  /dm_pair_canonical/.test(oneDmMigration) &&
+  /update messages m[\s\S]{0,200}?set conversation_id = mapping\.canonical_id/.test(oneDmMigration));
 
 /* --------------------------- the mobile tab ------------------------- *
  * Chats replaces About in the bottom bar: on a phone that bar is the only
@@ -406,14 +440,14 @@ ok('the inbox needs a signed-in volunteer', /sbRequireEmail/.test(inboxSrc));
 
 /* ------------------------------ inbox rows -------------------------- */
 const thread = {
-  id: 'c1', animalId: 'milo', animalName: 'Milo', peerId: 'p1',
+  id: 'c1', animalId: null, animalName: null, peerId: 'p1',
   peerName: 'Priya N.', lastBody: 'on my way', lastAt: new Date().toISOString(),
   lastMine: false, unread: 3,
 };
 const row = inbox.rowHtml(thread);
 ok('a row shows the peer name', row.indexOf('Priya N.') !== -1);
 ok('a row shows the preview', row.indexOf('on my way') !== -1);
-ok('a row shows the animal it is about', row.indexOf('about Milo') !== -1);
+ok('a peer conversation row is not attached to one animal', row.indexOf('about Milo') === -1);
 ok('an unread row is highlighted', row.indexOf('row unread') !== -1);
 ok('an unread row shows the count', row.indexOf('>3</span>') !== -1);
 ok('a read row shows no badge',
@@ -423,7 +457,7 @@ ok('your own last message is prefixed',
 ok('an empty thread invites a hello',
   inbox.rowHtml(Object.assign({}, thread, { lastBody: '' })).indexOf('say hello') !== -1);
 ok('a row carries the conversation id', row.indexOf('data-conversation="c1"') !== -1);
-ok('a row carries the animal for the deep link', row.indexOf('data-animal="milo"') !== -1);
+ok('a person-to-person chat has no animal-specific deep link', row.indexOf('data-animal=""') !== -1);
 
 /* Peer names come from another volunteer, so they must be escaped. */
 const evilRow = inbox.rowHtml(Object.assign({}, thread, {
@@ -448,7 +482,7 @@ ok('the popover row carries the conversation id',
   /data-conversation="'\s*\+\s*esc\(t\.id/.test(headerSrc));
 
 /* --------------------------- read receipts -------------------------- *
- * LinkedIn-style ticks. One tick = sent, two = read, and "read" is only
+ * WhatsApp-style ticks. One tick = sent, two = read, and "read" is only
  * ever claimed from the OTHER participant's own read cursor - the same
  * column the unread badge counts from, so the tick and the badge are two
  * readings of one fact and can never disagree. */
@@ -479,7 +513,7 @@ ok('the client selects last_read_at for peers',
   /select\('user_id, last_read_at'\)/.test(client));
 ok('the tick is styled in the page', /\.chat-tick--read/.test(html));
 ok('the sent tick is visually distinct from the read tick',
-  /\.chat-tick\{[^}]*color:#8b7269/.test(html) && /\.chat-tick--read\{color:#a03b0e\}/.test(html));
+  /\.chat-tick\{[^}]*color:#86938a/.test(html) && /\.chat-tick--read\{color:#53bdeb\}/.test(html));
 
 /* --------------------- clearing the badge for real ------------------ *
  * THE reported bug: the notification survived reading. Three causes, so

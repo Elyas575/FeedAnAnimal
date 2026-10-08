@@ -762,23 +762,23 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   </figure>
 </div>
 
-<!-- ======================== CHAT / DM MODAL ========================== -->
-<!-- Phase 5. Sits above the details modal (z-85 > z-75) because it is always
-     opened FROM a details drawer, and stacking it on top keeps the animal
-     context visible behind the thread instead of bouncing back to the map. -->
+<!-- ======================== CHAT / DM WIDGET ======================== -->
+<!-- On desktop this is a docked, expandable chat window; on phones it stays
+     a full-height sheet. It remains above the details modal when opened there. -->
 <div id="chat-modal" data-modal class="hidden fixed inset-0 z-[85] items-end sm:items-center justify-center sm:p-6 bg-inverse-surface/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="chat-title">
-  <!-- Phones get a full-height sheet with a rounded top, the way every
-       messenger app presents a thread: the header pins to the top, the log
-       takes every pixel between, and the composer sits above the keyboard.
-       From sm up it is the same markup as a centred card - one component,
-       two presentations, so the two platforms cannot drift apart. -->
-  <div class="fta-modal-panel w-full sm:max-w-md bg-surface sm:rounded-lg rounded-t-2xl shadow-2xl border border-surface-container-highest flex flex-col h-[100dvh] sm:h-auto sm:max-h-[85vh]">
+  <!-- Phones use a full-height sheet; desktop CSS docks this panel in the
+       lower-right corner and lets its header collapse the message area. -->
+  <div class="fta-modal-panel chat-widget-panel w-full sm:max-w-md bg-surface sm:rounded-lg rounded-t-2xl shadow-2xl border border-surface-container-highest flex flex-col h-[100dvh] sm:h-auto sm:max-h-[85vh]">
     <div class="flex items-center gap-3 p-3 sm:p-4 border-b border-surface-container-high shrink-0">
       <div id="chat-avatar" class="shrink-0" aria-hidden="true"></div>
       <div class="min-w-0 flex-1">
         <h2 id="chat-title" class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">Messages</h2>
         <p id="chat-with" class="font-body-sm text-body-sm text-on-surface-variant truncate"></p>
       </div>
+      <button id="chat-collapse" type="button" class="hidden sm:flex shrink-0 w-9 h-9 rounded-full items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
+        aria-label="Minimize chat" aria-expanded="true" aria-controls="chat-content" title="Minimize chat">
+        <span class="material-symbols-outlined text-[20px] leading-none" aria-hidden="true">expand_more</span>
+      </button>
       <button type="button" data-close-modal="chat-modal"
         class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center border border-surface-container-highest bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface active:scale-90 transition-all"
         title="Close" aria-label="Close messages">
@@ -786,45 +786,34 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
       </button>
     </div>
 
-    <!-- Bottom-anchored, the way LinkedIn and every messenger present a
-         thread: content sits on the FLOOR of the panel and grows upward,
-         leaving the empty space above rather than below. Without the
-         #chat-log-inner wrapper and its mt-auto there is no way to express
-         that on a scrolling container - margin-top:auto only resolves
-         against a real flex child, so the spacer has to be its own element
-         rather than a class on the messages themselves. -->
-    <div id="chat-log" class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 flex flex-col" aria-live="polite" aria-label="Message history">
-      <div id="chat-log-inner" class="mt-auto flex flex-col gap-2"></div>
-    </div>
-
-    <!-- Shown instead of the composer when there is nothing to send to, or
-         when the volunteer must sign in first (chat needs a real account,
-         unlike logging a feed). -->
-    <div id="chat-gate" class="hidden p-4 border-t border-surface-container-high shrink-0">
-      <p id="chat-gate-text" class="font-body-sm text-body-sm text-on-surface-variant"></p>
-    </div>
-
-    <!-- Composer. LinkedIn's shape: one bordered rounded box that owns the
-         whole input area, with the send control sitting beside it rather
-         than below, so the row reads as a single control. The Block control
-         moves to its own quiet line so it cannot crowd the send button. -->
-    <form id="chat-form" class="hidden p-3 border-t border-surface-container-high bg-surface shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div class="flex items-end gap-2">
-        <textarea id="chat-input" rows="2" maxlength="2000" placeholder="Write a message..." aria-label="Write a message"
-          class="fta-field flex-1 resize-none max-h-32 min-h-[44px] leading-relaxed"></textarea>
-        <button id="chat-send" type="submit"
-          class="h-10 px-5 rounded-full bg-primary text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-1.5 shadow-sm hover:bg-primary-container active:scale-95 transition-all shrink-0">
-          <span class="material-symbols-outlined text-[18px]">send</span>Send
-        </button>
+    <div id="chat-content" class="min-h-0 flex flex-col flex-1">
+      <!-- Keep the latest messages at the bottom while older history scrolls. -->
+      <div id="chat-log" class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 flex flex-col" aria-live="polite" aria-label="Message history">
+        <div id="chat-log-inner" class="mt-auto flex flex-col"></div>
       </div>
-      <div class="flex items-center justify-between gap-2 mt-1.5">
-        <p class="font-label-sm text-[11px] text-outline">Enter sends &middot; Shift+Enter starts a new line</p>
-        <button id="chat-block" type="button"
-          class="font-label-sm text-[11px] text-on-surface-variant hover:text-error transition-colors shrink-0">
-          Block
-        </button>
+
+      <!-- Shown instead of the composer when chat cannot be used. -->
+      <div id="chat-gate" class="hidden p-4 border-t border-surface-container-high shrink-0">
+        <p id="chat-gate-text" class="font-body-sm text-body-sm text-on-surface-variant"></p>
       </div>
-    </form>
+
+      <form id="chat-form" class="hidden p-3 border-t border-surface-container-high bg-surface shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div class="chat-composer-field flex items-center gap-2 rounded-2xl border border-surface-container-highest bg-surface-container-lowest p-1.5 focus-within:border-primary">
+          <textarea id="chat-input" rows="2" maxlength="2000" placeholder="Write a message..." aria-label="Write a message"
+            class="chat-composer-input flex-1 resize-none max-h-32 min-h-[40px] leading-relaxed"></textarea>
+          <button id="chat-send" type="submit" hidden aria-label="Send message" title="Send message"
+            class="h-10 min-w-16 px-4 rounded-full bg-primary text-on-primary font-label-md text-label-md font-bold flex items-center justify-center text-center shadow-sm hover:bg-primary-container active:scale-95 transition-all shrink-0 disabled:opacity-50">
+            Send
+          </button>
+        </div>
+        <div class="flex justify-end mt-1.5">
+          <button id="chat-block" type="button"
+            class="font-label-sm text-[11px] text-on-surface-variant hover:text-error transition-colors shrink-0">
+            Block
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -863,7 +852,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <!-- chat thread: day dividers (rendered by renderChat), phone sheet -->
   <span class="min-h-0 overscroll-contain h-[100dvh] rounded-t-2xl sm:rounded-lg items-end sm:items-center gap-1.5 px-2.5 my-1 justify-center role separator"></span>
   <span class="pb-[max(0.75rem,env(safe-area-inset-bottom))]"></span>
-  <!-- bottom-anchored thread + LinkedIn-style day divider + message header -->
+  <!-- bottom-anchored thread + WhatsApp-style day divider + message header -->
   <span class="mt-auto px-3.5 py-2.5 py-2 uppercase tracking-wide max-w-[85%] w-7 mb-0.5 -mt-1 justify-start"></span>
   <span class="h-px flex-1 bg-surface-container-highest py-4 gap-3 pl-9 mt-1.5 mt-4 mb-1.5 items-center text-[12px] min-h-[44px] leading-relaxed px-5 justify-end"></span>
 </div>
@@ -873,12 +862,35 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
      rest of the page's styling does. --inline because the markup is built
      in JS and the Play CDN only scans the DOM. -->
 <style>
-  .chat-tick{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#8b7269}
+  #chat-log{background:#efeae2}
+  #chat-log-inner .chat-message{align-self:flex-start;width:max-content;max-width:88%;margin-top:8px}
+  #chat-log-inner .chat-message--mine{align-self:flex-end}
+  #chat-log-inner .chat-message--grouped{margin-top:3px}
+  #chat-log-inner .chat-message__bubble{display:flex;align-items:flex-end;gap:8px;padding:7px 9px 5px 10px;border-radius:9px 9px 9px 2px;background:#fff;color:#292321;font-size:14px;line-height:1.4;overflow-wrap:anywhere;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  #chat-log-inner .chat-message--mine .chat-message__bubble{border-radius:9px 9px 2px 9px;background:#d9fdd3}
+  #chat-log-inner .chat-message__text{min-width:0;flex:1}
+  #chat-log-inner .chat-message__meta{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;padding-left:4px;color:#66736a;font-size:10px;line-height:1.2;white-space:nowrap}
+  #chat-log-inner .chat-message__meta time{font:inherit}
+  #chat-log-inner .chat-message__meta .chat-tick{display:inline-flex}
+  #chat-log-inner .chat-message__meta .material-symbols-outlined{font-size:14px}
+  #chat-form .chat-composer-input{width:100%;height:auto;min-height:40px;max-height:128px;padding:9px 10px;border:0;border-radius:14px;background:transparent;color:#1e1b1a;font:inherit;resize:none;outline:none;box-shadow:none}
+  #chat-form .chat-composer-input:focus{outline:none;border:0;box-shadow:none}
+  #chat-send[hidden]{display:none}
+  #chat-log-inner [role="separator"]{padding-top:8px;padding-bottom:8px}
+  .chat-tick{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#86938a}
   .chat-tick .material-symbols-outlined{font-size:15px;line-height:1;width:15px;height:15px}
-  /* The double tick is the "seen it" signal, so it takes the accent colour
-     and full opacity. The single tick stays muted, exactly as LinkedIn
-     renders it - muted sent, coloured read. */
-  .chat-tick--read{color:#a03b0e}
+  /* The double tick is the "seen it" signal; the sent tick stays muted. */
+  .chat-tick--read{color:#53bdeb}
+  @media (min-width:640px){
+    #chat-modal{inset:auto 24px 0 auto;width:min(360px,calc(100vw - 32px));height:auto;max-height:calc(100dvh - 24px);align-items:flex-end;justify-content:flex-end;padding:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:none}
+    #chat-modal.hidden{display:none}
+    #chat-modal:not(.hidden){display:flex}
+    #chat-modal .chat-widget-panel{width:100%;max-width:none;height:min(620px,calc(100dvh - 48px));max-height:calc(100dvh - 24px);border-radius:12px 12px 0 0;pointer-events:auto;box-shadow:0 8px 32px rgba(28,25,23,.22)}
+    #chat-modal.chat-widget-collapsed{height:auto;max-height:none}
+    #chat-modal.chat-widget-collapsed .chat-widget-panel{height:auto;max-height:none}
+    #chat-modal.chat-widget-collapsed #chat-content{display:none}
+    #chat-modal #chat-collapse{display:flex}
+  }
 </style>
 
 <!-- Embedded copy of data/animals.json (lets the app run straight from disk). -->
