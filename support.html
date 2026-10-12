@@ -53,64 +53,10 @@
 </head>
 <body>
 <div id="site-header"></div>
-<div class="wrap">
-  <p class="top-note">honest numbers, no pitch deck</p>
-  <h1>Keep the bowls full.</h1>
-  <p class="lede">This map is free, and I want it to stay that way. Right now every bill lands on me. Here is what it actually costs.</p>
-  <div class="bowl">
-    <p class="empty">the monthly bowl, pretty empty right now</p>
-    <div class="bowlbar"><div class="bowlfill"></div></div>
-    <div class="bowlmeta"><span>$0 in, be the first to drop something in</span><span>about $65/mo to run</span></div>
-  </div>
-  <div class="receipt">
-    <b>Receipt for October, roughly:</b>
-    <ul>
-      <li>Map tiles + search, so pins actually load</li>
-      <li>Hosting, so it opens fast on old phones too</li>
-      <li>Photo storage, so you can tell Milo from Luna</li>
-    </ul>
-  </div>
-  <h2>The PayPal button</h2>
-  <p>Not live yet. I am setting it up now. When it is ready, it will sit right here.</p>
-  <a class="paypal disabled" id="btn-paypal" href="#"><span style="font-style:italic">PayPal</span><small>coming soon, promise</small></a>
-  <p style="font-size:13px;color:#8b7269;margin-top:10px">Anything left after the bills, I send 10% to the ASPCA and Humane Society. I will show the math here when there is math to show.</p>
-  <div class="free">
-    <h2 style="margin-bottom:4px">Broke right now? Same. You can still help.</h2>
-    <a href="index.html"><span class="material-symbols-outlined">restaurant</span><span><b>Log a dinner</b><small>One tap. The next feeder sees someone ate today.</small></span></a>
-    <a href="index.html"><span class="material-symbols-outlined">add_location</span><span><b>Pin the new kid</b><small>Orange cat behind the dumpster? Pin it before you forget.</small></span></a>
-    <a href="#" id="link-share"><span class="material-symbols-outlined">share</span><span><b>Text one feeder</b><small>Just forward this to the person with kibble in their bag.</small></span></a>
-  </div>
-  <h2>Small questions</h2>
-  <details open><summary>Where does it go?</summary><p>Bills first. Maps, hosting, photos. That is the whole list.</p></details>
-  <details><summary>Are you a nonprofit?</summary><p>Nope. Just me, doing this at my kitchen table. So nothing gets lost in overhead.</p></details>
-  <details><summary>Can I just email you?</summary><p>Please do. lirzqad@gmail.com. I read it all myself, usually too late at night.</p></details>
-  <a class="back" href="/">Back to the map</a>
+<div class="wrap" style="text-align:center;padding:80px 20px 120px">
+  <h1>Coming soon..</h1>
+  <p><a class="back" href="/">Back to the map</a></p>
 </div>
-<script>
-/* Paste your PayPal.me / PayPal donate link here when ready, e.g.
-   window.FTA_PAYPAL_URL = "https://www.paypal.com/paypalme/yourname";
-   The button enables itself automatically. */
-window.FTA_PAYPAL_URL = "";
-(function(){
-  "use strict";
-  var btn = document.getElementById("btn-paypal");
-  if (window.FTA_PAYPAL_URL) {
-    btn.setAttribute("href", window.FTA_PAYPAL_URL);
-    btn.classList.remove("disabled");
-    btn.innerHTML = '<span style="font-style:italic">PayPal</span><small>thank you, truly</small>';
-  } else {
-    btn.addEventListener("click", function(e){ e.preventDefault(); });
-  }
-  document.getElementById("link-share").addEventListener("click", function(e){
-    e.preventDefault();
-    var url = location.origin + "/index.html";
-    var text = "Help feed local strays. Live map of who needs food near you:";
-    if (navigator.share) { navigator.share({ title: "FeedAnAnimalMap", text: text, url: url }).catch(function(){}); }
-    else if (navigator.clipboard) { navigator.clipboard.writeText(text + " " + url).then(function(){ alert("Link copied. Send it to a fellow feeder!"); }); }
-    else { location.href = "mailto:?subject=FeedAnAnimalMap&body=" + encodeURIComponent(text + " " + url); }
-  });
-})();
-</script>
 <script src="site-header.js"></script>
 </body>
 </html>
