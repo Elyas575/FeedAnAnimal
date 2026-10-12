@@ -100,7 +100,7 @@ console.log('\naccount card:');
    Both read as 'a different navbar', so this stays green forever. */
 const GOOD_AXES = 'opsz,wght,FILL,GRAD';
 const NAV_PAGES = ['index.html', 'community.html', 'activity.html', 'auth.html',
-  'about.html', 'privacy.html', 'terms.html', '404.html', 'inbox.html', 'cities.html'];
+  'about.html', 'privacy.html', 'terms.html', '404.html', 'inbox.html', 'cities.html', 'support.html'];
 let fontFailed = 0;
 NAV_PAGES.forEach((file) => {
   const h = fs.readFileSync(path.join(ROOT, file), 'utf8');

@@ -35,9 +35,11 @@
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
-  function avatarHtml(name) {
-    return '<span class="avatar" style="background:' + esc(hueOf(name)) + '">'
-      + '<span class="initials">' + esc(initialsOf(name)) + '</span></span>';
+  function avatarHtml(name, online) {
+    return '<span class="avatar" style="background:' + esc(hueOf(name)) + ';position:relative">'
+      + '<span class="initials">' + esc(initialsOf(name)) + '</span>'
+      + (online ? '<span aria-label="Online" title="Online" style="position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:9999px;background:#22c55e;border:2px solid #fff"></span>' : '')
+      + '</span>';
   }
 
   /* Same "2m ago / Today / 3 Oct" ladder the chat thread uses, so a time
@@ -61,14 +63,17 @@
     var preview = t.lastBody
       ? (t.lastMine ? 'You: ' + t.lastBody : t.lastBody)
       : 'No messages yet - say hello';
+    var online = !!t.peerOnline;
     return '<button type="button" class="row' + (t.unread ? ' unread' : '') + '"'
       + ' data-conversation="' + esc(t.id) + '"'
       + ' data-animal="' + esc(t.animalId || '') + '"'
-      + ' aria-label="Conversation with ' + esc(who) + '">'
-      + avatarHtml(who)
+      + ' aria-label="Conversation with ' + esc(who) + (online ? ', online' : '') + '">'
+      + avatarHtml(who, online)
       + '<span class="meta">'
         + '<span class="top">'
-          + '<span class="who">' + esc(who) + '</span>'
+          + '<span class="who">' + esc(who)
+          + (online ? ' <span style="color:#16a34a;font-size:11px;font-weight:700">● online</span>' : '')
+          + '</span>'
           + '<span class="when">' + esc(relTime(t.lastAt)) + '</span>'
         + '</span>'
         + '<span class="preview' + (t.lastMine ? ' mine' : '') + '">' + esc(preview) + '</span>'

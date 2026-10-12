@@ -51,6 +51,9 @@ try {
     window.sbSubscribeInbox = sbSubscribeInbox;
     window.sbInbox = sbInbox;
     window.sbMarkConversationRead = sbMarkConversationRead;
+    window.sbPeerOnline = sbPeerOnline;
+    window.sbPresenceDotHtml = sbPresenceDotHtml;
+    window.sbAvatarWithPresenceHtml = sbAvatarWithPresenceHtml;
   }
 } catch (e) { /* ignore */ }
 
@@ -286,10 +289,11 @@ async function sbInbox(limit) {
 
     const peerOf = {};
     const readOf = {};
+    const readPeerOf = {};
     const allPeers = [];
     (parts || []).forEach((p) => {
       if (p.user_id === me.id) readOf[p.conversation_id] = p.last_read_at;
-      else { peerOf[p.conversation_id] = p.user_id; allPeers.push(p.user_id); }
+      else { peerOf[p.conversation_id] = p.user_id; readPeerOf[p.conversation_id] = p.last_read_at; allPeers.push(p.user_id); }
     });
 
     /* Step 3: names in ONE query. profiles is publicly readable. */
@@ -325,6 +329,12 @@ async function sbInbox(limit) {
     return convos.map((c) => {
       const peerId = peerOf[c.id] || null;
       const last = lastOf[c.id] || null;
+      /* Online = the peer's own cursor moved recently, OR their message is
+         the fresh one. Both ride on columns this query already fetched, so
+         the dot costs zero extra reads. */
+      const peerRead = readPeerOf[c.id] || null;
+      const lastAt = last ? last.created_at : c.created_at;
+      const online = sbPeerOnline({ lastReadAt: peerRead }, last && last.sender_id === peerId ? lastAt : null, Date.now());
       return {
         id: c.id,
         animalId: null,
@@ -332,9 +342,11 @@ async function sbInbox(limit) {
         peerId: peerId,
         peerName: peerId ? (names[peerId] || 'Volunteer') : null,
         lastBody: last ? last.body : '',
-        lastAt: last ? last.created_at : c.created_at,
+        lastAt: lastAt,
         lastMine: last ? last.sender_id === me.id : false,
         unread: unreadOf[c.id] || 0,
+        peerOnline: !!online,
+        peerLastAt: peerRead || null,
       };
     }).sort((a, b) => (Date.parse(b.lastAt) || 0) - (Date.parse(a.lastAt) || 0));
   } catch (err) {
@@ -538,6 +550,56 @@ async function sbSendMessage(conversationId, body) {
   }
 }
 
+/* Online presence, without a new table.
+ *
+ * There is deliberately NO presence table or postgres_changes channel here:
+ * a heartbeat table would need its own RLS + realtime publication + cleanup
+ * cron, and a stale row reads "online" forever when a tab dies without
+ * unsubscribing. Instead online-ness is DERIVED from data the client already
+ * fetches: the peer's read cursor (sbDmPeers) and the last message time.
+ * Anyone whose cursor or message moved in the last few minutes was obviously
+ * here - no new schema, no new permissions, nothing to leak when a tab dies.
+ *
+ * ONLINE_WINDOW_MS is the "were they just here" window: 5 minutes covers a
+ * volunteer switching tabs to check the map, without claiming someone who
+ * left an hour ago is still around.
+ *
+ * Pure (takes nowMs) so the headless checks can drive it without a clock. */
+var CHAT_ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
+function sbPeerOnline(peer, lastAt, nowMs) {
+  var now = Number(nowMs) || Date.now();
+  var stamps = [];
+  if (peer) {
+    if (peer.lastReadAt) stamps.push(Date.parse(peer.lastReadAt));
+    if (peer.lastSeenAt) stamps.push(Date.parse(peer.lastSeenAt));
+  }
+  if (lastAt) stamps.push(Date.parse(lastAt));
+  for (var i = 0; i < stamps.length; i++) {
+    if (isFinite(stamps[i]) && (now - stamps[i]) <= CHAT_ONLINE_WINDOW_MS) return true;
+  }
+  return false;
+}
+
+/* Green-ball avatar wrapper. `online` toggles the dot; the dot is a real
+ * element (not a pseudo) so headless tests can assert it, and it carries an
+ * aria-label so screen readers hear "online" instead of seeing a colour. */
+function sbPresenceDotHtml(online, sizePx) {
+  if (!online) return '';
+  var s = Number(sizePx) || 11;
+  return '<span class="fta-online-dot" aria-label="Online" title="Online" style="'
+    + 'position:absolute;right:-1px;bottom:-1px;width:' + s + 'px;height:' + s + 'px;'
+    + 'border-radius:9999px;background:#22c55e;border:2px solid #fff;'
+    + 'box-shadow:0 0 0 1px rgba(0,0,0,.06);"></span>';
+}
+
+function sbAvatarWithPresenceHtml(innerAvatarHtml, online) {
+  return '<span class="fta-avatar-presence" style="position:relative;display:inline-flex;flex-shrink:0">'
+    + (innerAvatarHtml || '')
+    + sbPresenceDotHtml(online, 11)
+    + '</span>';
+}
+
 /* Everyone you share a conversation with, so the thread header can name
    them. Participant rows are readable by members, so this stays inside
    RLS. Returns [{ userId, name }]. */
@@ -568,6 +630,7 @@ async function sbDmPeers(conversationId, myId) {
       userId: row.user_id,
       name: names[row.user_id] || 'Volunteer',
       lastReadAt: row.last_read_at || null,
+      online: sbPeerOnline({ lastReadAt: row.last_read_at }, null, Date.now()),
     }));
   } catch (err) {
     console.warn('[sb] DM peers failed:', err.message);

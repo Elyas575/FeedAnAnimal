@@ -32,15 +32,15 @@ const T = (ms) => new Date(ms).toISOString();
 const T0 = Date.parse('2026-03-10T10:00:00.000Z');
 
 ok('no peer cursor means sent, never read',
-  app.chatReceipt({ created_at: T(T0) }, null).indexOf('done_all') === -1);
+  app.chatReceipt({ created_at: T(T0) }, null).indexOf('data-tick="read"') === -1);
 ok('no peer cursor still renders a single tick',
-  app.chatReceipt({ created_at: T(T0) }, null).indexOf('>done<') !== -1);
+  app.chatReceipt({ created_at: T(T0) }, null).indexOf('data-tick="sent"') !== -1);
 ok('a cursor before the message means sent',
-  app.chatReceipt({ created_at: T(T0) }, T(T0 - 60000)).indexOf('done_all') === -1);
+  app.chatReceipt({ created_at: T(T0) }, T(T0 - 60000)).indexOf('data-tick="read"') === -1);
 ok('a cursor exactly at the message means read',
-  app.chatReceipt({ created_at: T(T0) }, T(T0)).indexOf('done_all') !== -1);
+  app.chatReceipt({ created_at: T(T0) }, T(T0)).indexOf('data-tick="read"') !== -1);
 ok('a cursor past the message means read',
-  app.chatReceipt({ created_at: T(T0) }, T(T0 + 60000)).indexOf('done_all') !== -1);
+  app.chatReceipt({ created_at: T(T0) }, T(T0 + 60000)).indexOf('data-tick="read"') !== -1);
 ok('a read tick is labelled for screen readers',
   app.chatReceipt({ created_at: T(T0) }, T(T0)).indexOf('aria-label="Read"') !== -1);
 ok('a sent tick is labelled for screen readers',
@@ -50,7 +50,7 @@ ok('the read tick is styled apart from the sent tick',
 ok('a message with no timestamp renders no tick at all',
   app.chatReceipt({ created_at: 'nope' }, T(T0)) === '');
 ok('an unparseable peer cursor falls back to sent',
-  app.chatReceipt({ created_at: T(T0) }, 'garbage').indexOf('>done<') !== -1);
+  app.chatReceipt({ created_at: T(T0) }, 'garbage').indexOf('data-tick="sent"') !== -1);
 
 /* Only MY messages carry a tick - I cannot know what they read. */
 const sentBubble = app.chatBubble({ body: 'hi', created_at: T(T0), senderName: 'Lala' }, true, false, true, T(T0));
@@ -161,27 +161,25 @@ ok('the helper falls back to the scroll container',
    open silently does nothing - the classic bottom-anchor regression. */
 ok('scrolling still targets the scroll container',
   /function chatScrollToEnd[\s\S]{0,300}\$\('#chat-log'\)/.test(pageSrc));
-/* The date is a full-width rule with the label sitting ON it, centred. A
-   filled chip floating in the flow reads as a message; a rule reads as a
-   section break, which is what it is. */
-ok('the day divider is a hairline rule',
-  /function chatDayDividerHtml[\s\S]{0,600}h-px/.test(pageSrc));
-ok('the rule runs edge to edge on both sides of the label',
-  (pageSrc.match(/h-px flex-1 bg-surface-container-highest/g) || []).length === 2);
-ok('the day label is centred between the rules',
-  /function chatDayDividerHtml[\s\S]{0,400}items-center/.test(pageSrc));
+/* The day is a WhatsApp-style centred chip, not a hairline rule. */
+ok('the day divider is a centred chip',
+  /function chatDayDividerHtml[\s\S]{0,600}justify-center/.test(pageSrc));
 ok('the day label is uppercase and letterspaced',
   /function chatDayDividerHtml[\s\S]{0,500}uppercase/.test(pageSrc) &&
   /function chatDayDividerHtml[\s\S]{0,500}tracking-wide/.test(pageSrc));
-ok('the day label is not a filled chip',
-  !/function chatDayDividerHtml[\s\S]{0,500}rounded-full/.test(pageSrc));
+ok('the day chip is a filled pill',
+  /function chatDayDividerHtml[\s\S]{0,500}rounded-lg/.test(pageSrc));
 ok('the day divider is labelled for screen readers',
   /function chatDayDividerHtml[\s\S]{0,400}role="separator"/.test(pageSrc));
 ok('renderChat uses the day-divider helper',
   /chatDayDividerHtml\(day\)/.test(pageSrc));
 /* Bubbles stay readable on wide screens without spanning the whole log. */
 ok('message bubbles have a responsive width limit',
-  /#chat-log-inner \.chat-message\{[^}]*max-width:88%/.test(htmlSrc));
+  /#chat-log-inner \.chat-message\{[^}]*max-width:80%/.test(htmlSrc));
+/* The clock + ticks float inside the bubble's corner, so short messages
+   stay small instead of stretching. */
+ok('the bubble meta floats inside the bubble corner',
+  /#chat-log-inner \.chat-message__meta\{[^}]*float:right/.test(htmlSrc));
 
 /* ------------------- does it actually bottom-anchor? --------------- *
  * The mt-auto rules above only prove the class is present. This proves the
@@ -321,14 +319,15 @@ ok('today is labelled "Today"', html.indexOf('>Today<') !== -1);
 ok('yesterday is labelled "Yesterday"', html.indexOf('>Yesterday<') !== -1);
 
 /* ---------------------------- grouping ------------------------------ */
-/* Every bubble gets a timestamp; one receipt sits on the outgoing group's
-   final bubble, matching familiar messenger behavior. */
+/* Every bubble gets a timestamp; every OUTGOING bubble carries its own tick
+   (WhatsApp shows the receipt per bubble, not once per group). */
 const timestamps = (html.match(/<time>/g) || []).length;
 const ticks = (html.match(/class="chat-tick\b/g) || []).length;
+const outgoing = messages.filter((m) => m.sender_id === ME).length;
 ok('each message bubble shows its own timestamp', timestamps === messages.length,
   timestamps + ' timestamps for ' + messages.length + ' messages');
-ok('the outgoing group ends with a receipt', ticks === 1,
-  ticks + ' receipt for one outgoing group');
+ok('every outgoing bubble carries its own receipt', ticks === outgoing,
+  ticks + ' receipts for ' + outgoing + ' outgoing');
 ok('grouped messages use tighter spacing', /chat-message--grouped/.test(html));
 
 /* --------------------- the hoisting regression ---------------------- */

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support — FeedAnAnimalMap</title>
+<meta name="description" content="FeedAnAnimalMap is free to use, but it costs money to keep online. Help keep the stray feeding map running.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FeedAnAnimalMap">
+<meta property="og:title" content="Support FeedAnAnimalMap">
+<meta property="og:description" content="Free to use, but maps and hosting cost real money. Help keep the bowls full.">
+<meta property="og:url" content="https://feedanimals.pages.dev/support.html">
+<meta property="og:image" content="https://feedanimals.pages.dev/og-image.svg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#fff8f6;color:#2b2320;line-height:1.65;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .wrap{max-width:620px;margin:0 auto;padding:26px 20px 120px}
+  .top-note{font-size:13px;color:#8b7269;margin:0 0 8px}
+  h1{font-size:31px;margin:0 0 8px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+  h2{font-size:19px;margin:0 0 10px;font-weight:800}
+  p{font-size:15px;color:#3b3330;margin:0 0 12px}
+  .lede{font-size:16px;color:#57423b;margin:0 0 22px}
+  .bowl{background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:20px;margin:18px 0}
+  .bowl .empty{font-size:13px;font-weight:700;color:#8b7269;margin:0 0 6px}
+  .bowlbar{height:14px;border-radius:9999px;background:#f5ecea;overflow:hidden}
+  .bowlfill{height:100%;width:3%;border-radius:9999px;background:repeating-linear-gradient(-45deg,#E54848,#E54848 8px,#f0705f 8px,#f0705f 16px)}
+  .bowlmeta{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#8b7269;margin-top:8px}
+  .receipt{background:#fffdf7;border:1px dashed #d9c3ac;border-radius:12px;padding:14px 16px;margin:16px 0;font-size:13.5px;color:#57423b}
+  .receipt b{color:#2b2320}
+  .receipt ul{margin:8px 0 0;padding-left:18px}
+  .receipt li{margin:2px 0}
+  .paypal{display:block;text-align:center;background:#FFC439;color:#003087;text-decoration:none;
+    font-weight:800;font-size:17px;padding:15px;border-radius:14px;margin-top:6px}
+  .paypal small{display:block;font-size:12.5px;font-weight:600}
+  .paypal.disabled{opacity:.7;cursor:not-allowed}
+  .free{background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:18px;margin:16px 0}
+  .free a{display:flex;gap:12px;align-items:flex-start;text-decoration:none;padding:10px 0;border-top:1px dashed #e9d9cf}
+  .free a:first-of-type{border-top:0}
+  .free .material-symbols-outlined{color:#a03b0e}
+  .free b{font-size:14.5px;color:#2b2320;display:block}
+  .free small{font-size:13px;color:#6f615b}
+  details{border:1px solid #efe6e4;border-radius:12px;padding:12px 14px;margin-top:8px;background:#fff}
+  details summary{font-weight:700;font-size:14px;cursor:pointer}
+  details p{font-size:13.5px;margin:8px 0 0}
+  .back{display:inline-block;margin-top:14px;background:#a03b0e;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 22px;border-radius:9999px}
+  a{color:#a03b0e}
+  body.has-site-header{padding-top:var(--site-header-h,68px)}
+  @media (max-width:767px){body.has-site-header{padding-bottom:90px}}
+</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-theme.js"></script>
+</head>
+<body>
+<div id="site-header"></div>
+<div class="wrap">
+  <p class="top-note">honest numbers, no pitch deck</p>
+  <h1>Keep the bowls full.</h1>
+  <p class="lede">This map is free, and I want it to stay that way. Right now every bill lands on me. Here is what it actually costs.</p>
+  <div class="bowl">
+    <p class="empty">the monthly bowl, pretty empty right now</p>
+    <div class="bowlbar"><div class="bowlfill"></div></div>
+    <div class="bowlmeta"><span>$0 in, be the first to drop something in</span><span>about $65/mo to run</span></div>
+  </div>
+  <div class="receipt">
+    <b>Receipt for October, roughly:</b>
+    <ul>
+      <li>Map tiles + search, so pins actually load</li>
+      <li>Hosting, so it opens fast on old phones too</li>
+      <li>Photo storage, so you can tell Milo from Luna</li>
+    </ul>
+  </div>
+  <h2>The PayPal button</h2>
+  <p>Not live yet. I am setting it up now. When it is ready, it will sit right here.</p>
+  <a class="paypal disabled" id="btn-paypal" href="#"><span style="font-style:italic">PayPal</span><small>coming soon, promise</small></a>
+  <p style="font-size:13px;color:#8b7269;margin-top:10px">Anything left after the bills, I send 10% to the ASPCA and Humane Society. I will show the math here when there is math to show.</p>
+  <div class="free">
+    <h2 style="margin-bottom:4px">Broke right now? Same. You can still help.</h2>
+    <a href="index.html"><span class="material-symbols-outlined">restaurant</span><span><b>Log a dinner</b><small>One tap. The next feeder sees someone ate today.</small></span></a>
+    <a href="index.html"><span class="material-symbols-outlined">add_location</span><span><b>Pin the new kid</b><small>Orange cat behind the dumpster? Pin it before you forget.</small></span></a>
+    <a href="#" id="link-share"><span class="material-symbols-outlined">share</span><span><b>Text one feeder</b><small>Just forward this to the person with kibble in their bag.</small></span></a>
+  </div>
+  <h2>Small questions</h2>
+  <details open><summary>Where does it go?</summary><p>Bills first. Maps, hosting, photos. That is the whole list.</p></details>
+  <details><summary>Are you a nonprofit?</summary><p>Nope. Just me, doing this at my kitchen table. So nothing gets lost in overhead.</p></details>
+  <details><summary>Can I just email you?</summary><p>Please do. lirzqad@gmail.com. I read it all myself, usually too late at night.</p></details>
+  <a class="back" href="/">Back to the map</a>
+</div>
+<script>
+/* Paste your PayPal.me / PayPal donate link here when ready, e.g.
+   window.FTA_PAYPAL_URL = "https://www.paypal.com/paypalme/yourname";
+   The button enables itself automatically. */
+window.FTA_PAYPAL_URL = "";
+(function(){
+  "use strict";
+  var btn = document.getElementById("btn-paypal");
+  if (window.FTA_PAYPAL_URL) {
+    btn.setAttribute("href", window.FTA_PAYPAL_URL);
+    btn.classList.remove("disabled");
+    btn.innerHTML = '<span style="font-style:italic">PayPal</span><small>thank you, truly</small>';
+  } else {
+    btn.addEventListener("click", function(e){ e.preventDefault(); });
+  }
+  document.getElementById("link-share").addEventListener("click", function(e){
+    e.preventDefault();
+    var url = location.origin + "/index.html";
+    var text = "Help feed local strays. Live map of who needs food near you:";
+    if (navigator.share) { navigator.share({ title: "FeedAnAnimalMap", text: text, url: url }).catch(function(){}); }
+    else if (navigator.clipboard) { navigator.clipboard.writeText(text + " " + url).then(function(){ alert("Link copied. Send it to a fellow feeder!"); }); }
+    else { location.href = "mailto:?subject=FeedAnAnimalMap&body=" + encodeURIComponent(text + " " + url); }
+  });
+})();
+</script>
+<script src="site-header.js"></script>
+</body>
+</html>

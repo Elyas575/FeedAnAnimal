@@ -128,7 +128,7 @@
     '#site-top-header .fta-hd-right{display:flex;align-items:center;gap:10px;flex-shrink:0}',
     '#site-top-header .fta-support{display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;',
     'border:0;border-radius:12px;background:#E54848;color:#fff;font-family:inherit;font-size:14px;',
-    'font-weight:500;box-shadow:0 1px 2px rgba(30,27,26,.15);cursor:pointer;',
+    'font-weight:500;text-decoration:none;box-shadow:0 1px 2px rgba(30,27,26,.15);cursor:pointer;',
     'transition:transform .15s ease,background .15s ease}',
     '#site-top-header .fta-support:active{transform:scale(.95)}',
     '#site-top-header .fta-support:hover{background:#d63c3c}',
@@ -262,9 +262,9 @@
             + '</div>'
             + '<div class="fta-cp-list" id="fta-chat-list"></div>'
           + '</div>'
-        + '<button type="button" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" title="Support Animal Relief">'
+        + '<a href="support.html" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" style="text-decoration:none" title="Support Animal Relief">'
           + '<span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="fta-support-label hidden sm:inline">Support</span>'
-        + '</button>'
+        + '</a>'
         + '<a id="auth-link" href="auth.html" class="fta-signin h-10 px-4 rounded-full border border-surface-container-highest bg-white text-on-surface hover:bg-surface-container font-medium text-sm flex items-center justify-center transition-colors shadow-sm">'
           + '<span class="fta-signin-icon material-symbols-outlined text-[18px] mr-1 hidden sm:inline">person</span><span id="auth-link-label">Sign in</span>'
         + '</a>'
@@ -429,6 +429,7 @@
   function chatPopRow(t) {
     var who = t.peerName || 'Volunteer';
     var preview = t.lastBody ? (t.lastMine ? 'You: ' + t.lastBody : t.lastBody) : 'No messages yet';
+    var online = !!t.peerOnline;
     return '<button type="button" class="fta-cp-row' + (t.unread ? ' unread' : '') + '"'
       + ' data-animal="' + esc(t.animalId || '') + '"'
       /* The conversation id travels too. Without it the map has to guess the
@@ -437,11 +438,15 @@
          volunteer. This row already knows; carry it. */
       + ' data-conversation="' + esc(t.id || '') + '">'
       + '<span class="relative w-9 h-9 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"'
-        + ' style="background:' + esc(chatHue(who)) + '">'
-        + '<span style="color:#fff;font-size:13px;font-weight:800">' + esc(chatInitials(who)) + '</span></span>'
+        + ' style="background:' + esc(chatHue(who)) + ';position:relative">'
+        + '<span style="color:#fff;font-size:13px;font-weight:800">' + esc(chatInitials(who)) + '</span>'
+        + (online ? '<span aria-label="Online" title="Online" style="position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:9999px;background:#22c55e;border:2px solid #fff"></span>' : '')
+        + '</span>'
       + '<span style="flex:1;min-width:0">'
         + '<span style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">'
-          + '<b style="font-size:13.5px;color:#1e1b1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(who) + '</b>'
+          + '<b style="font-size:13.5px;color:#1e1b1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(who)
+          + (online ? ' <span style="color:#16a34a;font-size:10.5px">●</span>' : '')
+          + '</b>'
           + '<span style="font-size:10.5px;color:#8b7269;flex-shrink:0">' + esc(chatAgo(t.lastAt)) + '</span>'
         + '</span>'
         + '<span style="display:block;font-size:12px;color:#57423b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'

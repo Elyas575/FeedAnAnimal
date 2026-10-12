@@ -769,11 +769,11 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <!-- Phones use a full-height sheet; desktop CSS docks this panel in the
        lower-right corner and lets its header collapse the message area. -->
   <div class="fta-modal-panel chat-widget-panel w-full sm:max-w-md bg-surface sm:rounded-lg rounded-t-2xl shadow-2xl border border-surface-container-highest flex flex-col h-[100dvh] sm:h-auto sm:max-h-[85vh]">
-    <div class="flex items-center gap-3 p-3 sm:p-4 border-b border-surface-container-high shrink-0">
+    <div class="flex items-center gap-3 px-3 py-2 border-b border-surface-container-high shrink-0" style="background:#f0f2f5">
       <div id="chat-avatar" class="shrink-0" aria-hidden="true"></div>
       <div class="min-w-0 flex-1">
         <h2 id="chat-title" class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">Messages</h2>
-        <p id="chat-with" class="font-body-sm text-body-sm text-on-surface-variant truncate"></p>
+        <p id="chat-with" class="truncate" style="min-width:0"></p>
       </div>
       <button id="chat-collapse" type="button" class="hidden sm:flex shrink-0 w-9 h-9 rounded-full items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
         aria-label="Minimize chat" aria-expanded="true" aria-controls="chat-content" title="Minimize chat">
@@ -857,28 +857,31 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   <span class="h-px flex-1 bg-surface-container-highest py-4 gap-3 pl-9 mt-1.5 mt-4 mb-1.5 items-center text-[12px] min-h-[44px] leading-relaxed px-5 justify-end"></span>
 </div>
 
-<!-- Read-receipt tick. One tick means sent, two (done_all) mean read.
-     Rendered by chatReceipt() in index.js, so the rules live here where the
-     rest of the page's styling does. --inline because the markup is built
-     in JS and the Play CDN only scans the DOM. -->
+<!-- WhatsApp-style thread: compact bubbles, clock + ticks floated inside the
+     bubble's bottom-right (so "ok" stays small), WhatsApp day chip, one-line
+     header with the peer's name + online dot. -->
 <style>
-  #chat-log{background:#efeae2}
-  #chat-log-inner .chat-message{align-self:flex-start;width:max-content;max-width:88%;margin-top:8px}
+  #chat-log{background:#efeae2;background-image:radial-gradient(rgba(0,0,0,.025) 1px,transparent 1px);background-size:18px 18px}
+  #chat-log-inner .chat-message{align-self:flex-start;max-width:80%;margin-top:2px}
   #chat-log-inner .chat-message--mine{align-self:flex-end}
-  #chat-log-inner .chat-message--grouped{margin-top:3px}
-  #chat-log-inner .chat-message__bubble{display:flex;align-items:flex-end;gap:8px;padding:7px 9px 5px 10px;border-radius:9px 9px 9px 2px;background:#fff;color:#292321;font-size:14px;line-height:1.4;overflow-wrap:anywhere;box-shadow:0 1px 1px rgba(0,0,0,.08)}
-  #chat-log-inner .chat-message--mine .chat-message__bubble{border-radius:9px 9px 2px 9px;background:#d9fdd3}
-  #chat-log-inner .chat-message__text{min-width:0;flex:1}
-  #chat-log-inner .chat-message__meta{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;padding-left:4px;color:#66736a;font-size:10px;line-height:1.2;white-space:nowrap}
+  #chat-log-inner .chat-message--grouped{margin-top:2px}
+  #chat-log-inner .chat-message:not(.chat-message--grouped){margin-top:8px}
+  #chat-log-inner .chat-message__bubble{position:relative;display:block;padding:6px 7px 18px 9px;border-radius:10px;background:#fff;color:#111b21;font-size:14.5px;line-height:1.35;overflow-wrap:anywhere;box-shadow:0 1px 1px rgba(0,0,0,.12)}
+  #chat-log-inner .chat-message--mine .chat-message__bubble{border-top-right-radius:2px;background:#d9fdd3}
+  #chat-log-inner .chat-message--theirs .chat-message__bubble{border-top-left-radius:2px}
+  #chat-log-inner .chat-message__text{display:inline}
+  #chat-log-inner .chat-message__meta{position:relative;float:right;display:inline-flex;align-items:center;gap:2px;margin:8px -2px -14px 8px;color:#667781;font-size:11px;line-height:1;white-space:nowrap}
   #chat-log-inner .chat-message__meta time{font:inherit}
   #chat-log-inner .chat-message__meta .chat-tick{display:inline-flex}
-  #chat-log-inner .chat-message__meta .material-symbols-outlined{font-size:14px}
-  #chat-form .chat-composer-input{width:100%;height:auto;min-height:40px;max-height:128px;padding:9px 10px;border:0;border-radius:14px;background:transparent;color:#1e1b1a;font:inherit;resize:none;outline:none;box-shadow:none}
+  #chat-log-inner [role="separator"]{padding-top:8px;padding-bottom:8px}
+  #chat-log-inner [role="separator"]>span:last-child{font-size:12px}
+  #chat-form{background:#f0f2f5}
+  #chat-form .chat-composer-field{background:#fff;border:1px solid #e9e1df;border-radius:24px}
+  #chat-form .chat-composer-input{width:100%;height:auto;min-height:40px;max-height:128px;padding:9px 12px;border:0;border-radius:24px;background:transparent;color:#111b21;font:inherit;resize:none;outline:none;box-shadow:none}
   #chat-form .chat-composer-input:focus{outline:none;border:0;box-shadow:none}
   #chat-send[hidden]{display:none}
-  #chat-log-inner [role="separator"]{padding-top:8px;padding-bottom:8px}
   .chat-tick{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#86938a}
-  .chat-tick .material-symbols-outlined{font-size:15px;line-height:1;width:15px;height:15px}
+  .chat-tick svg{width:16px;height:16px;display:block}
   /* The double tick is the "seen it" signal; the sent tick stays muted. */
   .chat-tick--read{color:#53bdeb}
   @media (min-width:640px){

@@ -253,7 +253,7 @@
        back from the insert, and realtime then delivers the same row again).
        channel is the realtime subscription and MUST be released on close or
        it keeps delivering into a detached node. */
-    chat: { conversationId: null, peer: null, peerName: '', peerReadAt: null, blocked: false, channel: null, seenIds: {}, rows: [], animalName: '', myId: null, readTimer: null }
+    chat: { conversationId: null, peer: null, peerName: '', peerReadAt: null, peerOnline: false, blocked: false, channel: null, seenIds: {}, rows: [], animalName: '', myId: null, readTimer: null, presenceTimer: null }
   };
 
   async function loadDataset() {
@@ -1826,6 +1826,10 @@
       clearInterval(state.chat.readTimer);
       state.chat.readTimer = null;
     }
+    if (state.chat.presenceTimer) {
+      clearInterval(state.chat.presenceTimer);
+      state.chat.presenceTimer = null;
+    }
     if (state.chat.channel) {
       try {
         const client = (typeof window !== 'undefined' && window.sb) ? window.sb : null;
@@ -1837,6 +1841,7 @@
     state.chat.peer = null;
     state.chat.peerName = '';
     state.chat.peerReadAt = null;
+    state.chat.peerOnline = false;
     state.chat.blocked = false;
     state.chat.seenIds = {};
     state.chat.rows = [];
@@ -1856,7 +1861,13 @@
        closing it must not unlock page scrolling while another modal is
        still up. Only the last visible modal releases the lock. */
     document.body.style.overflow = document.querySelector('[data-modal]:not(.hidden)') ? 'hidden' : '';
-    if (id === 'chat-modal') stopChat();
+    if (id === 'chat-modal') {
+      stopChat();
+      /* openChat hides the generic "Messages" title to make room for the
+         WhatsApp peer line - put it back so the next open starts clean. */
+      const titleEl = document.getElementById('chat-title');
+      if (titleEl) titleEl.style.display = '';
+    }
     if (id === 'report-camera-modal') stopReportCamera();
     if (id === 'report-modal') {
       state.pickMode = false;
@@ -2860,17 +2871,26 @@
     /* No cursor yet means nobody has ever opened the thread, so the honest
        answer is "sent", never "read". */
     const read = isFinite(seen) && seen >= sentAt;
+    /* Inline SVG, NOT the Material Symbols ligature. The ligature renders as
+       the literal words "done"/"done_all" whenever the icon font fails to
+       load (ad-blocker, offline CDN, slow font), and the 15px box then clips
+       it to "don" - exactly the reported bug. An SVG always paints. */
+    const path = read
+      ? 'M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.67 16.17l-4.24-4.24-1.41 1.41L11.67 19l12-12-1.43-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z'
+      : 'M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z';
     return '<span class="chat-tick ' + (read ? 'chat-tick--read' : '') + '"'
       + ' title="' + (read ? 'Read' : 'Sent') + '"'
-      + ' aria-label="' + (read ? 'Read' : 'Sent') + '">'
-      + '<span class="material-symbols-outlined" aria-hidden="true">' +
-        (read ? 'done_all' : 'done') + '</span></span>';
+      + ' aria-label="' + (read ? 'Read' : 'Sent') + '"'
+      + ' data-tick="' + (read ? 'read' : 'sent') + '">'
+      + '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true" focusable="false">'
+      + '<path d="' + path + '"/></svg></span>';
   }
 
-  /* WhatsApp-style thread: compact, aligned message bubbles with the time
-     and sender's read receipt tucked into each outgoing bubble. */
+  /* WhatsApp-style thread: compact bubbles with the clock + ticks tucked
+     inside the bubble's bottom-right corner (floated, not flex-pushed, so a
+     one-word "ok" stays a small bubble instead of stretching full-width). */
   function chatBubble(row, mine, grouped, endsGroup, peerReadAt) {
-    const receipt = endsGroup && mine ? chatReceipt(row, peerReadAt) : '';
+    const receipt = mine ? chatReceipt(row, peerReadAt) : '';
     const bubble = '<div class="chat-message__bubble">' +
       '<span class="chat-message__text whitespace-pre-wrap">' + esc(row.body) + '</span>' +
       '<span class="chat-message__meta"><time>' + esc(chatTime(row.created_at)) + '</time>' +
@@ -2880,21 +2900,14 @@
       (grouped ? ' chat-message--grouped' : '') + '">' + bubble + '</div>';
   }
 
-  /* Chat timestamps, not "5m ago" everywhere. Inside a live thread the exact
-     time is what a volunteer needs ("did I send that before or after the
-     feed?"), and it stays readable for a message from last week where
-     "5d ago" would be ambiguous. */
+  /* Bubble clock only ("6:35 PM"). The DAY lives in the divider above, so
+     repeating "Today" inside every bubble is what made the thread read
+     cluttered. Same clock for old messages - the divider already says which
+     day they belong to. */
   function chatTime(iso) {
     const at = Date.parse(iso);
     if (!isFinite(at)) return '';
-    const mins = Math.round((Date.now() - at) / MINUTE);
-    if (mins < 1) return 'just now';
-    const clock = new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    if (mins < 60) return clock;
-    const today = new Date();
-    const sameDay = new Date(at).toDateString() === today.toDateString();
-    if (sameDay) return 'Today ' + clock;
-    return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + clock;
+    return new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
 
   function chatScrollToEnd(force) {
@@ -2994,17 +3007,14 @@
     chatScrollToEnd();
   }
 
-  /* Messenger-style date rule: a full-width hairline with the date sitting ON the
-     line, centred. A filled chip floating in the flow reads as a message;
-     a rule with a label reads as a section break, which is what it is.
-     The line runs edge to edge so the date is unambiguously a divider and
-     not a message that happens to be centred. */
+  /* WhatsApp day chip: a small centred pill ("TODAY"), not a hairline rule.
+     The hairline read as a section break from another app; the chip is the
+     WhatsApp signal for "same conversation, new day". */
   function chatDayDividerHtml(label) {
-    return '<div class="flex items-center gap-3 py-4 first:pt-1" role="separator" aria-label="' + esc(label) + '">'
-      + '<span class="h-px flex-1 bg-surface-container-highest"></span>'
-      + '<span class="font-label-sm text-[11px] font-semibold uppercase tracking-wide text-outline shrink-0">'
+    return '<div class="flex justify-center py-2 first:pt-1" role="separator" aria-label="' + esc(label) + '">'
+      + '<span class="font-label-sm text-[11px] font-semibold uppercase tracking-wide px-3 py-1 rounded-lg shrink-0"'
+      + ' style="background:#f0f2f5;color:#54656f;box-shadow:0 1px 1px rgba(0,0,0,.08)">'
         + esc(label) + '</span>'
-      + '<span class="h-px flex-1 bg-surface-container-highest"></span>'
       + '</div>';
   }
 
@@ -3173,6 +3183,12 @@
     try {
       const listed = await peers(conversation, state.chat.myId);
       const fresh = (listed && listed[0] && listed[0].lastReadAt) || null;
+      const onlineNow = !!(listed && listed[0] && listed[0].online);
+      const onlineFlip = onlineNow !== !!state.chat.peerOnline;
+      if (onlineFlip) {
+        state.chat.peerOnline = onlineNow;
+        paintChatPresence();
+      }
       /* String compare, not Date: both sides are ISO strings from the same
          column, and equal text means nothing changed. Re-rendering on an
          unchanged value would fight the live append path. */
@@ -3236,6 +3252,7 @@
     let peerName = null;
     let peerId = null;
     let peerReadAt = null;
+    let peerOnline = false;
 
     if (conversation) {
       /* Known thread: the peer comes out of the participants list, so the
@@ -3246,6 +3263,7 @@
         peerId = listed[0].userId;
         peerName = listed[0].name;
         peerReadAt = listed[0].lastReadAt || null;
+        peerOnline = !!listed[0].online;
       } else {
         peerName = 'Volunteer';
       }
@@ -3333,10 +3351,27 @@
        sender_id, and a name lookup per bubble would be a query each. */
     const nameFor = (senderId) => (senderId === me.id ? 'You' : state.chat.peerName);
 
-    if (withEl) withEl.textContent = 'Chat with ' + (state.chat.peerName || 'Volunteer');
+    /* WhatsApp header: ONE line - the peer's name with a green online dot.
+       "Messages / Chat with X" stacked two lines is what made the header
+       feel like a settings page instead of a chat. */
+    const peerOnlineNow = peerOnline || (typeof window !== 'undefined' && window.sbPeerOnline
+      ? window.sbPeerOnline({ lastReadAt: peerReadAt }, null, Date.now())
+      : false);
+    state.chat.peerOnline = !!peerOnlineNow;
+    const presenceHtml = (typeof window !== 'undefined' && window.sbPresenceDotHtml)
+      ? window.sbPresenceDotHtml(state.chat.peerOnline, 12) : '';
+    const statusText = state.chat.peerOnline ? 'online' : 'Chat with ' + (state.chat.peerName || 'Volunteer');
+    if (withEl) {
+      withEl.innerHTML = '<span style="font-weight:800;color:#111b21;font-size:16px;line-height:1.2;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        + esc(state.chat.peerName || 'Volunteer') + '</span>'
+        + '<span style="font-size:12px;color:' + (state.chat.peerOnline ? '#25d366' : '#667781') + ';line-height:1.2;display:block">'
+        + esc(statusText) + '</span>';
+    }
+    const titleEl = $('#chat-title');
+    if (titleEl) titleEl.style.display = 'none';
     /* Avatar in the thread header, matching the inbox and the popover. */
     const avatarEl = $('#chat-avatar');
-    if (avatarEl) avatarEl.innerHTML = personAvatarHtml(state.chat.peerName, null, 'w-9 h-9');
+    if (avatarEl) avatarEl.innerHTML = '<span style="position:relative;display:inline-flex">' + personAvatarHtml(state.chat.peerName, null, 'w-10 h-10') + presenceHtml + '</span>';
     const blockBtn = $('#chat-block');
     if (blockBtn) blockBtn.textContent = 'Block';
 
@@ -3380,6 +3415,27 @@
     clearInterval(state.chat.readTimer);
     refreshPeerReadAt();
     state.chat.readTimer = setInterval(refreshPeerReadAt, 8000);
+    /* Same poll refreshes the green dot: a cursor that moved recently means
+       they are here right now. */
+    clearInterval(state.chat.presenceTimer);
+    state.chat.presenceTimer = setInterval(refreshPeerReadAt, 15000);
+  }
+
+  /* Repaints the WhatsApp header line (name + online status + green dot)
+     without touching the message log. Called whenever the peer's cursor
+     refreshes, so "online" flips live while the thread is open. */
+  function paintChatPresence() {
+    const withEl = $('#chat-with');
+    if (!withEl || !state.chat.conversationId) return;
+    const dot = (typeof window !== 'undefined' && window.sbPresenceDotHtml)
+      ? window.sbPresenceDotHtml(state.chat.peerOnline, 12) : '';
+    const statusText = state.chat.peerOnline ? 'online' : 'Chat with ' + (state.chat.peerName || 'Volunteer');
+    withEl.innerHTML = '<span style="font-weight:800;color:#111b21;font-size:16px;line-height:1.2;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+      + esc(state.chat.peerName || 'Volunteer') + '</span>'
+      + '<span style="font-size:12px;color:' + (state.chat.peerOnline ? '#25d366' : '#667781') + ';line-height:1.2;display:block">'
+      + esc(statusText) + '</span>';
+    const avatarEl = $('#chat-avatar');
+    if (avatarEl) avatarEl.innerHTML = '<span style="position:relative;display:inline-flex">' + personAvatarHtml(state.chat.peerName, null, 'w-10 h-10') + dot + '</span>';
   }
 
   async function sendChatMessage() {

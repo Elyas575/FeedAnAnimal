@@ -13,6 +13,9 @@
 /*.html
   Cache-Control: no-cache, must-revalidate
 
+/support.html
+  Cache-Control: no-cache, must-revalidate
+
 /activity.html
   Cache-Control: no-cache, must-revalidate
 

@@ -87,10 +87,11 @@ ok('a missing timestamp never groups',
   app.isGroupedWith({ sender_id: themId, created_at: ago(1) }, { sender_id: themId }) === false);
 
 /* Chat timestamps show the clock, not "5m ago": inside a live thread the
-   volunteer needs to know whether a message came before or after a feed. */
-ok('a fresh message reads as just now', app.chatTime(new Date().toISOString()) === 'just now');
+   volunteer needs to know whether a message came before or after a feed. The
+   DAY lives in the divider above, so bubbles carry the clock only. */
+ok('a fresh message shows the clock', /\d{1,2}:\d{2}/.test(app.chatTime(new Date().toISOString())), app.chatTime(new Date().toISOString()));
 ok('an older message shows the clock', /\d{1,2}:\d{2}/.test(app.chatTime(ago(20))), app.chatTime(ago(20)));
-ok('yesterday shows a date', /\d{1,2}:\d{2}/.test(app.chatTime(ago(60 * 40))));
+ok('yesterday shows only the clock too (the divider says the day)', /\d{1,2}:\d{2}/.test(app.chatTime(ago(60 * 40))));
 ok('a broken timestamp does not throw', app.chatTime('nonsense') === '');
 
 /* ------------------------------ validation -------------------------- */
@@ -117,7 +118,7 @@ ok('the old snippet bug is called out', client.indexOf('chat-snippets.js') !== -
  * button uses closeModal. */
 ok('stopChat() exists', js.indexOf('function stopChat') !== -1);
 ok('stopChat removes the channel', js.indexOf('client.removeChannel(state.chat.channel)') !== -1);
-ok('closing via closeModal stops the chat', /id === 'chat-modal'\) stopChat\(\)/.test(js));
+ok('closing via closeModal stops the chat', /id === 'chat-modal'\)[\s\S]{0,40}stopChat\(\)/.test(js));
 ok('closing via closeAllModals stops the chat', /function closeAllModals\(\)[\s\S]{0,400}stopChat\(\)/.test(js));
 ok('opening a thread drops the previous subscription', /async function openChat[\s\S]{0,300}stopChat\(\)/.test(js));
 
@@ -206,8 +207,8 @@ ok('the gate starts hidden', /id="chat-gate"[^>]*class="hidden/.test(html));
 /* ---------------------------- details drawer ------------------------- */
 ok('details drawer offers Message caretaker',
   js.indexOf('data-action="message"') !== -1 && js.indexOf('Message caretaker') !== -1);
-ok('the thread header identifies the person being messaged',
-  /withEl\.textContent = 'Chat with ' \+ \(state\.chat\.peerName \|\| 'Volunteer'\)/.test(js));
+ok('the thread header shows the peer name', /esc\(state\.chat\.peerName/.test(js));
+ok('the thread header shows online status', /statusText/.test(js) && /sbPresenceDotHtml/.test(js));
 ok('desktop chat can be expanded and minimized accessibly',
   /function setChatWidgetCollapsed\(collapsed\)/.test(js) &&
   /setChatWidgetCollapsed\(chatCollapse\.getAttribute\('aria-expanded'\) === 'true'\)/.test(js));
@@ -489,16 +490,51 @@ ok('the popover row carries the conversation id',
 ok('chatReceipt exists', typeof app.chatReceipt === 'function');
 const t0 = '2026-03-10T10:00:00.000Z';
 ok('no peer cursor means sent, never read',
-  app.chatReceipt({ created_at: t0 }, null).indexOf('done_all') === -1);
+  app.chatReceipt({ created_at: t0 }, null).indexOf('data-tick="read"') === -1);
 ok('a cursor at or past the message means read',
-  app.chatReceipt({ created_at: t0 }, t0).indexOf('done_all') !== -1);
+  app.chatReceipt({ created_at: t0 }, t0).indexOf('data-tick="read"') !== -1);
 ok('a cursor before the message means sent',
-  app.chatReceipt({ created_at: t0 }, '2026-03-10T09:59:00.000Z').indexOf('done_all') === -1);
+  app.chatReceipt({ created_at: t0 }, '2026-03-10T09:59:00.000Z').indexOf('data-tick="read"') === -1);
 ok('the read tick is labelled for screen readers',
   app.chatReceipt({ created_at: t0 }, t0).indexOf('aria-label="Read"') !== -1);
 ok('the sent tick is labelled for screen readers',
   app.chatReceipt({ created_at: t0 }, null).indexOf('aria-label="Sent"') !== -1);
+/* The tick is inline SVG, not a font ligature: the ligature rendered as the
+   literal words "done"/"done_all" (clipped to "don") whenever the icon font
+   failed to load - exactly the reported bug. data-tick keeps the sent/read
+   distinction testable withoutdepending on the font. */
+ok('the tick renders as inline SVG, never a font ligature',
+  app.chatReceipt({ created_at: t0 }, t0).indexOf('<svg') !== -1 &&
+  app.chatReceipt({ created_at: t0 }, null).indexOf('<svg') !== -1);
+ok('the tick carries no font ligature text',
+  app.chatReceipt({ created_at: t0 }, t0).indexOf('done_all') === -1 &&
+  app.chatReceipt({ created_at: t0 }, null).indexOf('>done<') === -1);
+ok('the tick marks sent vs read with data-tick',
+  app.chatReceipt({ created_at: t0 }, t0).indexOf('data-tick="read"') !== -1 &&
+  app.chatReceipt({ created_at: t0 }, null).indexOf('data-tick="sent"') !== -1);
 /* Only my own messages carry a tick. */
+/* ------------------------- online presence -------------------------- *
+ * The green ball next to a name. No new table: online-ness is derived from
+ * columns the client already fetches (the peer's read cursor + the last
+ * message), so the dot costs zero extra reads and a dead tab can never
+ * leave a stale "online" row behind. */
+
+ok('presence derives online from the peer cursor, no new table',
+  client.indexOf('function sbPeerOnline(') !== -1);
+ok('presence ignores stale cursors (5-minute window)',
+  /CHAT_ONLINE_WINDOW_MS = 5 \* 60 \* 1000/.test(client));
+ok('the inbox thread carries the online flag',
+  client.indexOf('peerOnline: !!online') !== -1);
+ok('the participants row carries the online flag',
+  /online: sbPeerOnline\(\{ lastReadAt/.test(client));
+ok('the green dot is exposed for the inbox and header',
+  client.indexOf('window.sbPresenceDotHtml = sbPresenceDotHtml;') !== -1);
+ok('the thread header paints the online status',
+  /paintChatPresence\(\)/.test(js) && /sbPresenceDotHtml/.test(js));
+ok('the inbox row shows the green ball when online',
+  inboxSrc.indexOf('peerOnline') !== -1 && inboxSrc.indexOf('aria-label="Online"') !== -1);
+ok('the header popover shows the green ball when online',
+  headerSrc.indexOf('peerOnline') !== -1 && headerSrc.indexOf('aria-label="Online"') !== -1);
 ok('my own bubble shows a tick',
   app.chatBubble({ body: 'x', created_at: t0 }, true, false, true, t0).indexOf('chat-tick') !== -1);
 ok("the other person's bubble shows no tick",
