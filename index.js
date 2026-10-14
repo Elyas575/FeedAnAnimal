@@ -863,12 +863,6 @@
     });
   }
 
-  function renderStatusBar() {
-    const volunteers = $('#volunteer-count');
-    if (volunteers) volunteers.textContent = String(state.meta.volunteersActive || 0);
-    const needsHelp = $('#header-needs-help');
-    if (needsHelp) needsHelp.textContent = String(needsHelpCount()) + ' need help now';
-  }
 
   /* ------------------------------ toasts ----------------------------- */
   function toast(message, tone) {
@@ -1656,7 +1650,6 @@
     renderFeed();
     renderTicker();
     renderMarkers();
-    renderStatusBar();
     if (state.map) state.map.closePopup();
     if (message) toast(message, tone || 'ok');
   }
@@ -4019,13 +4012,6 @@
       renderUserMarker();
       renderMarkers();
     }
-    renderChips();
-    renderFeed();
-    renderTicker();
-    renderStatusBar();
-    /* Phones land on the map (one pane fits the screen); desktop keeps the split
-       view, so the side menu is there from the first frame. The desktop pill
-       can still collapse it to a full-bleed map on demand. */
     switchMobileView(isNarrow() ? 'map' : 'list');
     initLocationPrompt();
     wireEvents();
@@ -4105,7 +4091,6 @@
           state.fitted = true; /* the opening fit already ran; keep the camera */
           renderFeed();
           renderMarkers();
-          renderStatusBar();
           if (added) toast(added + ' community report' + (added === 1 ? '' : 's') + ' on the map.', 'info');
         }).catch(() => {});
       }

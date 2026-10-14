@@ -16,34 +16,9 @@
 <style>
   body{margin:0;background:#fff8f6;color:#2b2320;line-height:1.65;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
   .wrap{max-width:620px;margin:0 auto;padding:26px 20px 120px}
-  .top-note{font-size:13px;color:#8b7269;margin:0 0 8px}
-  h1{font-size:31px;margin:0 0 8px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
-  h2{font-size:19px;margin:0 0 10px;font-weight:800}
-  p{font-size:15px;color:#3b3330;margin:0 0 12px}
-  .lede{font-size:16px;color:#57423b;margin:0 0 22px}
-  .bowl{background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:20px;margin:18px 0}
-  .bowl .empty{font-size:13px;font-weight:700;color:#8b7269;margin:0 0 6px}
-  .bowlbar{height:14px;border-radius:9999px;background:#f5ecea;overflow:hidden}
-  .bowlfill{height:100%;width:3%;border-radius:9999px;background:repeating-linear-gradient(-45deg,#E54848,#E54848 8px,#f0705f 8px,#f0705f 16px)}
-  .bowlmeta{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#8b7269;margin-top:8px}
-  .receipt{background:#fffdf7;border:1px dashed #d9c3ac;border-radius:12px;padding:14px 16px;margin:16px 0;font-size:13.5px;color:#57423b}
-  .receipt b{color:#2b2320}
-  .receipt ul{margin:8px 0 0;padding-left:18px}
-  .receipt li{margin:2px 0}
-  .paypal{display:block;text-align:center;background:#FFC439;color:#003087;text-decoration:none;
-    font-weight:800;font-size:17px;padding:15px;border-radius:14px;margin-top:6px}
-  .paypal small{display:block;font-size:12.5px;font-weight:600}
-  .paypal.disabled{opacity:.7;cursor:not-allowed}
-  .free{background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:18px;margin:16px 0}
-  .free a{display:flex;gap:12px;align-items:flex-start;text-decoration:none;padding:10px 0;border-top:1px dashed #e9d9cf}
-  .free a:first-of-type{border-top:0}
-  .free .material-symbols-outlined{color:#a03b0e}
-  .free b{font-size:14.5px;color:#2b2320;display:block}
-  .free small{font-size:13px;color:#6f615b}
-  details{border:1px solid #efe6e4;border-radius:12px;padding:12px 14px;margin-top:8px;background:#fff}
-  details summary{font-weight:700;font-size:14px;cursor:pointer}
-  details p{font-size:13.5px;margin:8px 0 0}
-  .back{display:inline-block;margin-top:14px;background:#a03b0e;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 22px;border-radius:9999px}
+  .pp-form{text-align:center;background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:20px;margin:18px 0}
+  .pp-form input[type="image"]{max-width:100%;height:auto;border:0;cursor:pointer;border-radius:12px}
+  .pp-note{font-size:13px;color:#8b7269;margin:10px 0 0}
   a{color:#a03b0e}
   body.has-site-header{padding-top:var(--site-header-h,68px)}
   @media (max-width:767px){body.has-site-header{padding-bottom:90px}}
@@ -53,9 +28,18 @@
 </head>
 <body>
 <div id="site-header"></div>
-<div class="wrap" style="text-align:center;padding:80px 20px 120px">
-  <h1>Coming soon..</h1>
-  <p><a class="back" href="/">Back to the map</a></p>
+<div class="wrap">
+  <div class="pp-form">
+    <form action="https://www.paypal.com/donate" method="post" target="_top">
+      <input type="hidden" name="business" value="2BFEC3CYVGAM2" />
+      <input type="hidden" name="no_recurring" value="0" />
+      <input type="hidden" name="item_name" value="FeedAnAnimalMap - keep the stray feeding map running" />
+      <input type="hidden" name="currency_code" value="USD" />
+      <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+      <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1" height="1" />
+    </form>
+    <p class="pp-note">Secure donation via PayPal — cards accepted, no account needed. One-time or monthly.</p>
+  </div>
 </div>
 <script src="site-header.js"></script>
 </body>
