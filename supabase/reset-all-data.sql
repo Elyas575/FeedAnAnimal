@@ -1,5 +1,5 @@
 -- ============================================================================
---  RESET EVERYTHING — wipe all data for a from-scratch test
+--  RESET EVERYTHING   wipe all data for a from-scratch test
 --  Supabase Dashboard > SQL Editor > New Query > Run
 --
 --  The existing cleanup-seed-data.sql only removes the 48 demo animals.
@@ -25,7 +25,7 @@
 --      NOT replace them - run them first if you have not yet, otherwise the
 --      fresh test hits the old foreign-key bug and looks like a new bug.
 --
---  AFTER RUNNING — clear browser storage in EVERY browser/origin you test
+--  AFTER RUNNING   clear browser storage in EVERY browser/origin you test
 --  with, or the old overlay log re-appears and (FK now dropped) re-syncs into
 --  the empty database: F12 -> Application -> Local Storage -> right-click the
 --  origin -> Clear All, or in the console: localStorage.clear()
@@ -93,7 +93,7 @@ delete from auth.users;
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
--- Sanity check — every count must be 0 after a full reset.
+-- Sanity check   every count must be 0 after a full reset.
 -- ---------------------------------------------------------------------------
 select (select count(*) from events)     as events,
        (select count(*) from reports)    as reports,

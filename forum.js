@@ -1,4 +1,4 @@
-/* Community forum — Wakie-style topics.
+/* Community forum   Wakie-style topics.
  *
  * LOCAL-FIRST: if supabase/schema-forum.sql has not been run yet, the
  * cloud wrappers return null and everything stays on this device. After
@@ -38,7 +38,7 @@ function validateTopic(title, body) {
   var b = String(body || '').trim();
   if (t.length < 3) return 'Give your topic a title (3+ characters).';
   if (t.length > TITLE_MAX) return 'Keep the title under ' + TITLE_MAX + '.';
-  if (!b) return 'Say a little more — what is happening?';
+  if (!b) return 'Say a little more   what is happening?';
   if (b.length > BODY_MAX) return 'Keep it under ' + BODY_MAX + ' characters.';
   return null;
 }
@@ -271,7 +271,7 @@ async function refreshTopics() {
     var anon = !myId;
     empty.innerHTML = anon
       ? 'No topics yet. <a href="auth.html">Sign in</a> and start the first one.'
-      : 'No topics yet — start the first one below.';
+      : 'No topics yet   start the first one below.';
     return;
   }
   $('topics-empty').classList.add('hidden');
@@ -284,7 +284,7 @@ async function refreshTopics() {
 /*@@PART6@@*/
 function needSignin() {
   var box = $('composer-hint');
-  box.textContent = 'Sign in to post. Anonymous browsing is fine — posting needs a name.';
+  box.textContent = 'Sign in to post. Anonymous browsing is fine   posting needs a name.';
   box.classList.remove('hidden');
 }
 async function submitTopic() {
@@ -357,7 +357,7 @@ async function openTopic(id) {
   $('thread-body').textContent = topic.body;
   $('thread-replies').innerHTML = replies.length
     ? replies.map(replyHtml).join('')
-    : '<p class="f-none">No replies yet — be the first.</p>';
+    : '<p class="f-none">No replies yet   be the first.</p>';
   $('thread').classList.remove('hidden');
   $('thread').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

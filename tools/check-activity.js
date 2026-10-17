@@ -234,7 +234,7 @@ check('failed photo upload explains the report can still be saved without a phot
 
 /* --- city/country auto-detect + search -------------------------------- *
  * The report pin reverse-geocodes to city/country (no typing), stores it
- * on the report, and the sidebar search matches it — so "Istanbul" shows
+ * on the report, and the sidebar search matches it   so "Istanbul" shows
  * every stray reported there. These pin the wiring so it cannot regress. */
 check('report form has hidden city field', 'id="report-city"', html);
 check('report form has hidden country field', 'id="report-country"', html);

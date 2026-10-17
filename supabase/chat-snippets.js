@@ -1,4 +1,4 @@
-/* CHAT snippets — paste after frontend-snippets.js logic */
+/* CHAT snippets   paste after frontend-snippets.js logic */
 
 async function sbRequireEmail() {
   const { data } = await sb.auth.getSession();

@@ -1,4 +1,4 @@
--- FeedTheAnimalsMap — avatar migration (safe to re-run)
+-- FeedTheAnimalsMap   avatar migration (safe to re-run)
 -- Run this in Supabase Dashboard > SQL Editor > New Query > Run.
 --
 -- Adds the two columns the activity feed needs so notifications can show

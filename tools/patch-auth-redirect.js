@@ -65,7 +65,7 @@ replace(
     'if (isSignedIn(u)) {',
     "  status('Signed in as ' + (u.email || u.id), true);",
     "  $('btn-logout').classList.remove('hidden');",
-    '  goHome(700);   /* already signed in — no reason to stay on this form */',
+    '  goHome(700);   /* already signed in   no reason to stay on this form */',
     '}',
     '} catch(e){}',
     '}',

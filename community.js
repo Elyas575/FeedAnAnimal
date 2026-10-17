@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ *
- * Community page — the ladder.
+ * Community page   the ladder.
  *
  * Points are computed in Postgres from the events table (see
  * supabase/schema-leaderboard.sql), so the board cannot be faked from
@@ -39,7 +39,7 @@
     3: 'You are feeding regularly. The regulars know you.',
     4: 'You look after specific animals, not just spots.',
     5: 'You are the person others ask when something goes wrong.',
-    6: 'You go above and beyond — rescues, vet runs, medicine.',
+    6: 'You go above and beyond   rescues, vet runs, medicine.',
     7: 'You are one of the people this whole map relies on.',
     8: 'Top rank. The animals here are fed because of you.',
   };
@@ -182,7 +182,7 @@
     if (!rows.length) {
       board.innerHTML = '';
       empty.classList.remove('hidden');
-      empty.textContent = 'No volunteers have earned points in this period yet. Be the first — sign in and log a feed.';
+      empty.textContent = 'No volunteers have earned points in this period yet. Be the first   sign in and log a feed.';
       $('sum-sub').textContent = 'Nobody ranked yet';
       return;
     }
@@ -211,7 +211,7 @@
     bar.style.background = tier.accent;
     $('mine-next').textContent = next
       ? (next.min - points) + ' points to ' + next.name + '.'
-      : 'Top rank reached — you are a Legend.';
+      : 'Top rank reached   you are a Legend.';
   }
 
   function renderTiers(mine) {

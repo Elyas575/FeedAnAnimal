@@ -1,4 +1,4 @@
-/* Messages inbox — the "all your chats" view (Phase 5.7).
+/* Messages inbox   the "all your chats" view (Phase 5.7).
  *
  * Reads the SAME sbInbox() the header badge reads, so the number on the
  * bell and the list here can never disagree.

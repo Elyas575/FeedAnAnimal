@@ -1,4 +1,4 @@
--- FeedTheAnimalsMap — COMMUNITY LEADERBOARD + RANKS (Phase 6 extra)
+-- FeedTheAnimalsMap   COMMUNITY LEADERBOARD + RANKS (Phase 6 extra)
 -- Run this in Supabase Dashboard > SQL Editor > New Query > Run.
 -- Safe to re-run.
 --
@@ -14,7 +14,7 @@
 --   6 Angel · 7 Saint · 8 Legend
 
 /* ------------------------------------------------------------------ *
- * 1. leaderboard() — ranked volunteers for a time window
+ * 1. leaderboard()   ranked volunteers for a time window
  * ------------------------------------------------------------------ */
 create or replace function public.leaderboard(
   p_window text default 'all'          -- 'week' | 'month' | 'all'
@@ -87,7 +87,7 @@ $$;
 grant execute on function public.leaderboard(text) to anon, authenticated;
 
 /* ------------------------------------------------------------------ *
- * 2. my_rank() — where the signed-in volunteer sits, even if unranked.
+ * 2. my_rank()   where the signed-in volunteer sits, even if unranked.
  *    Returns a full row even with zero events, so the UI can show
  *    "0 points to go" instead of an empty state.
  * ------------------------------------------------------------------ */

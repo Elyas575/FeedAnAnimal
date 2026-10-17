@@ -1,4 +1,4 @@
-/* FeedTheAnimalsMap — drop-in Supabase snippets for index.js / index.html
+/* FeedTheAnimalsMap   drop-in Supabase snippets for index.js / index.html
  * STEP A: in index.html BEFORE index.js add:
  *   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  */

@@ -146,6 +146,13 @@ drop policy if exists "reporter update reports" on reports;
 create policy "reporter update reports" on reports for update
   using (auth.uid() = reporter_id) with check (auth.uid() = reporter_id);
 
+-- Deleting a report: same owner only. index.js shows the Delete button just
+-- for the reporter (canManageReport) and sbDeleteReport() writes through this.
+-- Also shipped as supabase/migration-report-delete.sql for existing databases.
+drop policy if exists "reporter delete reports" on reports;
+create policy "reporter delete reports" on reports for delete
+  using (auth.uid() = reporter_id);
+
 drop policy if exists "public read profiles" on profiles;
 create policy "public read profiles" on profiles for select using (true);
 

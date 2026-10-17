@@ -202,7 +202,7 @@
 
   /* ========================= local state overlay ====================== */
   function readOverlay() {
-    const empty = { profile: null, userLocation: null, log: [], reports: [] };
+    const empty = { profile: null, userLocation: null, log: [], reports: [], deletedReportIds: [] };
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return empty;
@@ -211,7 +211,14 @@
         profile: parsed.profile || null,
         userLocation: parsed.userLocation || null,
         log: Array.isArray(parsed.log) ? parsed.log : [],
-        reports: Array.isArray(parsed.reports) ? parsed.reports : []
+        reports: Array.isArray(parsed.reports) ? parsed.reports : [],
+        /* Tombstones: ids this device deleted (see deleteThisReport). The cloud
+           row may still exist (RLS blocked, offline, policy not run yet), so
+           hydrate + the boot cloud merge must skip these or the pin
+           resurrects on every reload. Cleared only when the shared delete is
+           confirmed... actually never auto-cleared: harmless, tiny, and the
+           row id will never be reused. */
+        deletedReportIds: Array.isArray(parsed.deletedReportIds) ? parsed.deletedReportIds : []
       };
     } catch (err) {
       console.warn('[FeedAnAnimalMap] could not read local state', err);
@@ -227,7 +234,8 @@
         profile: state.profile,
         userLocation: state.userLocation,
         log: state.log,
-        reports: state.animals.filter((a) => a.source === 'report')
+        reports: state.animals.filter((a) => a.source === 'report'),
+        deletedReportIds: Array.isArray(state.deletedReportIds) ? state.deletedReportIds : []
       }));
       return true;
     } catch (err) {
@@ -248,6 +256,10 @@
     map: null, markerLayer: null, markers: {}, userMarker: null, accuracyCircle: null, pickMarker: null,
     pickMode: false, mobileView: 'map', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
     dataSource: '', saveWarningShown: false,
+    /* Ids this device deleted (tombstones from deleteThisReport, persisted via
+       the overlay). hydrate() + the boot cloud merge skip them so a cloud row
+       that survived deletion can't resurrect the pin on reload. */
+    deletedReportIds: [],
     /* Phase 5 chat. conversationId + peer identify the open thread; seenIds
        dedupes realtime echoes of our own sends (we render the row we get
        back from the insert, and realtime then delivers the same row again).
@@ -310,7 +322,13 @@
 
     const merged = new Map();
     (payload.animals || []).map((raw) => normalizeAnimal(raw, 'seed')).forEach((a) => merged.set(a.id, a));
-    overlay.reports.map((raw) => normalizeAnimal(raw, 'report')).forEach((a) => merged.set(a.id, a));
+    /* Tombstones first: a report deleted on this device must never come back
+       from the saved local copy, even if the cloud row survived deletion. */
+    state.deletedReportIds = Array.isArray(overlay.deletedReportIds) ? overlay.deletedReportIds.slice() : [];
+    const gone = new Set(state.deletedReportIds);
+    overlay.reports.map((raw) => normalizeAnimal(raw, 'report')).forEach((a) => {
+      if (!gone.has(a.id)) merged.set(a.id, a);
+    });
     state.animals = Array.from(merged.values());
 
     state.activity = (payload.activity || []).map((raw) => normalizeActivity(Object.assign({ source: 'seed' }, raw)));
@@ -733,7 +751,7 @@
 
     /* Split card behaviour: the PHOTO opens the lightbox, the REST of the
        card flies the map to the animal. Both are "show me the animal", just
-       different halves — picture vs location. The thumb is a real <button>
+       different halves   picture vs location. The thumb is a real <button>
        (data-action="photo") so it answers before the card handler, and it
        is layered BEFORE badgeDot so the status dot always stays on top.
        Without a photo the thumb is a plain div: the emoji fallback has
@@ -1679,7 +1697,7 @@
       state.saveWarningShown = true;
       toast('Private storage is blocked, so this action lasts for this visit only.', 'error');
     }
-    // Phase 4: shared feed — also POST to Supabase. Local always wins, but we
+    // Phase 4: shared feed   also POST to Supabase. Local always wins, but we
     // surface a warning if the cloud write failed so a "shared" feed never
     // silently looks like it synced when it did not.
     try {
@@ -1715,7 +1733,7 @@
       place: station.ref, at: at, source: 'user'
     });
     writeOverlay();
-    // Phase 4: shared station check — also POST to Supabase
+    // Phase 4: shared station check   also POST to Supabase
     try {
       if (typeof window !== 'undefined' && typeof window.sbLogEvent === 'function') {
         window.sbLogEvent({ animalId: null, stationId: station.id, kind: 'station', note: 'checked ' + station.name + ' and topped the container up', place: station.ref });
@@ -1749,13 +1767,19 @@
     const sidebar = $('#sidebar-pane');
     const onMap = view === 'map';
 
+    /* Desktop is ALWAYS split view: the sidebar must never hide there. The
+       old code stripped md:flex on map view at every width, so a delete (or
+       any switchMobileView('map')) made the whole side menu vanish on desktop
+       until a manual toggle brought it back. */
+    const narrow = (typeof isNarrow === 'function') ? isNarrow() : true;
     if (sidebar) {
-      if (onMap) {
+      if (onMap && narrow) {
         sidebar.classList.add('hidden');
         sidebar.classList.remove('flex', 'md:flex');
       } else {
         sidebar.classList.remove('hidden');
         sidebar.classList.add('flex');
+        if (!sidebar.classList.contains('md:flex')) sidebar.classList.add('md:flex');
       }
     }
 
@@ -1945,6 +1969,11 @@
     const submit = $('#report-submit');
     if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span>Save to map';
 
+    /* Creating, not editing: no report to delete, so the owner-only Delete
+       button stays hidden until openEditReport() reveals it. */
+    const delNew = $('#report-delete');
+    if (delNew) { delNew.classList.add('hidden'); delNew.classList.remove('inline-flex'); }
+
     const hint = $('#report-pick-hint');
     if (hint) hint.textContent = 'We pin your location from the device GPS - coordinates stay in the background and are never shown.';
     const error = $('#report-error');
@@ -2056,6 +2085,12 @@
     if (subtitle) subtitle.textContent = 'Changes show up for every volunteer with this map open.';
     const submit = $('#report-submit');
     if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span>Save changes';
+
+    /* Editing your own report: reveal the owner-only Delete button. It stays
+       hidden for everyone else because this function already returned early
+       for them via canManageReport() above. */
+    const delEdit = $('#report-delete');
+    if (delEdit) { delEdit.classList.remove('hidden'); delEdit.classList.add('inline-flex'); }
 
     openModal('report-modal');
   }
@@ -2582,6 +2617,102 @@
     );
     switchMobileView('map');
     revealAnimal(animal.id);
+  }
+
+  /* --------------------------- deleting a report ------------------------ */
+  /* Owner-only COMPLETE deletion, from the Delete button in the edit form
+     footer (index.html #report-delete, revealed by openEditReport()).
+
+     Double-guarded like editing: canManageReport() hides the button for
+     everyone else AND this re-checks, so a forged click still gets nowhere;
+     the DB's "reporter delete reports" policy enforces it a third time.
+
+     Removes, in order:
+     1. the shared copy via window.sbDeleteReport() — reports row + its photo
+        file in `animal-photos` storage (events history is plain text and stays,
+        so other volunteers' "Milo was fed" logs don't vanish with the pin),
+     2. the local pin + its device feed entries from state, persisted with
+        writeOverlay(), then the map re-renders with the pin gone.
+
+     A cloud id that is NOT a real report-<uuid> (legacy local pins) skips the
+     shared call — there is no cloud row to delete. When the shared delete
+     fails (offline, missing SQL migration) the local pin still goes and the
+     toast says so honestly instead of pretending everyone sees the removal. */
+  async function deleteThisReport() {
+    const animal = editingReportId ? animalById(editingReportId) : null;
+    if (!animal) return;
+    if (!canManageReport(animal)) {
+      toast('Only the volunteer who reported this stray can edit or delete it.', 'error');
+      return;
+    }
+    const label = animal.name || 'this stray';
+    if (!window.confirm('Delete "' + label + '" for good?\n\nThe pin, its photo and the shared report are removed permanently. This cannot be undone.')) return;
+    const btn = $('#report-delete');
+    const originalLabel = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('opacity-60');
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">hourglass_empty</span>Deleting…';
+    }
+    let shared = { rowDeleted: false, photoDeleted: false, photoSkipped: true };
+    try {
+      if (isCloudReportId(animal.id) && typeof window.sbDeleteReport === 'function') {
+        shared = await window.sbDeleteReport(
+          animal.id.replace(/^report-/, ''),
+          animal.photoUrl || null
+        ) || shared;
+      }
+    } catch (err) { /* local removal below still runs; toast reports it */ }
+    // Local pin + its device feed entries go regardless.
+    state.animals = state.animals.filter((a) => a.id !== animal.id);
+    state.log = state.log.filter((entry) => entry.animalId !== animal.id);
+    /* Tombstone so neither the saved local copy nor a surviving cloud row can
+       bring this pin back on the next reload (see hydrate + boot merge). */
+    if (!Array.isArray(state.deletedReportIds)) state.deletedReportIds = [];
+    if (state.deletedReportIds.indexOf(animal.id) === -1) {
+      state.deletedReportIds.push(animal.id);
+      while (state.deletedReportIds.length > 200) state.deletedReportIds.shift();
+    }
+    const deletedId = animal.id;
+    const deletedPhoto = animal.photoUrl || null;
+    writeOverlay();
+    editingReportId = null;
+    closeModal('report-modal');
+    resetReportPhoto();
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-60');
+      btn.innerHTML = originalLabel;
+      btn.classList.add('hidden');
+      btn.classList.remove('inline-flex');
+    }
+    if (state.map) state.map.closePopup();
+    if (isCloudReportId(deletedId)) {
+      afterMutation(shared.rowDeleted
+        ? 'Deleted - "' + label + '" and its photo are gone for everyone.'
+        : 'Removed from this device - the shared copy could not be deleted yet (run supabase/migration-report-delete.sql).',
+        shared.rowDeleted ? 'ok' : 'error');
+    } else {
+      afterMutation('Deleted - "' + label + '" is off the map.', 'ok');
+    }
+    /* Phones only: the list owns the screen there, so go back to the map.
+       Desktop keeps its side-by-side split — the menu must NOT vanish from
+       under the user (same isNarrow() guard as revealAnimal/useMyLocation). */
+    if (isNarrow()) switchMobileView('map');
+    /* The shared delete above may have failed (offline, or the
+       migration-report-delete.sql policy isn't run yet) while the pin is
+       already gone locally. Retry once in the background: if the policy
+       lands later, the cloud row + photo still get cleaned so OTHER devices
+       stop resurrecting the pin too. Never blocks the UI. */
+    if (isCloudReportId(deletedId) && !shared.rowDeleted &&
+        typeof window.sbDeleteReport === 'function') {
+      setTimeout(function () {
+        try {
+          var p = window.sbDeleteReport(deletedId.replace(/^report-/, ''), deletedPhoto);
+          if (p && typeof p.then === 'function') p.catch(function () {});
+        } catch (e) { /* next visit retries again via the same path */ }
+      }, 8000);
+    }
   }
   /* ========================== details drawer ========================= */
   /* detailRow(label, value) renders one fact, but only if it is actually known.
@@ -3717,7 +3848,7 @@
          preview popup: the card answers "who needs help", the map answers
          "where exactly". Runs AFTER the [data-action] handler above, so the
          photo thumbnail (data-action="photo"), Feed, Water, chat, locate
-         and details all keep their own behaviour — only the non-button
+         and details all keep their own behaviour   only the non-button
          part of the card navigates. */
       const animalCard = target.closest('[data-animal-card]');
       if (animalCard) {
@@ -3898,6 +4029,9 @@
     const reportCancel = $('#report-cancel');
     if (reportCancel) reportCancel.addEventListener('click', () => closeModal('report-modal'));
 
+    const reportDelete = $('#report-delete');
+    if (reportDelete) reportDelete.addEventListener('click', deleteThisReport);
+
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeAllModals();
     });
@@ -4019,7 +4153,7 @@
     wireDisplayNameModal();
     syncProfileFromAuth();
     /* Back from auth.html after the login gate: the guest wanted to report,
-       so re-open the form — BUT only if they're actually signed in now.
+       so re-open the form   BUT only if they're actually signed in now.
        The old code re-opened unconditionally, so "Return to Map" without
        logging in looped: boot -> openReportModal -> gate fails -> redirect
        back to auth.html forever. Now we quiet-check first and drop the
@@ -4039,7 +4173,7 @@
     } catch (e) {}
     wireDeepLink();
 
-    // Phase 4: shared backend — anonymous auth + merge recent cloud events + live ticker
+    // Phase 4: shared backend   anonymous auth + merge recent cloud events + live ticker
     try {
       // supabase-client.js explicitly assigns its helpers onto window, so a plain
       // window lookup is enough (no eval, no bare global references).
@@ -4068,8 +4202,17 @@
           const merged = new Map(state.animals.map((a) => [a.id, a]));
           let added = 0;
           let changed = false;
+          /* Never resurrect a report this device deleted: if the cloud row
+             survived (RLS blocked, offline when deleted, policy not run), the
+             pin would otherwise pop back on every reload. */
+          const gone = new Set(Array.isArray(state.deletedReportIds) ? state.deletedReportIds : []);
           rows.forEach((raw) => {
             const animal = normalizeAnimal(raw, 'report');
+            if (gone.has(animal.id)) {
+              // Stale local copy of a deleted pin still hanging around: drop it.
+              if (merged.has(animal.id)) { merged.delete(animal.id); changed = true; }
+              return;
+            }
             const local = merged.get(animal.id);
             if (!local) {
               merged.set(animal.id, animal);

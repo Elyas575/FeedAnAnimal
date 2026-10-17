@@ -1,4 +1,4 @@
-# FeedAnAnimalMap — AI Context
+# FeedAnAnimalMap   AI Context
 
 > Paste this file (or link it) when asking any AI for help. Source of truth for what the site is, looks like, and how it works.
 
@@ -6,7 +6,7 @@
 
 `FeedAnAnimalMap` (repo `FeedTheAnimalsMap`, GitHub `Elyas575/FeedAnAnimal`, Supabase `Feed-Animals` in `eu-west-1`, static on Cloudflare Workers) is a **crowdsourced community map for feeding stray animals**.
 
-Purpose: **No stray should go hungry — find nearby animals and log every meal.** One shared live log of who ate, who needs help, and where.
+Purpose: **No stray should go hungry   find nearby animals and log every meal.** One shared live log of who ate, who needs help, and where.
 
 Taglines: `find, feed and water local street animals` / `Feed well. Help others feed well.`
 
@@ -44,7 +44,7 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 1. Browse: chips `All 48 / Cats 28 / Dogs 16 / Needs Help 12`, sort Urgent / Closest (haversine) / Recently Fed, debounced search name/area/notes/caretakers/tags. Enter flies to hit, Esc clears.
 2. Near Me: Geolocation flies map + re-measures distance; Reset to `47.671236,-122.343184` (Seattle demo: Oakwood Park & West End).
 3. Log care 1-tap: Feed/Water updates times, counts, pin colour, ticker (9s rotate), writes local + Supabase `events` for points.
-4. Report Stray: pin-drop or GPS, species, needs flags as `[NEEDS_*]` prefix in `reports.description` (strip vet->water->food on load), photo compress+upload, nearest station, instant + shared (`sbSubmitReport` / `sbLoadReports(200)`). City/country auto-detected via BigDataCloud reverse-geocode (cached per ~1km grid in `fta.geo.v1`, never blocks submit) into `reports.city/country/city_slug` — run `supabase/migration-report-city.sql` once. Editing is reporter-only: `openEditReport()` reopens the same form (photo replace/remove, name, species, description, needs, location) and saves through `sbUpdateReport` + RLS policy `reporter update reports` — run `supabase/migration-report-edit.sql` once. Popup content is built at open time (`bindPopup(() => popupHtml(row))`) so the Edit button appears as soon as auth resolves `state.myId`.
+4. Report Stray: pin-drop or GPS, species, needs flags as `[NEEDS_*]` prefix in `reports.description` (strip vet->water->food on load), photo compress+upload, nearest station, instant + shared (`sbSubmitReport` / `sbLoadReports(200)`). City/country auto-detected via BigDataCloud reverse-geocode (cached per ~1km grid in `fta.geo.v1`, never blocks submit) into `reports.city/country/city_slug`   run `supabase/migration-report-city.sql` once. Editing is reporter-only: `openEditReport()` reopens the same form (photo replace/remove, name, species, description, needs, location) and saves through `sbUpdateReport` + RLS policy `reporter update reports`   run `supabase/migration-report-edit.sql` once. Popup content is built at open time (`bindPopup(() => popupHtml(row))`) so the Edit button appears as soon as auth resolves `state.myId`.
 5. Details: profile, health/sterilized/vaccinated flags, device history, log vet/medicine/rescue.
 6. Stations: 6 stations, log check/refill raises capacity.
 7. Points: feed 10 / water 8 / station 12 / medicine 18 / vet 20 / report 25 / rescue 30 (Postgres `schema-leaderboard.sql` + `community.js`). Tiers Stray 0, Scout 100, Feeder 250, Carer 500, Guardian 900, Angel 1500, Saint 2500, Legend 4000.
@@ -54,7 +54,7 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 
 - `data/animals.json`: `{ meta: { center, tileLayers, urgencyPolicy, species }, animals: [{ id, name, species, sex, ageClass, description, health, sterilized/vaccinated/microchipped, caretakers[], tags[], notes, photoUrl|null, stationId, location:{label,area,lat,lng}, lastFedMinutesAgo, lastWateredMinutesAgo, feedCount, waterCount, reportedDaysAgo }], stations[6], activity[] }`. Times are relative offsets (never stale), converted to absolute ISO in memory.
 - Supabase: `reports (reporter_id,lat,lng,location_label,photo_url,species,name,city,country,city_slug,description)`, `events (actor_name,kind,note,place,animal_id,station_id)`, `topics/replies/likes`, `conversations/participants/messages/blocks/profiles`. See `supabase/*.sql`.
-- Counts: 48 animals — 28 cats, 16 dogs, 4 small pets — 12 needing help. After editing JSON run `node tools/build-data.js` to refresh `data/animals-data.js`.
+- Counts: 48 animals   28 cats, 16 dogs, 4 small pets   12 needing help. After editing JSON run `node tools/build-data.js` to refresh `data/animals-data.js`.
 
 ## 7. Key files + commands
 
@@ -69,6 +69,6 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 
 ## 9. Chat detail (bottleneck)
 
-Animal -> caretaker via `get_or_create_dm`, newest 100 reversed, send 2000 chars with sender_id=auth.uid() (RLS), block via blocks upsert, unread from last_read_at. Inbox is N+1 (convos + participants + profiles + up to 50x25 msgs) — paginate to 10 if scaling.
+Animal -> caretaker via `get_or_create_dm`, newest 100 reversed, send 2000 chars with sender_id=auth.uid() (RLS), block via blocks upsert, unread from last_read_at. Inbox is N+1 (convos + participants + profiles + up to 50x25 msgs)   paginate to 10 if scaling.
 
 

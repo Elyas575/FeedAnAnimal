@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About — FeedAnAnimalMap</title>
+<title>About   FeedAnAnimalMap</title>
 <meta name="description" content="A live, community powered map tracking stray animals, daily feedings, and water stations in your area.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="FeedAnAnimalMap">
@@ -12,44 +12,46 @@
 <meta property="og:url" content="https://feedanimals.pages.dev/about.html">
 <meta property="og:image" content="https://feedanimals.pages.dev/og-image.svg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 <style>
-  body{margin:0;background:#fff8f6;color:#2b2320;line-height:1.65;
-       font-family:'Plus Jakarta Sans',system-ui,sans-serif}
-  .wrap{max-width:620px;margin:0 auto;padding:26px 20px 120px}
-  .top-note{font-size:13px;color:#8b7269;margin:0 0 8px}
-  h1{font-size:31px;margin:0 0 8px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
-  .lede{font-size:16px;color:#57423b;margin:0 0 26px}
-  .lede em{font-style:normal;background:#ffe9d6;padding:0 5px;border-radius:6px}
-  .photo{position:relative;background:#fff;border:1px solid #efe6e4;border-radius:14px;
-         padding:10px 10px 14px;margin:0 0 18px;box-shadow:0 8px 22px rgba(90,50,20,.08)}
-  .photo img{width:100%;height:220px;object-fit:cover;border-radius:9px;display:block;background:#f5ecea}
-  .photo figcaption{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#8b7269;margin-top:8px}
-  .photo .tape{position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(-3deg);
-         background:rgba(255,233,214,.92);border:1px solid #f0d9b5;font-size:11.5px;font-weight:700;
-         color:#8a4b0e;padding:2px 12px;border-radius:2px}
-  h2{font-size:19px;margin:28px 0 8px;font-weight:800}
-  p{font-size:15px;color:#3b3330;margin:0 0 12px}
-  .scribble{background:#fff;border:1px solid #efe6e4;border-radius:16px;padding:18px;margin:16px 0}
-  .scribble .row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px dashed #e9d9cf}
-  .scribble .row:first-child{border-top:0;padding-top:0}
-  .scribble .row:last-child{padding-bottom:0}
-  .scribble .ico{width:36px;height:36px;border-radius:12px;background:#fff4e6;flex-shrink:0;
-           display:flex;align-items:center;justify-content:center}
-  .scribble .ico .material-symbols-outlined{color:#a03b0e;font-size:20px}
-  .scribble b{display:block;font-size:14.5px}
-  .scribble span{font-size:13.5px;color:#6f615b}
-  .margin-note{border-left:3px solid #d9932c;background:#fffdf7;border-radius:0 12px 12px 0;
-         padding:12px 16px;margin:20px 0;font-size:14px}
-  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-  .btn-love{display:inline-flex;align-items:center;gap:7px;background:#E54848;color:#fff;
-    text-decoration:none;font-weight:700;font-size:14.5px;padding:12px 24px;border-radius:9999px;
-    box-shadow:0 6px 16px rgba(229,72,72,.3)}
-  .btn-love:hover{background:#d63c3c}
-  .btn-quiet{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#2b2320;
-    text-decoration:none;font-weight:700;font-size:14.5px;padding:12px 24px;border-radius:9999px;
-    border:1.5px solid #e9d9cf}
-  .ps{font-size:13px;color:#8b7269;margin:22px 0 0}
+  body{margin:0;background:#fff;color:#1c1917;line-height:1.7;
+       font-family:'Inter','Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+  .wrap{max-width:600px;margin:0 auto;padding:48px 24px 120px;position:relative}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:#a03b0e;margin:0 0 10px}
+  h1{font-size:34px;margin:0 0 12px;font-weight:700;letter-spacing:-.025em;line-height:1.15;
+     color:#1c1917;position:relative;z-index:1}
+  .lede{font-size:17px;line-height:1.65;color:#57534e;margin:0 0 8px;position:relative;z-index:1}
+  section{margin:0;padding:28px 0;border-top:1px solid #f0edea;position:relative;z-index:1}
+  section:first-of-type{border-top:0}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:#a8a29e;margin:0 0 8px}
+  h2{margin:0 0 8px;font-weight:700;color:#1c1917;
+     font-size:20px;letter-spacing:-.015em;line-height:1.3}
+  .social{display:flex;gap:14px;align-items:center;color:#a8a29e}
+  .social .material-symbols-outlined{font-size:18px}
+  ul.dots{margin:12px 0 0;padding:0;list-style:none}
+  ul.dots li{position:relative;padding-left:20px;margin:0 0 8px;
+    font-size:15.5px;line-height:1.65;color:#44403c}
+  ul.dots li::before{content:'';position:absolute;left:4px;top:.68em;width:5px;height:5px;
+    border-radius:50%;background:#d6d3d1}
+  ul.dots li b{font-weight:600;color:#1c1917}
+  p{font-size:15.5px;line-height:1.7;color:#44403c;margin:8px 0 0}
+  p.small{font-size:15px}
+  .divider{border:0;border-top:1px solid #f0edea;margin:8px 0;position:relative;z-index:1}
+  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center;position:relative;z-index:1}
+  .btn-love{display:inline-flex;align-items:center;gap:7px;background:#a03b0e;color:#fff;
+    text-decoration:none;font-weight:700;font-size:14px;padding:9px 20px;border-radius:9999px;
+    box-shadow:0 6px 16px rgba(160,59,14,.25)}
+  .btn-love:hover{background:#c15326}
+  .btn-love .material-symbols-outlined{font-size:18px}
+  .mini-avatar{width:32px;height:32px;border-radius:50%;background:#f5b942;display:inline-flex;
+    align-items:center;justify-content:center;font-size:20px;border:2px solid #fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  .giving{font-size:13px;color:#6f665f;margin:14px 0 0}
+  .giving a{color:#c2410c;text-decoration:underline;text-underline-offset:2px}
+  .ps{font-size:12.5px;color:#8b7269;font-style:italic;margin:22px 0 0}
+  .ps a{color:#c2410c}
   a{color:#a03b0e}
   body.has-site-header{padding-top:var(--site-header-h,68px)}
   @media (max-width:767px){body.has-site-header{padding-bottom:90px}.wrap{padding-top:20px}}
@@ -61,37 +63,48 @@
 <div id="site-header"></div>
 <div class="wrap">
 
-  <p class="top-note">a little note from the person behind the map</p>
-  <h1>Never miss a street friend.</h1>
-  <p class="lede">A live map of stray animals, daily feedings, and water bowls near you. Made by one feeder, for all of us. <em>No account needed to look.</em></p>
+  <p class="eyebrow">About</p>
+  <h1>FeedAnAnimalMap</h1>
+  <p class="lede">find and feed street animals near you.</p>
 
-  <figure class="photo">
-    <span class="tape">taped here so I remember why</span>
-    <img src="og-image.svg" alt="Sketch of the feeding map idea">
-    <figcaption><span>Milo, bench 4. The first pin I ever dropped.</span><span>fed today ✓</span></figcaption>
-  </figure>
+  <section>
+    <p class="kicker">Our Mission</p>
+  <ul class="dots">
+    <li>A crowdsourced map of stray cats, dogs, and other stray animals</li>
+    <li>Anyone can add, feed, water and update spots</li>
+  </ul>
+  </section>
 
-  <h2>Why I started this</h2>
-  <p>When street animals depend on whoever happens to walk by, one missed day really matters. I watched feeders move away, bowls sit empty for days, and regulars just vanish with nobody noticing.</p>
-  <p>So I started writing it down. Who ate, who looked thin, which bowl was dry. Then I thought, what if we all wrote it down in the same place?</p>
-  <p>That is all this is. A shared notebook for the neighborhood.</p>
+  <section>
+    <p class="kicker">Feed a Life</p>
+    <h2>Coordinate care for local strays</h2>
+  <p>A simple way to find and coordinate care for local strays so no animal gets forgotten.</p>
+  <ul class="dots">
+    <li>Post an animal if you spot a stray in your area</li>
+    <li>Log a meal whenever you leave food</li>
+    <li>Check the map to see where help is needed today</li>
+  </ul>
+  </section>
 
-  <div class="scribble">
-    <div class="row"><span class="ico"><span class="material-symbols-outlined">restaurant</span></span><div><b>Log a meal</b><span>Fed someone? One tap, so the next person knows.</span></div></div>
-    <div class="row"><span class="ico"><span class="material-symbols-outlined">add_location</span></span><div><b>Pin a new face</b><span>New cat behind the bakery? Drop a pin before you forget.</span></div></div>
-    <div class="row"><span class="ico"><span class="material-symbols-outlined">share</span></span><div><b>Tell one feeder</b><span>Just one. The person who already carries kibble in their bag.</span></div></div>
-  </div>
+  <section>
+    <p class="kicker">How to help</p>
+  <ul class="dots">
+    <li>Post a stray or log a meal so everyone nearby knows who's been cared for today.</li>
+    <li>Share with a friend who already loves helping animals</li>
+  </ul>
+  </section>
 
-  <h2>Keeping the lights on</h2>
-  <p>This is free, and I want to keep it that way. But the map tiles, the hosting, the photos, that all comes out of my pocket right now. If this helped you or an animal you love, throwing a few bucks in the bowl helps more than you know.</p>
+  <section>
+    <p class="kicker">One human behind this</p>
+    <h2>Built and kept alive by one person</h2>
+  <p class="small"> This platform is completely free to use, but hosting servers, running map services, and storing photos come with monthly costs. It’s built and maintained by just one person so any contribution, big or small, helps keep the map live and free for everyone caring for local strays. </p>
   <div class="btn-row">
-    <a class="btn-love" href="support.html"><span class="material-symbols-outlined">favorite</span>Support the map</a>
-    <a class="btn-quiet" href="/">Back to the map</a>
+    <a class="btn-love" href="support.html"><span class="material-symbols-outlined">favorite</span>Support</a>
+    <span class="mini-avatar" title="The feeder">🐾</span>
   </div>
 
-  <div class="margin-note">Feed well. Help others feed well. That is the whole idea. And anything left after the bills, I send at least 10% to the <a href="https://www.aspca.org" target="_blank" rel="noopener">ASPCA</a> and <a href="https://www.humanesociety.org" target="_blank" rel="noopener">Humane Society</a>. I will post the numbers when there is something to post.</div>
-
-  <p class="ps">P.S. If something on the map looks wrong, or you just want to say hi: lirzqad@gmail.com. I read everything myself, usually late at night.</p>
+  <p class="ps">P.S. Questions, feedback, or just want to say hi: lirzqad@gmail.com. I read everything myself.</p>
+  </section>
 </div>
 <script src="site-header.js"></script>
 </body>

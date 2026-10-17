@@ -53,7 +53,7 @@ ok('handlers are attached before the src is assigned', /img\.onerror = function[
 ok('an animal with no photo explains itself', js.indexOf('No photo of ') !== -1);
 
 /* --------------------------- the entry points ------------------------ */
-/* NOTE: split card behaviour — the PHOTO thumb (data-action="photo") opens
+/* NOTE: split card behaviour   the PHOTO thumb (data-action="photo") opens
    the lightbox, the REST of the card flies the map (revealAnimal). The
    thumb button answers first via the [data-action] handler, so the card
    handler only sees non-button taps. */

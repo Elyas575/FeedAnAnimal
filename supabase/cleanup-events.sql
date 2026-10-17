@@ -1,4 +1,4 @@
--- FeedTheAnimalsMap — monthly cleanup (Phase 6.3)
+-- FeedTheAnimalsMap   monthly cleanup (Phase 6.3)
 -- Run once a month in Supabase Dashboard > SQL Editor > New Query > Run.
 --
 -- The `events` table grows by one row per feed/water/report. That is cheap

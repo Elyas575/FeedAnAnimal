@@ -1,4 +1,4 @@
--- FeedTheAnimalsMap — read receipts, and a badge that actually clears
+-- FeedTheAnimalsMap   read receipts, and a badge that actually clears
 -- Run in Supabase Dashboard > SQL Editor > New Query > Run.  Safe to re-run.
 --
 -- WHY YOU MAY NEED THIS

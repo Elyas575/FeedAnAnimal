@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign in — FeedAnAnimalMap</title>
+<title>Sign in   FeedAnAnimalMap</title>
 <meta name="description" content="Sign in to keep your care history and share updates with other volunteers.">
 <meta name="robots" content="index,follow">
 <link rel="icon" href="logo/logo.png" type="image/png">
@@ -281,7 +281,7 @@ var $ = function(id){ return document.getElementById(id); };
 
 /* Password-recovery landing: supabase-client.js has already turned the emailed
    #access_token&type=recovery hash into a session, so the only job left is
-   collecting a new password — and NOT forwarding the visitor to the map before
+   collecting a new password   and NOT forwarding the visitor to the map before
    they set one. The flag itself is captured in <head> (see __ftaRecovery)
    because supabase-js clears the hash after processing it. */
 var recoveryMode = !!window.__ftaRecovery;
@@ -291,7 +291,7 @@ function enterResetMode(){
   ['group-name','group-password','btn-login','btn-register','link-forgot']
     .forEach(function(id){ var el = $(id); if (el) el.classList.add('hidden'); });
   var g = $('group-reset'); if (g) g.classList.remove('hidden');
-  status('Reset link verified — choose a new password for your account.', true);
+  status('Reset link verified   choose a new password for your account.', true);
 }
 
 function toast(msg, tone){
@@ -321,8 +321,8 @@ function setBusy(b){
 
 function friendlyError(e){
   var msg = (e && e.message) ? e.message : String(e);
-  if (/429|too many|rate/i.test(msg)) return 'Too many attempts — please wait 60 seconds.';
-  if (/confirm|verify|confirmation/i.test(msg)) return msg + ' — check your email for the confirmation link.';
+  if (/429|too many|rate/i.test(msg)) return 'Too many attempts   please wait 60 seconds.';
+  if (/confirm|verify|confirmation/i.test(msg)) return msg + '   check your email for the confirmation link.';
   return msg;
 }
 

@@ -1,4 +1,4 @@
-/* FeedTheAnimalsMap — Supabase client (Phase 4: shared feeds)
+/* FeedTheAnimalsMap   Supabase client (Phase 4: shared feeds)
  * Public publishable key ONLY. Never put sb_secret here.
  */
 const SB_URL = 'https://wtmcviupbcmcffamyslb.supabase.co';
@@ -9,7 +9,7 @@ const sb = (window.supabase && SB_URL.indexOf('YOUR-PROJECT') === -1 && SB_ANON.
   : null;
 
 if (!sb) {
-  console.warn('[sb] Supabase not configured yet — running on localStorage only. Paste SB_ANON in supabase-client.js');
+  console.warn('[sb] Supabase not configured yet   running on localStorage only. Paste SB_ANON in supabase-client.js');
 }
 
 // expose for index.js IIFE (top-level const/let are not on window)
@@ -24,6 +24,7 @@ try {
     window.sbUploadReportPhoto = sbUploadReportPhoto;
     window.sbSubmitReport = sbSubmitReport;
     window.sbUpdateReport = sbUpdateReport;
+    window.sbDeleteReport = sbDeleteReport;
     window.sbLoadReports = sbLoadReports;
     window.sbCompressImage = sbCompressImage;
     window.sbFormatBytes = sbFormatBytes;
@@ -1286,6 +1287,64 @@ async function sbUpdateReport(report) {
   }
 }
 
+/* COMPLETE deletion of one report: shared row + its photo file + nothing else.
+   index.js calls this from deleteThisReport(), guarded by canManageReport() so
+   only the volunteer who posted the stray ever reaches it, and the
+   "reporter delete reports" RLS policy (schema-core.sql /
+   migration-report-delete.sql) enforces the same owner-only rule in the DB.
+
+   What gets removed:
+   - reports row (id) — the pin itself. events rows are NOT deleted: their
+     animal_id is plain text history ("Milo was fed"), they don't reference the
+     row, and other volunteers' feed logs shouldn't vanish with the pin.
+   - the photo file in `animal-photos` storage — derived from photo_url when it
+     points at our own bucket. External URLs (seed data, old hosts) are left
+     alone because there is no file of ours to remove.
+
+   Returns { rowDeleted, photoDeleted, photoSkipped } so the caller can toast
+   honestly (e.g. "pin gone, photo already gone"). Never throws — offline or a
+   missing policy just reports rowDeleted:false and the caller keeps the local
+   copy removal honest about the shared copy. */
+async function sbDeleteReport(id, photoUrl) {
+  const out = { rowDeleted: false, photoDeleted: false, photoSkipped: true };
+  if (!sb || !id) return out;
+  try {
+    await sbEnsureAuth();
+    // Photo first: if the row delete below fails on RLS, the file is still
+    // the reporter's own upload and removing it is harmless; if the row
+    // delete succeeds, the file must already be gone so no orphan lingers.
+    if (photoUrl && typeof photoUrl === 'string') {
+      try {
+        const marker = '/animal-photos/';
+        const at = photoUrl.indexOf(marker);
+        if (at !== -1) {
+          let key = photoUrl.slice(at + marker.length).split('?')[0];
+          try { key = decodeURIComponent(key); } catch (e) { /* keep raw */ }
+          if (key) {
+            out.photoSkipped = false;
+            const { error: photoError } = await sb.storage.from('animal-photos').remove([key]);
+            // "not found" just means it was already removed — still a clean end.
+            out.photoDeleted = !photoError ||
+              /not found|does not exist|no such/i.test(photoError.message || '');
+            if (photoError && !out.photoDeleted) {
+              console.warn('[sb] report photo delete failed:', photoError.message);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[sb] report photo delete failed:', err.message);
+      }
+    }
+    const { data, error } = await sb.from('reports').delete().eq('id', id).select('id');
+    if (error) throw error;
+    out.rowDeleted = !!(data && data.length);
+    return out;
+  } catch (err) {
+    console.warn('[sb] report delete failed:', err.message);
+    return out;
+  }
+}
+
 /* ---------- Auth helpers used by auth.html + header account button ---------- */
 const sbAuth = {
   client() { return sb; },
@@ -1317,7 +1376,7 @@ const sbAuth = {
   },
   // Forgot password: emails a recovery link back to auth.html. Supabase answers
   // the same whether or not the address exists, so callers should not promise
-  // that an account was found — just that a link may be on its way.
+  // that an account was found   just that a link may be on its way.
   // Requires the site origin to be allowed under Authentication > URL Config.
   async resetPassword(email) {
     const clean = String(email || '').trim();
@@ -1336,7 +1395,7 @@ const sbAuth = {
     if (error) throw error;
     return data.user;
   },
-  // Gmail / Google OAuth — requires one-time setup in Supabase (see auth.html instructions).
+  // Gmail / Google OAuth   requires one-time setup in Supabase (see auth.html instructions).
   // If not configured yet, this throws a clear message instead of hanging.
   async signInWithGoogle() {
     const { error } = await sb.auth.signInWithOAuth({

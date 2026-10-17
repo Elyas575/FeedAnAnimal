@@ -1,4 +1,4 @@
--- FeedAnAnimalMap — COMMUNITY FORUM (topics + replies + likes)
+-- FeedAnAnimalMap   COMMUNITY FORUM (topics + replies + likes)
 -- Run this in Supabase Dashboard > SQL Editor > New Query > Run.
 -- Safe to re-run (uses IF NOT EXISTS).
 --
