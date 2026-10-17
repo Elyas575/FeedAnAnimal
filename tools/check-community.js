@@ -52,6 +52,19 @@ ok('junk points fall back to tier 1', community.tierFor('abc').name === 'Stray')
 ok('null points fall back to tier 1', community.tierFor(null).name === 'Stray');
 ok('undefined points fall back to tier 1', community.tierFor(undefined).name === 'Stray');
 
+/* ------------------------------ founder badge ------------------------------ */
+ok('founderBadgeSvg returns an SVG', /<svg/.test(community.founderBadgeSvg(20)) && /<\/svg>/.test(community.founderBadgeSvg(20)));
+ok('founderBadgeSvg has an F', community.founderBadgeSvg(20).indexOf('>F<') !== -1 || community.founderBadgeSvg(20).indexOf('>F</') !== -1 || /text[^>]*>F</.test(community.founderBadgeSvg(20)));
+ok('SQL creates the founders table', sql.indexOf('create table if not exists public.founders') !== -1);
+ok('SQL backfills the first 250 founders', /limit 250/.test(sql) && /on conflict \(user_id\) do nothing/.test(sql));
+ok('SQL has is_founder function', sql.indexOf('create or replace function public.is_founder') !== -1);
+ok('SQL grants is_founder to visitors', sql.indexOf('grant execute on function public.is_founder(uuid) to anon, authenticated') !== -1);
+ok('leaderboard output includes is_founder', /is_founder   boolean/.test(sql) || /is_founder boolean/.test(sql));
+ok('my_rank output includes is_founder', /is_founder boolean/.test(sql));
+ok('client exposes sbFounderStatus', client.indexOf('window.sbFounderStatus = sbFounderStatus;') !== -1);
+ok('client calls the is_founder RPC', client.indexOf("sb.rpc('is_founder'") !== -1);
+ok('client degrades gracefully if founder RPC is missing', client.indexOf('founder check unavailable') !== -1);
+
 /* ------------------------------- progress ------------------------------ */
 ok('a fresh account starts at 0%', community.tierProgress(0) === 0, community.tierProgress(0));
 ok('the top rank reads 100%', community.tierProgress(4000) === 100, community.tierProgress(4000));
@@ -104,8 +117,8 @@ ok('row marks the signed-in volunteer',
   community.rowHtml({ rank: 1, user_id: 'me', display_name: 'Me', points: 10 }, 'me').indexOf('>You<') !== -1);
 
 /* -------------------------------- scoring ------------------------------ */
-const SCORE_EXPECT = { feed: 10, water: 8, station: 12, vet: 20, medicine: 18, rescue: 30, report: 25 };
-ok('all 7 action types are scored', community.SCORES.length === 7, community.SCORES.length);
+const SCORE_EXPECT = { feed: 15, water: 15, vet: 20, rescue: 30, report: 25 };
+ok('all 5 action types are scored', community.SCORES.length === 5, community.SCORES.length);
 community.SCORES.forEach((s) => {
   ok(s.kind + ' scores ' + SCORE_EXPECT[s.kind], s.points === SCORE_EXPECT[s.kind], s.points);
 });
@@ -175,8 +188,8 @@ ok('Supabase Realtime migration enables new-topic events',
   /alter publication supabase_realtime add table public\.topics/.test(notificationMigration));
 ok('shared navbar links Community to community.html',
   sharedHeader.indexOf("href: 'community.html'") !== -1);
-ok('shared navbar has no Leaderboard pill',
-  sharedHeader.toLowerCase().indexOf('leaderboard') === -1);
+ok('shared navbar links Leaderboard to leaderboard.html',
+  sharedHeader.indexOf("href: 'leaderboard.html'") !== -1);
 ok('shared navbar links Activity to activity.html',
   sharedHeader.indexOf("href: 'activity.html'") !== -1);
 ok('shared navbar links Sign in to auth.html',

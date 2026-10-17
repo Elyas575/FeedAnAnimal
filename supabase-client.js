@@ -32,6 +32,7 @@ try {
     window.sbSaveDisplayName = sbSaveDisplayName;
     window.sbLeaderboard = sbLeaderboard;
     window.sbMyRank = sbMyRank;
+    window.sbFounderStatus = sbFounderStatus;
     window.sbForumTopics = sbForumTopics;
     window.sbForumLatestAt = sbForumLatestAt;
     window.sbForumUnreadCount = sbForumUnreadCount;
@@ -248,6 +249,21 @@ async function sbMyRank() {
   } catch (err) {
     console.warn('[sb] my_rank unavailable:', err.message);
     return null;
+  }
+}
+
+/* True when the signed-in volunteer is among the first 250 animal entrants
+ * (permanent founder badge). Returns false gracefully when Supabase is not
+ * configured or the founders table has not been migrated yet. */
+async function sbFounderStatus(userId) {
+  if (!sb || !userId) return false;
+  try {
+    const { data, error } = await sb.rpc('is_founder', { p_user_id: userId });
+    if (error) throw error;
+    return !!data;
+  } catch (err) {
+    console.warn('[sb] founder check unavailable:', err.message);
+    return false;
   }
 }
 

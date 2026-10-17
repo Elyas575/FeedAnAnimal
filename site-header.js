@@ -18,7 +18,7 @@
     { id: 'index',       label: 'Map',         icon: 'location_on',  href: 'index.html' },
     { id: 'cities',      label: 'Cities',      icon: 'public',       href: 'cities.html' },
     { id: 'community',   label: 'Community',   icon: 'chat_bubble',  href: 'community.html', communityBadge: true },
-    { id: 'activity',    label: 'Activity',    icon: 'history',      href: 'activity.html' },
+    { id: 'leaderboard', label: 'Leaderboard', icon: 'leaderboard', href: 'leaderboard.html' },
     /* Chats is the LinkedIn-style Messaging entry: a button (not a link) that
        toggles the thread popover. The popover's "See all" hands off to the
        full inbox page. data-nav="inbox" keeps the active pill working when
@@ -37,7 +37,7 @@
   var BOTTOM_TABS = [
     { id: 'cities',    label: 'Cities',    icon: 'public',      href: 'cities.html' },
     { id: 'community', label: 'Community', icon: 'chat_bubble',  href: 'community.html', communityBadge: true },
-    { id: 'activity',  label: 'Activity',  icon: 'history',      href: 'activity.html' },
+    { id: 'leaderboard', label: 'Leaderboard', icon: 'leaderboard', href: 'leaderboard.html' },
     /* Chats replaces About here. On a phone the bottom bar is the only
        persistent nav, and a volunteer with a waiting reply should not have
        to find a thread through a footer link. About stays in the desktop

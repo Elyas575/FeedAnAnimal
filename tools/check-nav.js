@@ -35,7 +35,7 @@ t('/cities.html', '', 'cities');
 t('/about.html', '', 'about');
 t('/community.html', '', 'community');
 t('/community.html', '#leaderboard', 'community');
-t('/activity.html', '', 'activity');
+t('/leaderboard.html', '', 'leaderboard');
 t('/inbox.html', '', 'inbox');
 t('/auth.html', '', 'auth');
 t('/privacy.html', '', 'privacy');
@@ -100,7 +100,8 @@ console.log('\naccount card:');
    Both read as 'a different navbar', so this stays green forever. */
 const GOOD_AXES = 'opsz,wght,FILL,GRAD';
 const NAV_PAGES = ['index.html', 'community.html', 'activity.html', 'auth.html',
-  'about.html', 'privacy.html', 'terms.html', '404.html', 'inbox.html', 'cities.html', 'support.html'];
+  'about.html', 'privacy.html', 'terms.html', '404.html', 'inbox.html', 'cities.html', 'support.html',
+  'leaderboard.html', 'how-points.html'];
 let fontFailed = 0;
 NAV_PAGES.forEach((file) => {
   const h = fs.readFileSync(path.join(ROOT, file), 'utf8');

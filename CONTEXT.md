@@ -47,7 +47,7 @@ Taglines: `find, feed and water local street animals` / `Feed well. Help others 
 4. Report Stray: pin-drop or GPS, species, needs flags as `[NEEDS_*]` prefix in `reports.description` (strip vet->water->food on load), photo compress+upload, nearest station, instant + shared (`sbSubmitReport` / `sbLoadReports(200)`). City/country auto-detected via BigDataCloud reverse-geocode (cached per ~1km grid in `fta.geo.v1`, never blocks submit) into `reports.city/country/city_slug`   run `supabase/migration-report-city.sql` once. Editing is reporter-only: `openEditReport()` reopens the same form (photo replace/remove, name, species, description, needs, location) and saves through `sbUpdateReport` + RLS policy `reporter update reports`   run `supabase/migration-report-edit.sql` once. Popup content is built at open time (`bindPopup(() => popupHtml(row))`) so the Edit button appears as soon as auth resolves `state.myId`.
 5. Details: profile, health/sterilized/vaccinated flags, device history, log vet/medicine/rescue.
 6. Stations: 6 stations, log check/refill raises capacity.
-7. Points: feed 10 / water 8 / station 12 / medicine 18 / vet 20 / report 25 / rescue 30 (Postgres `schema-leaderboard.sql` + `community.js`). Tiers Stray 0, Scout 100, Feeder 250, Carer 500, Guardian 900, Angel 1500, Saint 2500, Legend 4000.
+7. Points: feed 15 / water 15 / vet 20 / rescue 30 / report 25 (Postgres `schema-leaderboard.sql` + `community.js`). Tiers Stray 0, Scout 100, Feeder 250, Carer 500, Guardian 900, Angel 1500, Saint 2500, Legend 4000.
 8. Forum: title 140 + body 4000, reply 2000, likes. Local-first, shared after `supabase/schema-forum.sql`.
 
 ## 6. Data model

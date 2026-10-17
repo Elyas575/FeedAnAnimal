@@ -27,10 +27,8 @@
     { kind: 'rescue',   label: 'Rescue an animal in danger', points: 30 },
     { kind: 'report',   label: 'Report a stray you found',   points: 25 },
     { kind: 'vet',      label: 'Log a vet check',           points: 20 },
-    { kind: 'medicine', label: 'Log medicine given',        points: 18 },
-    { kind: 'station',  label: 'Refill a feeding station',   points: 12 },
-    { kind: 'feed',     label: 'Feed an animal',            points: 10 },
-    { kind: 'water',    label: 'Refresh a water bowl',      points: 8 },
+    { kind: 'feed',     label: 'Feed an animal',            points: 15 },
+    { kind: 'water',    label: 'Refresh a water bowl',      points: 15 },
   ];
 
   var TIER_BLURB = {
@@ -110,6 +108,23 @@
       + '</g></svg>';
   }
 
+  /* --- founder badge --------------------------------------------------- *
+   * A small gold shield with an "F", shown for the first 250 animal
+   * entrants. Permanent - once a founder, always a founder. */
+  function founderBadgeSvg(size) {
+    var s = size || 20;
+    return ''
+      + '<svg class=\"founder-badge\" width=\"' + s + '\" height=\"' + s + '\" viewBox=\"0 0 48 48\"'
+      + ' role=\"img\" aria-label=\"Founder badge\">'
+      + '<path d=\"M24 2 L43 9 V24 C43 34 34 42 24 46 C14 42 5 34 5 24 V9 Z\"'
+      + ' fill=\"#d97706\" stroke=\"#b45309\" stroke-width=\"2\"/>'
+      + '<path d=\"M24 16 L30 22 H18 Z\" fill=\"#fff\"/>'
+      + '<path d=\"M24 26 C20 26 17 29 17 32 C17 35 20 38 24 38 C28 38 31 35 31 32 C31 29 28 26 24 26 Z\"'
+      + ' fill=\"#fff\" opacity=\".9\"/>'
+      + '<text x=\"24\" y=\"34\" font-family=\"sans-serif\" font-size=\"10\" font-weight=\"bold\" fill=\"#d97706\" text-anchor=\"middle\">F</text>'
+      + '</svg>';
+  }
+
   function tierPillHtml(tier, extraClass, extraStyle) {
     return '<span class="tier-pill ' + (extraClass || '') + '" style="' + (extraStyle || 'background:' + tier.accent + '18;color:' + tier.accent) + '">'
       + '<span class="material-symbols-outlined" style="font-size:13px">' + tier.icon + '</span>'
@@ -152,6 +167,7 @@
     var rank = num(r.rank);
     var medal = rank === 1 ? ' g1' : rank === 2 ? ' g2' : rank === 3 ? ' g3' : '';
     var isMe = !!meId && r.user_id === meId;
+    var isFounder = r.is_founder === true;
     var bits = [];
     if (num(r.feeds)) bits.push(num(r.feeds) + ' feeds');
     if (num(r.waters)) bits.push(num(r.waters) + ' waters');
@@ -159,6 +175,9 @@
     if (num(r.animals)) bits.push(num(r.animals) + ' animals');
     var ago = r.last_seen ? ' · ' + esc(relTime(r.last_seen)) : '';
     var meStyle = isMe ? 'border-color:#a03b0e;box-shadow:0 0 0 3px rgba(160,59,14,.08)' : '';
+    var founderBit = isFounder
+      ? '<span class="tier-pill founder-pill" style="background:#d97706;color:#fff"><span class="material-symbols-outlined" style="font-size:11px">local_fire_department</span>Founder</span>'
+      : '';
 
     return '<div class="row" style="' + meStyle + '">'
       + '<span class="rank' + medal + '">' + rank + '</span>'
@@ -167,12 +186,13 @@
         + '<div class="flex items-center gap-2 flex-wrap">'
           + '<span class="font-bold text-sm truncate">' + esc(r.display_name || 'Volunteer') + '</span>'
           + tierPillHtml(tier)
+          + founderBit
           + (isMe ? '<span class="tier-pill" style="background:#a03b0e;color:#fff">You</span>' : '')
         + '</div>'
         + '<p class="text-xs text-[#57423b] mt-0.5">' + esc(bits.join(' · ') || 'No activity yet') + ago + '</p>'
       + '</div>'
       + badgeSvg(tier, 40)
-      + '<div class="pts">' + points + '<small>points</small></div>'
+      + '<div class="pts"><b>' + points + ' points</b><small>' + esc(tier.name) + '</small></div>'
       + '</div>';
   }
 
@@ -199,10 +219,13 @@
     var points = num(mine.points);
     var tier = tierFor(points);
     var next = nextTierFor(points);
+    var isFounder = mine.is_founder === true;
     box.hidden = false;
-    $('mine-badge').innerHTML = badgeSvg(tier, 56);
+    $('mine-badge').innerHTML = badgeSvg(tier, 56)
+      + (isFounder ? founderBadgeSvg(32) : '');
     $('mine-name').textContent = 'Your rank';
-    $('mine-tier').outerHTML = tierPillHtml(tier, 'mine-tier', 'background:' + tier.accent + '18;color:' + tier.accent);
+    $('mine-tier').outerHTML = tierPillHtml(tier, 'mine-tier', 'background:' + tier.accent + '18;color:' + tier.accent)
+      + (isFounder ? ' <span class="tier-pill founder-pill" style="background:#d97706;color:#fff"><span class="material-symbols-outlined" style="font-size:11px">local_fire_department</span>Founder</span>' : '');
     $('mine-stats').textContent = '#' + num(mine.rank) + ' on the board · '
       + num(mine.feeds) + ' feeds · ' + num(mine.waters) + ' waters · '
       + num(mine.reports) + ' reports · ' + num(mine.animals) + ' animals';
@@ -290,7 +313,7 @@
     module.exports = {
       TIERS: TIERS, SCORES: SCORES, TIER_BLURB: TIER_BLURB,
       tierFor: tierFor, nextTierFor: nextTierFor, tierProgress: tierProgress,
-      badgeSvg: badgeSvg, initialsOf: initialsOf, hueOf: hueOf, rowHtml: rowHtml,
+      badgeSvg: badgeSvg, founderBadgeSvg: founderBadgeSvg, initialsOf: initialsOf, hueOf: hueOf, rowHtml: rowHtml,
     };
   }
 

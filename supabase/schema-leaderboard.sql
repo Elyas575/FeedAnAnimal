@@ -6,8 +6,7 @@
 -- Points come from the `events` table, so the ladder can never drift from
 -- what actually happened: there is no client-side tally to fake.
 --
---   feed 10 · water 8 · station check 12 · vet 20
---   medicine 18 · rescue 30 · report 25 · check 6
+--   feed 15 · water 15 · vet 20 · rescue 30 · report 25
 --
 -- Ranks (Dota ladder shape, re-themed for animal rescue):
 --   1 Stray · 2 Scout · 3 Feeder · 4 Carer · 5 Guardian
@@ -16,6 +15,8 @@
 /* ------------------------------------------------------------------ *
  * 1. leaderboard()   ranked volunteers for a time window
  * ------------------------------------------------------------------ */
+-- Drop first so we can change the return type (added is_founder column).
+drop function if exists public.leaderboard(text);
 create or replace function public.leaderboard(
   p_window text default 'all'          -- 'week' | 'month' | 'all'
 )
@@ -30,7 +31,8 @@ returns table (
   reports      bigint,
   checks       bigint,
   animals      bigint,
-  last_seen    timestamptz
+  last_seen    timestamptz,
+  is_founder   boolean
 )
 language sql
 stable
@@ -59,20 +61,19 @@ as $$
     t.reports,
     t.checks,
     t.animals,
-    t.last_seen
+    t.last_seen,
+    exists (select 1 from public.founders f where f.user_id = t.actor_id) as is_founder
   from (
     select
       s.actor_id,
       max(coalesce(s.actor_name, 'Volunteer'))::text as display_name,
       max(s.actor_avatar)::text                      as avatar_url,
       sum(case s.kind
-            when 'feed' then 10 when 'water' then 8 when 'station' then 12
-            when 'vet' then 20 when 'medicine' then 18 when 'rescue' then 30
+            when 'feed' then 15 when 'water' then 15 when 'vet' then 20 when 'rescue' then 30
             when 'report' then 25 else 6 end)::bigint as points,
       count(*) filter (where s.kind = 'feed')::bigint    as feeds,
       count(*) filter (where s.kind = 'water')::bigint   as waters,
       count(*) filter (where s.kind = 'report')::bigint  as reports,
-      count(*) filter (where s.kind = 'station')::bigint as checks,
       count(distinct s.animal_id)::bigint                as animals,
       max(s.created_at)                                  as last_seen
     from scoped s
@@ -91,6 +92,8 @@ grant execute on function public.leaderboard(text) to anon, authenticated;
  *    Returns a full row even with zero events, so the UI can show
  *    "0 points to go" instead of an empty state.
  * ------------------------------------------------------------------ */
+-- Drop first so we can change the return type (added is_founder column).
+drop function if exists public.my_rank();
 create or replace function public.my_rank()
 returns table (
   points    bigint,
@@ -101,7 +104,8 @@ returns table (
   feeds     bigint,
   waters    bigint,
   reports   bigint,
-  animals   bigint
+  animals   bigint,
+  is_founder boolean
 )
 language sql
 stable
@@ -112,8 +116,7 @@ as $$
     select
       e.actor_id,
       sum(case e.kind
-            when 'feed' then 10 when 'water' then 8 when 'station' then 12
-            when 'vet' then 20 when 'medicine' then 18 when 'rescue' then 30
+            when 'feed' then 15 when 'water' then 15 when 'vet' then 20 when 'rescue' then 30
             when 'report' then 25 else 6 end)::bigint as points,
       count(*) filter (where e.kind = 'feed')::bigint    as feeds,
       count(*) filter (where e.kind = 'water')::bigint   as waters,
@@ -147,12 +150,48 @@ as $$
           when p.points >= 1500 then 2500 - p.points when p.points >= 900  then 1500 - p.points
           when p.points >= 500  then 900 - p.points  when p.points >= 250  then 500 - p.points
           when p.points >= 100  then 250 - p.points  else 100 - p.points end),
-    p.feeds, p.waters, p.reports, p.animals
+    p.feeds, p.waters, p.reports, p.animals,
+    exists (select 1 from public.founders f where f.user_id = (select auth.uid())) as is_founder
   from scored p;
 $$;
 
 grant execute on function public.my_rank() to anon, authenticated;
 
+/* ------------------------------------------------------------------ *
+ * 3. founders   permanent badge for the first 250 animal entrants
+ * ------------------------------------------------------------------ */
+create table if not exists public.founders (
+  user_id      uuid primary key references auth.users(id) on delete cascade,
+  qualified_at timestamptz not null default now()
+);
+
+-- Backfill: the first 250 distinct people who entered an animal,
+-- ordered by their earliest animal event. Safe to re-run.
+insert into public.founders (user_id, qualified_at)
+select e.actor_id, min(e.created_at)
+from events e
+where e.actor_id is not null
+  and e.animal_id is not null
+group by e.actor_id
+order by min(e.created_at)
+limit 250
+on conflict (user_id) do nothing;
+
+/* Return true when the given user is among the first 250 animal entrants. */
+drop function if exists public.is_founder(uuid);
+create or replace function public.is_founder(p_user_id uuid)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select exists (select 1 from public.founders f where f.user_id = p_user_id);
+$$;
+
+grant execute on function public.is_founder(uuid) to anon, authenticated;
+
 -- Verify both work:
 -- select * from public.leaderboard('all') limit 10;
 -- select * from public.my_rank();
+-- select count(*) as founder_count from public.founders;

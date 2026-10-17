@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard — FeedAnAnimalMap</title>
+<meta name="description" content="Top feeders keeping street animals fed: weekly, monthly and all-time ranks.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FeedAnAnimalMap">
+<meta property="og:title" content="Leaderboard — FeedAnAnimalMap">
+<meta property="og:description" content="Top feeders keeping street animals fed.">
+<meta property="og:url" content="https://feedanimals.pages.dev/leaderboard.html">
+<meta property="og:image" content="https://feedanimals.pages.dev/og-image.svg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23a03b0e'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Inter','Plus Jakarta Sans',system-ui,sans-serif;background:#fffdf9;color:#1c1917}
+  .wrap{max-width:640px;margin:0 auto;padding:24px 16px 120px}
+  body.has-site-header{padding-top:var(--site-header-h,68px)}
+  @media (max-width:767px){body.has-site-header{padding-bottom:90px}}
+  .win-tabs{display:flex;background:#f3f1ef;border-radius:9999px;padding:4px;gap:4px}
+  .win-tabs button{flex:1;border:0;background:transparent;border-radius:9999px;
+    padding:10px 8px;font-size:14px;font-weight:700;color:#44403c;cursor:pointer;font-family:inherit}
+  .win-tabs button.on{background:#e8590c;color:#fff;box-shadow:0 2px 8px rgba(232,89,12,.35)}
+  .subbar{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:#fff;border:1px solid #f0edea;border-radius:14px;padding:10px 14px;margin-top:12px}
+  .subbar a{font-size:13.5px;font-weight:700;color:#c2410c;text-decoration:none}
+  .subbar a:hover{text-decoration:underline}
+  #board{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f0edea;
+    border-radius:16px;padding:12px 16px}
+  .rank{width:22px;text-align:center;font-size:14px;font-weight:700;color:#a8a29e;flex-shrink:0}
+  .rank.g1{color:#d97706}.rank.g2{color:#78716c}.rank.g3{color:#b45309}
+  .avatar{width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;position:relative;
+    display:inline-flex;align-items:center;justify-content:center}
+  .avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+  .avatar .initials{font-size:14px;font-weight:800;color:#fff;z-index:1}
+  .tier-pill{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;
+    padding:2px 8px;border-radius:9999px}
+  .tier-pill .material-symbols-outlined{font-size:13px}
+  .pts{margin-left:auto;text-align:right;flex-shrink:0}
+  .pts b{display:block;font-size:14px;font-weight:800;color:#1c1917}
+  .pts small{display:block;font-size:11px;color:#a8a29e;font-weight:600}
+  .founder-pill{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px}
+  .founder-badge{width:32px;height:32px}
+  #board-empty{margin-top:12px;background:#fff;border:1px dashed #e6cfae;border-radius:16px;
+    padding:28px 20px;text-align:center;font-size:14px;color:#78716c}
+  .mine{margin-top:12px;background:#fff;border:1.5px solid #a03b0e;border-radius:16px;padding:16px;
+    display:flex;gap:12px;align-items:center}
+  .scores{margin-top:12px;background:#fff;border:1px solid #f0edea;border-radius:16px;padding:6px 16px}
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<div class="wrap">
+  <div class="win-tabs" role="tablist" aria-label="Leaderboard period">
+    <button type="button" data-w="week" class="on">Weekly</button>
+    <button type="button" data-w="month">Monthly</button>
+    <button type="button" data-w="all">All-time</button>
+  </div>
+
+  <div class="subbar">
+    <a href="community.html">Top Feeders &#8594;</a>
+    <a href="how-points.html" id="how-link">How points work &#8594;</a>
+  </div>
+
+  <h1 id="sum-title" class="hidden">Top carers</h1>
+
+  <div id="mine" class="mine" hidden>
+    <span id="mine-badge"></span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="font-bold text-sm" id="mine-name">Your rank</span>
+        <span id="mine-tier"></span>
+      </div>
+      <p class="text-xs text-[#57423b] mt-0.5" id="mine-stats"></p>
+      <div class="h-1.5 rounded-full bg-[#f3f1ef] mt-2 overflow-hidden">
+        <div class="h-full rounded-full" id="mine-bar" style="width:0%"></div>
+      </div>
+      <p class="text-[11px] text-[#8b7269] mt-1" id="mine-next"></p>
+    </div>
+  </div>
+
+  <div id="board"></div>
+  <p id="board-empty" class="hidden"></p>
+  <p class="text-[12px] text-[#8b7269] mt-2 text-center" id="sum-sub"></p>
+
+  <div class="scores" id="scores-box">
+    <p class="text-[12px] font-bold tracking-wide uppercase text-[#a8a29e] pt-2">How points work</p>
+    <div id="scores"></div>
+  </div>
+
+  <div id="tiers" class="hidden"></div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="community.js"></script>
+<script src="site-header.js"></script>
+</body>
+</html>
