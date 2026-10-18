@@ -143,10 +143,14 @@ body {
 .toast.err { background: #d93838; }
 .toast.info { background: #1f78b4; }
 
-body.has-site-header { padding-top: 68px; }
+body.has-site-header { padding-top: 104px; padding-bottom: 40px; }
+body.has-site-header main { margin-top: 12px; margin-bottom: 12px; }
+@media (max-width: 640px) {
+  body.has-site-header { padding-top: 96px; }
+}
 </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 has-site-header">
 <div id="site-header"></div>
 <div id="toast-wrap"></div>
 
