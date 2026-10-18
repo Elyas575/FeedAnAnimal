@@ -1423,6 +1423,18 @@ const sbAuth = {
     });
     if (error) throw error;
   },
+  // Facebook OAuth — requires one-time setup in Supabase + Facebook Developers (see steps below).
+  async signInWithFacebook() {
+    if (!sb) throw new Error('Supabase not configured yet.');
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: {
+        redirectTo: window.location.origin + '/auth.html',
+        scopes: 'email public_profile',
+      },
+    });
+    if (error) throw error;
+  },
   async signOut() {
     if (!sb) return;
     await sb.auth.signOut();
