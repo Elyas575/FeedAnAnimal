@@ -117,8 +117,10 @@ ok('row marks the signed-in volunteer',
   community.rowHtml({ rank: 1, user_id: 'me', display_name: 'Me', points: 10 }, 'me').indexOf('>You<') !== -1);
 
 /* -------------------------------- scoring ------------------------------ */
-const SCORE_EXPECT = { feed: 15, water: 15, vet: 20, rescue: 30, report: 25 };
-ok('all 5 action types are scored', community.SCORES.length === 5, community.SCORES.length);
+// MVP shows only the actions that exist right now (feed / water / report).
+// vet + rescue still score in SQL, they are just hidden from the UI.
+const SCORE_EXPECT = { feed: 15, water: 15, report: 25 };
+ok('MVP action types are scored', community.SCORES.length === 3, community.SCORES.length);
 community.SCORES.forEach((s) => {
   ok(s.kind + ' scores ' + SCORE_EXPECT[s.kind], s.points === SCORE_EXPECT[s.kind], s.points);
 });

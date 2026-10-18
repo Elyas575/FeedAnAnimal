@@ -23,10 +23,9 @@
   ];
 
   // Mirrors the scoring in schema-leaderboard.sql. Display only.
+  // Only the actions available in the MVP are listed (feed / water / report).
   var SCORES = [
-    { kind: 'rescue',   label: 'Rescue an animal in danger', points: 30 },
-    { kind: 'report',   label: 'Report a stray you found',   points: 25 },
-    { kind: 'vet',      label: 'Log a vet check',           points: 20 },
+    { kind: 'report',   label: 'Post an animal you found', points: 25 },
     { kind: 'feed',     label: 'Feed an animal',            points: 15 },
     { kind: 'water',    label: 'Refresh a water bowl',      points: 15 },
   ];
