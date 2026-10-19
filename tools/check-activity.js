@@ -362,7 +362,7 @@ rows.push([js.indexOf("'Dropped pin near ' + (station") === -1 ? 'OK  ' : 'MISS'
   'the unconditional nearest-station landmark is gone']);
 check('the landmark helper exists', 'function fillPlaceLabel(lat, lng)', js);
 check('a station only names the pin when it is near', '<= 3000', js);
-check('far pins fall back to the reverse-geocoded city', "'Dropped pin near ' + geo.city", js);
+check('far pins fall back to the reverse-geocoded city', 'card.dropped_pin', js);
 check('submit rebuilds an empty landmark from the resolved city', 'place = geoCity', js);
 check('legacy far-away labels are rebuilt on load',
   'haversine(animal.location, state.meta.center) > 20000', js);
@@ -767,15 +767,15 @@ check('detailRow skips unknown values', 'if (isUnknown(value)) return \'\';', js
 check('unknown covers the placeholder strings', "text === 'not recorded'", js);
 check('unknown covers "unknown"', "text === 'unknown'", js);
 check('zero counts are hidden', 'if (n <= 0) return \'\';', js);
-check('care flags only render when yes', "animal.sterilized ? detailRow('Neutered', 'Yes')", js);
-check('no bare "Vaccinated: No" row', js.indexOf("detailRow('Vaccinated', yesNo") === -1 ? true : false, js);
+check('care flags only render when yes', "animal.sterilized ? detailRow(tt('drawer.neutered')", js);
+check('no bare "Vaccinated: No" row', js.indexOf("detailRow(tt('drawer.vaccinated')") === -1 ? true : false, js);
 check('the yesNo helper is gone', js.indexOf('const yesNo =') === -1 ? true : false, js);
 /* Stale: the seed data was removed, so this warning is now a lie. */
 rows.push([js.indexOf('Demo pins use fictional') === -1 ? 'OK  ' : 'MISS',
   'the stale "fictional Seattle coords" note is gone']);
 check('the reporter name is stored', 'reporterName:', js);
-check('the drawer credits the reporter once', "detailRow('Reported by'", js);
-check('community reports do not repeat caretaker as reporter', "animal.source !== 'report' ? detailRow('Caretakers'", js);
+check('the drawer credits the reporter once', "detailRow(tt('drawer.reported_by')", js);
+check('community reports do not repeat caretaker as reporter', "animal.source !== 'report' ? detailRow(tt('drawer.caretakers')", js);
 check('species is not repeated in the detail rows', js.indexOf("detailRow('Species'") === -1 ? true : false, js);
 check('device-only care history is conditionally rendered', '(historyHtml', js);
 check('community-report tag is not displayed as a detail', "animal.tags.filter((tag) => tag !== 'community-report')", js);

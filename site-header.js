@@ -185,6 +185,15 @@
     '#site-top-header .fta-account-signout .material-symbols-outlined{font-size:18px}',
     '#site-top-header #fta-account-error{margin-top:8px;font-size:12px;color:#ba1a1a}',
     '#site-top-header #fta-account-error[hidden]{display:none}',
+    '#site-top-header #fta-lang-btn{display:flex;align-items:center;gap:6px;height:40px;border:1px solid #e9e1df;background:#fff;border-radius:9999px;padding:0 12px;font-size:13px;font-weight:700;color:#57423b;cursor:pointer;font-family:inherit;white-space:nowrap}',
+    '#site-top-header #fta-lang-btn:hover{border-color:#a03b0e;color:#a03b0e}',
+    '#site-top-header #fta-lang-btn .material-symbols-outlined{font-size:17px}',
+    '#site-top-header #fta-lang-pop{position:absolute;top:calc(100% + 8px);right:16px;background:#fff;border:1px solid #e9e1df;border-radius:16px;box-shadow:0 12px 32px rgba(30,27,26,.12);padding:6px;z-index:120;min-width:170px}',
+    '#site-top-header #fta-lang-pop[hidden]{display:none}',
+    '#site-top-header #fta-lang-pop button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#1e1b1a;cursor:pointer;font-family:inherit;text-align:left}',
+    '#site-top-header #fta-lang-pop button:hover{background:#f5ecea}',
+    '#site-top-header #fta-lang-pop button.on{background:#ffdbcf;color:#a03b0e}',
+    '#site-top-header #fta-lang-pop .flg{font-size:16px}',
     /* ---- footer: desktop only (hidden on mobile screens like the mock) ---- */
     '#site-footer{display:none}',
     '@media (min-width:768px){#site-footer{display:block}}',
@@ -223,11 +232,11 @@
     if (l.chatButton) {
       return '<button type="button" id="fta-chat-btn" data-nav="' + esc(l.id) + '"'
         + ' aria-haspopup="true" aria-expanded="false"'
-        + ' aria-label="Messages" title="Messages"'
+        + ' aria-label="' + esc(t('nav.messages', 'Messages')) + '" title="' + esc(t('nav.messages', 'Messages')) + '"'
         + (on ? ' aria-current="page"' : '')
         + ' class="fta-nav-item ' + (on ? NAV_ON : NAV_OFF) + '">'
         + '<span class="material-symbols-outlined">' + esc(l.icon) + '</span>'
-        + '<span class="fta-nav-label">' + esc(l.label) + '</span>'
+        + '<span class="fta-nav-label">' + esc(navLabel(l)) + '</span>'
         + '<span class="fta-chat-badge" data-chat-badge="desktop" hidden></span>'
         + '</button>';
     }
@@ -235,9 +244,32 @@
       + (on ? ' aria-current="page"' : '')
       + ' class="fta-nav-item ' + (on ? NAV_ON : NAV_OFF) + '">'
       + '<span class="material-symbols-outlined">' + esc(l.icon) + '</span>'
-      + '<span class="fta-nav-label">' + esc(l.label) + '</span>'
+      + '<span class="fta-nav-label">' + esc(navLabel(l)) + '</span>'
       + (l.communityBadge ? '<span class="fta-chat-badge" data-community-badge="desktop" hidden></span>' : '')
       + '</a>';
+  }
+
+  /* Label keys keep the ONE nav definition translatable without a rewrite. */
+  function navLabel(l) {
+    if (!window.FTA_I18N) return l.label;
+    var key = { index: 'nav.map', cities: 'nav.cities', community: 'nav.community',
+      leaderboard: 'nav.leaderboard', inbox: 'nav.chats', about: 'nav.about' }[l.id];
+    return key ? window.FTA_I18N.t(key) : l.label;
+  }
+
+  function t(key, fallback) {
+    if (!window.FTA_I18N) return fallback;
+    return window.FTA_I18N.t(key);
+  }
+
+  var LANGS = [
+    { code: 'en', flag: '🇬🇧', name: 'English' },
+    { code: 'es', flag: '🇪🇸', name: 'Español' },
+    { code: 'fr', flag: '🇫🇷', name: 'Français' },
+  ];
+
+  function currentLang() {
+    return window.FTA_I18N ? window.FTA_I18N.get() : 'en';
   }
 
   function headerHtml() {
@@ -257,16 +289,25 @@
         /* The thread popover lives one level up so it anchors under the
            Chats nav button, not inside a separate bell wrapper. */
         + '<div id="fta-chat-pop" hidden role="dialog" aria-label="Your conversations">'
-            + '<div class="fta-cp-head"><span>Messages</span>'
-              + '<a href="inbox.html" class="text-xs font-bold" style="color:#a03b0e">See all</a>'
+            + '<div class="fta-cp-head"><span>' + esc(t('nav.messages', 'Messages')) + '</span>'
+              + '<a href="inbox.html" class="text-xs font-bold" style="color:#a03b0e">' + esc(t('nav.see_all', 'See all')) + '</a>'
             + '</div>'
             + '<div class="fta-cp-list" id="fta-chat-list"></div>'
           + '</div>'
+        + '<button type="button" id="fta-lang-btn" aria-haspopup="true" aria-expanded="false" title="' + esc(t('nav.language', 'Language')) + '">'
+          + '<span class="material-symbols-outlined" aria-hidden="true">translate</span><span id="fta-lang-code">' + esc(currentLang().toUpperCase()) + '</span>'
+        + '</button>'
+        + '<div id="fta-lang-pop" hidden role="menu" aria-label="' + esc(t('nav.language', 'Language')) + '">'
+          + LANGS.map(function (lg) {
+              return '<button type="button" data-lang="' + lg.code + '" role="menuitem" class="' + (lg.code === currentLang() ? 'on' : '') + '">'
+                + '<span class="flg">' + lg.flag + '</span><span>' + esc(lg.name) + '</span></button>';
+            }).join('')
+        + '</div>'
         + '<a href="support.html" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" style="text-decoration:none" title="Support Animal Relief">'
-          + '<span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="fta-support-label hidden sm:inline">Support</span>'
+          + '<span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="fta-support-label hidden sm:inline">' + esc(t('nav.support', 'Support')) + '</span>'
         + '</a>'
         + '<a id="auth-link" href="auth.html" class="fta-signin h-10 px-4 rounded-full border border-surface-container-highest bg-white text-on-surface hover:bg-surface-container font-medium text-sm flex items-center justify-center transition-colors shadow-sm">'
-          + '<span class="fta-signin-icon material-symbols-outlined text-[18px] mr-1 hidden sm:inline">person</span><span id="auth-link-label">Sign in</span>'
+          + '<span class="fta-signin-icon material-symbols-outlined text-[18px] mr-1 hidden sm:inline">person</span><span id="auth-link-label">' + esc(t('nav.signin', 'Sign in')) + '</span>'
         + '</a>'
         /* Account card behind the signed-in chip: avatar, name, email and
            the Log out button. Hidden until the chip is clicked. */
@@ -280,11 +321,11 @@
           + '</div>'
           + '<a href="index.html?edit-display-name=1" class="fta-account-edit-name">'
             + '<span class="material-symbols-outlined" aria-hidden="true">edit</span>'
-            + '<span>Change display name</span>'
+            + '<span>' + esc(t('nav.change_name', 'Change display name')) + '</span>'
           + '</a>'
           + '<button type="button" id="fta-account-signout" class="fta-account-signout">'
             + '<span class="material-symbols-outlined" aria-hidden="true">logout</span>'
-            + '<span>Log out</span>'
+            + '<span>' + esc(t('nav.logout', 'Log out')) + '</span>'
           + '</button>'
           + '<div id="fta-account-error" hidden></div>'
         + '</div>'
@@ -305,7 +346,7 @@
       + ' class="fta-bn-tab flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl transition-colors relative"'
       + ' style="color:' + (on ? BOTTOM_ACCENT : BOTTOM_IDLE) + '">'
       + '<span class="material-symbols-outlined text-[22px]">' + esc(l.icon) + '</span>'
-      + '<span class="fta-bn-label text-[10px] font-bold tracking-tight whitespace-nowrap">' + esc(l.label) + '</span>'
+      + '<span class="fta-bn-label text-[10px] font-bold tracking-tight whitespace-nowrap">' + esc(navLabel(l)) + '</span>'
       + (l.badge ? '<span class="fta-chat-badge" data-chat-badge="mobile" hidden></span>' : '')
       + (l.communityBadge ? '<span class="fta-chat-badge" data-community-badge="mobile" hidden></span>' : '')
       + '</a>';
@@ -319,10 +360,10 @@
     if (onMapPage()) {
       return '<button id="mobile-view-toggle" type="button" aria-label="Switch between the map and the list" class="' + cls + '"' + style + '>'
         + '<span id="mobile-view-toggle-icon" class="material-symbols-outlined text-[20px]">list</span>'
-        + '<span id="mobile-view-toggle-label">List</span></button>';
+        + '<span id="mobile-view-toggle-label">' + esc(t('nav.list', 'List')) + '</span></button>';
     }
     return '<a href="index.html" aria-label="Open the animal map" class="' + cls + '"' + style + '>'
-      + '<span class="material-symbols-outlined text-[20px]">map</span><span>Map</span></a>';
+      + '<span class="material-symbols-outlined text-[20px]">map</span><span>' + esc(t('nav.map', 'Map')) + '</span></a>';
   }
 
   function bottomNavHtml() {
@@ -799,6 +840,64 @@
     }
   }
 
+  function wireLangSwitcher() {
+    var btn = document.getElementById('fta-lang-btn');
+    var pop = document.getElementById('fta-lang-pop');
+    if (!btn || !pop) return;
+    var close = function () {
+      pop.setAttribute('hidden', '');
+      btn.setAttribute('aria-expanded', 'false');
+    };
+    btn.addEventListener('click', function (event) {
+      event.stopPropagation();
+      var open = pop.hasAttribute('hidden');
+      if (open) {
+        /* Rebuild so the active tick always matches the current language. */
+        var cur = currentLang();
+        var items = pop.querySelectorAll('[data-lang]');
+        Array.prototype.forEach.call(items, function (b) {
+          b.classList.toggle('on', b.getAttribute('data-lang') === cur);
+        });
+        pop.removeAttribute('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+      } else { close(); }
+    });
+    pop.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!target || typeof target.closest !== 'function') return;
+      var item = target.closest('[data-lang]');
+      if (!item) return;
+      var code = item.getAttribute('data-lang');
+      if (window.FTA_I18N) window.FTA_I18N.set(code);
+      close();
+      /* The header itself is static markup: re-mount so nav labels, the
+         code badge and the popover swap language instantly. Dynamic pages
+         (map, forum, board) re-render via the fta:lang-change event. */
+      try {
+        var hdr = document.getElementById('site-top-header');
+        var bot = document.getElementById('site-bottom-nav');
+        if (hdr) hdr.outerHTML = headerHtml();
+        if (bot) bot.outerHTML = bottomNavHtml();
+        wireLangSwitcher(); wireChatBell(); wireAuthLink(); wireAccountCard();
+        refreshActive(); refreshBottom();
+        var codeEl = document.getElementById('fta-lang-code');
+        if (codeEl && window.FTA_I18N) codeEl.textContent = window.FTA_I18N.get().toUpperCase();
+      } catch (e) { /* worst case: next navigation shows the new language */ }
+    });
+    document.addEventListener('click', function (event) {
+      if (pop.hasAttribute('hidden')) return;
+      if (!pop.contains(event.target) && !btn.contains(event.target)) close();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') close();
+    });
+    /* Late i18n load: refresh the code badge once dictionaries arrive. */
+    window.addEventListener('fta:lang-change', function () {
+      var codeEl = document.getElementById('fta-lang-code');
+      if (codeEl && window.FTA_I18N) codeEl.textContent = window.FTA_I18N.get().toUpperCase();
+    });
+  }
+
   function mount() {
     injectStyle();
     var slot = document.getElementById('site-header');
@@ -809,6 +908,7 @@
     injectBottomNav();
     wireBrandHome();
     wireAuthLink();
+    wireLangSwitcher();
     wireChatBell();
     wireCommunityNotifications();
     wireAccountCard();

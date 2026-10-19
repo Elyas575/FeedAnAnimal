@@ -225,14 +225,14 @@ button.fta-popup__thumb:hover img { transform: scale(1.08); }
 .fta-popup__meta a { color: #006194; font-weight: 600; text-decoration: none; }
 .fta-popup__meta a:hover { text-decoration: underline; }
 .fta-popup__care { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.fta-popup__care .fta-btn { width: 100%; justify-content: center; height: 38px; font-size: 12px; }
+.fta-popup__care .fta-btn { width: 100%; justify-content: center; height: auto; min-height: 38px; padding: 7px 8px; font-size: 12px; line-height: 1.25; text-align: center; white-space: normal; overflow-wrap: break-word; min-width: 0; }
 .fta-popup__tools { display: flex; gap: 6px; }
 .fta-popup__tools .fta-btn--ghost { flex: 1; justify-content: center; height: 36px; min-width: 0; }
 .fta-popup__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.fta-popup__actions .fta-btn { width: 100%; min-width: 0; height: 38px; justify-content: center; padding: 0 8px; }
+.fta-popup__actions .fta-btn { width: 100%; min-width: 0; height: auto; min-height: 38px; justify-content: center; padding: 7px 8px; line-height: 1.25; text-align: center; white-space: normal; overflow-wrap: break-word; }
 .fta-popup__actions .fta-btn--ghost { background: #f7f5f4; }
-.fta-popup__secondary { display: flex; gap: 5px; }
-.fta-popup__secondary .fta-btn { flex: 0 1 auto; min-width: 0; padding: 0 7px; gap: 4px; font-size: 10px; white-space: nowrap; }
+.fta-popup__secondary { display: flex; flex-wrap: wrap; gap: 5px; }
+.fta-popup__secondary .fta-btn { flex: 1 1 30%; min-width: 0; max-width: 100%; padding: 6px 7px; gap: 4px; font-size: 10px; line-height: 1.25; text-align: center; justify-content: center; white-space: normal; overflow-wrap: break-word; height: auto; min-height: 32px; }
 .fta-popup__secondary .material-symbols-outlined { flex: 0 0 auto; }
 .fta-btn {
   display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer;
@@ -900,6 +900,10 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 <script src="data/animals-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
+<script src="i18n.js"></script>
+<script src="lang-en.js"></script>
+<script src="lang-es.js"></script>
+<script src="lang-fr.js"></script>
 <script src="site-header.js"></script>
 <script src="index.js"></script>
 </body>

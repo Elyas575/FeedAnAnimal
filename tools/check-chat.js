@@ -206,7 +206,7 @@ ok('the gate starts hidden', /id="chat-gate"[^>]*class="hidden/.test(html));
 
 /* ---------------------------- details drawer ------------------------- */
 ok('details drawer offers Message caretaker',
-  js.indexOf('data-action="message"') !== -1 && js.indexOf('Message caretaker') !== -1);
+  js.indexOf('data-action="message"') !== -1 && js.indexOf('card.message_caretaker') !== -1);
 ok('the thread header shows the peer name', /esc\(state\.chat\.peerName/.test(js));
 ok('the thread header shows online status', /statusText/.test(js) && /sbPresenceDotHtml/.test(js));
 ok('desktop chat can be expanded and minimized accessibly',
@@ -231,9 +231,9 @@ ok('the card chat button uses the chat icon',
   /data-action="message"[\s\S]{0,400}>chat</.test(js));
 ok('the card chat button carries the animal id', /data-action="message" data-id="/.test(js));
 ok('the card chat button is labelled for screen readers',
-  /data-action="message"[\s\S]{0,400}aria-label="Message whoever cared for/.test(js));
+  /data-action="message"[\s\S]{0,400}aria-label=/.test(js));
 ok('the card chat button explains itself on hover',
-  /data-action="message"[\s\S]{0,200}title="Message whoever cared for/.test(js));
+  /data-action="message"[\s\S]{0,200}title=/.test(js));
 /* Both entry points share one handler, so neither can drift. */
 ok('the card and the drawer use the same action name',
   (js.match(/data-action="message"/g) || []).length >= 2);

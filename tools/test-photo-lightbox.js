@@ -50,7 +50,7 @@ ok('it fills the image from photoUrl', /function openPhoto\(id\)[\s\S]{0,1400}im
 ok('it opens the lightbox', /function openPhoto\(id\)[\s\S]{0,1600}openModal\('photo-modal'\)/.test(js));
 ok('a dead photo link never shows a broken glyph full screen', /function openPhoto\(id\)[\s\S]{0,1600}img\.onerror/.test(js));
 ok('handlers are attached before the src is assigned', /img\.onerror = function[\s\S]{0,400}img\.src = animal\.photoUrl/.test(js));
-ok('an animal with no photo explains itself', js.indexOf('No photo of ') !== -1);
+ok('an animal with no photo explains itself', js.indexOf('card.no_photo_yet') !== -1);
 
 /* --------------------------- the entry points ------------------------ */
 /* NOTE: split card behaviour   the PHOTO thumb (data-action="photo") opens
@@ -59,13 +59,13 @@ ok('an animal with no photo explains itself', js.indexOf('No photo of ') !== -1)
    handler only sees non-button taps. */
 ok('exactly one photo action handler exists', (js.match(/action === 'photo'/g) || []).length === 1);
 ok('the photo action opens the lightbox', /action === 'photo'\)[\s\S]{0,80}openPhoto\(id\)/.test(js));
-ok('the card thumbnail is a photo button', /data-action="photo" data-id=[\s\S]{0,80}View a big photo/.test(js));
+ok('the card thumbnail is a photo button', /data-action="photo" data-id=[\s\S]{0,160}card\.view_photo/.test(js));
 ok('tapping the card body flies the map to the animal', /closest\('\[data-animal-card\]'\)[\s\S]{0,160}revealAnimal\(/.test(js));
 ok('the card tap sits AFTER the action buttons', js.indexOf("target.closest('[data-action]')") < js.indexOf("target.closest('[data-animal-card]')"));
 ok('the card tap sits AFTER the action buttons', js.indexOf("target.closest('[data-action]')") < js.indexOf("target.closest('[data-animal-card]')"));
 ok('the card reads as clickable', /data-animal-card=.*cursor-pointer/.test(js));
 ok('the card thumbnail shows a zoom affordance', js.indexOf('group-hover:opacity-100') !== -1 && js.indexOf('zoom_in') !== -1);
-ok('the details drawer thumbnail opens the lightbox', /data-action="photo" data-id=[\s\S]{0,200}View a big photo/.test(js));
+ok('the details drawer thumbnail opens the lightbox', /data-action="photo" data-id=[\s\S]{0,300}card\.view_photo/.test(js));
 ok('the map popup thumb opens the lightbox', js.indexOf('class="fta-popup__thumb" data-action="photo"') !== -1);
 
 /* --------------------------- the sizes ------------------------------- */

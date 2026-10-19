@@ -20,6 +20,131 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
 
+  /* i18n for dynamic JS strings. t() reads the live dictionary at call time
+     (so it follows language switches), falls back to English, and keeps the
+     English literal when i18n.js has not loaded yet - important for Node
+     selftests which load index.js without the browser scripts. */
+  const EN_FALLBACK = {
+    'card.needs_attention': 'Needs attention',
+    'card.doing_fine': 'Doing fine',
+    'card.community_report': 'Community report',
+    'card.view_location': 'View location',
+    'card.food': 'Food',
+    'card.water': 'Water',
+    'card.good': 'Good',
+    'card.needs': 'Needs',
+    'card.urgent': 'Urgent',
+    'card.no_station': 'No station',
+    'card.feeds': 'feeds',
+    'card.by_you': 'by you',
+    'card.directions': 'Directions',
+    'card.i_fed': 'I fed',
+    'card.i_watered': 'I watered',
+    'card.edit': 'Edit',
+    'card.edit_report': 'Edit your report',
+    'card.more_details': 'More details',
+    'card.message_caretaker': 'Message caretaker',
+    'card.message_who': 'Message whoever posted or cared for {name}',
+    'card.view_photo': 'View a big photo of {name}',
+    'card.walk_to': 'Walking directions to this animal',
+    'card.open_maps': 'Open this location in Google Maps',
+    'card.dropped_pin': 'Dropped pin near {city}',
+    'card.report_pin': 'Community report pin',
+    'card.community_notes': 'Reported by the community - log what you see here.',
+    'card.unnamed': 'Unnamed stray',
+    'card.reported_volunteer': 'Reported by a community volunteer.',
+    'card.newly_reported': 'Newly reported by a community volunteer.',
+    'card.reported_area': 'Reported area',
+    'card.away': 'away',
+    'card.close': 'Close',
+    'card.close_details': 'Close details',
+    'card.show_on_map': 'Show {name} on the map',
+    'card.no_photo_yet': 'No photo of {name} has been shared yet',
+    'time.now': 'just now',
+    'time.min_ago': '{n}m ago',
+    'time.hour_ago': '{n}h ago',
+    'time.day_ago': '{n}d ago',
+    'time.month_ago': '{n}mo ago',
+    'time.unknown': 'unknown',
+    'status.critical': 'Critical condition • vet attention needed',
+    'status.food_urgent': 'Food urgent • empty {when}',
+    'status.water_urgent': 'Water urgent • empty {when}',
+    'status.treatment': 'Under treatment • small portions',
+    'status.food_needs': 'Needs food • empty {when}',
+    'status.water_needs': 'Needs water • empty {when}',
+    'status.monitoring': 'Fed {when} • monitoring',
+    'status.rested': 'Rested • fed {when}',
+    'status.ok': 'Doing well • fed {when}',
+    'drawer.food': 'Food',
+    'drawer.water': 'Water',
+    'drawer.bowl_stocked': 'Bowl stocked',
+    'drawer.empty_refill': 'Empty - refill needed',
+    'drawer.long_empty': 'Urgent - long empty',
+    'drawer.fresh': 'Fresh',
+    'drawer.low_topup': 'Low - top up',
+    'drawer.dry': 'Urgent - dry bowl',
+    'drawer.last_fed': 'last fed {when}',
+    'drawer.last_filled': 'last filled {when}',
+    'drawer.sex_age': 'Sex / age',
+    'drawer.temperament': 'Temperament',
+    'drawer.health': 'Health',
+    'drawer.neutered': 'Neutered',
+    'drawer.vaccinated': 'Vaccinated',
+    'drawer.microchipped': 'Microchipped',
+    'drawer.yes': 'Yes',
+    'drawer.first_reported': 'First reported',
+    'drawer.feeds_logged': 'Feeds logged',
+    'drawer.water_logged': 'Water refills logged',
+    'drawer.caretakers': 'Caretakers',
+    'drawer.station': 'Feeding station',
+    'drawer.reported_by': 'Reported by',
+    'drawer.location': 'Location',
+    'drawer.open_maps_link': 'Open this location in Google Maps',
+    'drawer.recent_device': 'Recent care on this device',
+    'drawer.i_fed_name': 'I fed {name}',
+    'drawer.gave_water': 'Gave water',
+    'drawer.vet_visit': 'Vet visit',
+    'drawer.show_map': 'Show on map',
+    'drawer.edit_report': 'Edit report',
+    'station.title': 'Community feeding station',
+    'station.full': '{pct}% full',
+    'station.container': 'Container level',
+    'station.steward': 'Steward: {name} • serviced {when}',
+  };
+  const tt = (key, vars) => {
+    try {
+      if (typeof window !== 'undefined' && window.FTA_I18N) return window.FTA_I18N.t(key, vars);
+    } catch (e) { /* fall through to English */ }
+    let s = EN_FALLBACK[key] != null ? EN_FALLBACK[key] : key;
+    if (vars) Object.keys(vars).forEach((k) => { s = String(s).split('{' + k + '}').join(String(vars[k])); });
+    return s;
+  };
+  /* Display-time translation of the stored English placeholders. Reports were
+     saved with English defaults ('Unnamed stray', 'Community report pin',
+     'Reported by the community...'), so map them to the live language when
+     rendering - the stored value stays English for dedupe/comparison. */
+  const displayText = (value, key) => {
+    const v = String(value == null ? '' : value);
+    const en = EN_FALLBACK[key] != null ? EN_FALLBACK[key] : key;
+    if (v === en) return tt(key);
+    /* Stored "Dropped pin near X" labels: keep the city, translate the wrapper. */
+    if (key === 'card.view_location' || key === 'card.report_pin') {
+      const prefix = 'Dropped pin near ';
+      if (v.indexOf(prefix) === 0) return tt('card.dropped_pin', { city: v.slice(prefix.length) });
+      if (v === 'Community report pin') return tt('card.report_pin');
+    }
+    if (key === 'card.unnamed' && v === 'Unnamed stray') return tt('card.unnamed');
+    if (key === 'card.community_notes' && /^(reported by (the )?community( volunteer)?|reported by a community volunteer - log what you see here)\.?$/i.test(v)) return tt('card.community_notes');
+    return v;
+  };
+  const displayLabel = (label) => {
+    const v = String(label == null ? '' : label);
+    if (v.indexOf('Dropped pin near ') === 0) return tt('card.dropped_pin', { city: v.slice('Dropped pin near '.length) });
+    if (v === 'Community report pin') return tt('card.report_pin');
+    if (!v) return tt('card.view_location');
+    return v;
+  };
+
   /* Shared form-field helpers, used by BOTH report paths (the pin-first
      flow and the edit flow). Earlier each function kept a private copy,
      but the pin-first functions call them across function boundaries, so
@@ -79,16 +204,16 @@
   const minutesSince = (iso) => (Date.now() - Date.parse(iso)) / MINUTE;
 
   function relativeTime(iso) {
-    if (!iso) return 'unknown';
+    if (!iso) return tt('time.unknown');
     const minutes = minutesSince(iso);
-    if (!isFinite(minutes)) return 'unknown';
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return Math.round(minutes) + 'm ago';
+    if (!isFinite(minutes)) return tt('time.unknown');
+    if (minutes < 1) return tt('time.now');
+    if (minutes < 60) return tt('time.min_ago', { n: Math.round(minutes) });
     const hours = minutes / 60;
-    if (hours < 24) return Math.round(hours) + 'h ago';
+    if (hours < 24) return tt('time.hour_ago', { n: Math.round(hours) });
     const days = hours / 24;
-    if (days < 30) return Math.round(days) + 'd ago';
-    return Math.round(days / 30) + 'mo ago';
+    if (days < 30) return tt('time.day_ago', { n: Math.round(days) });
+    return tt('time.month_ago', { n: Math.round(days / 30) });
   }
 
   const clockTime = (iso) => new Date(iso).toLocaleString(undefined, {
@@ -164,8 +289,8 @@
         state.meta && state.meta.center &&
         haversine(animal.location, state.meta.center) > 20000) {
       animal.location.label = animal.location.city
-        ? 'Dropped pin near ' + animal.location.city
-        : 'Community report pin';
+        ? tt('card.dropped_pin', { city: animal.location.city })
+        : tt('card.report_pin');
     }
     animal.lastFedAt = animal.lastFedAt || isoFromMinutes(animal.lastFedMinutesAgo || 0);
     animal.lastWateredAt = animal.lastWateredAt || isoFromMinutes(animal.lastWateredMinutesAgo || 0);
@@ -578,26 +703,28 @@
     const food = row.status.food;
     const water = row.status.water;
     const health = row.status.health;
-    if (health === 'critical') return { icon: 'emergency', tone: 'error', text: 'Critical condition • vet attention needed' };
-    if (food === 'urgent') return { icon: 'restaurant', tone: 'error', text: 'Food urgent • empty ' + relativeTime(animal.lastFedAt) };
-    if (water === 'urgent') return { icon: 'water_drop', tone: 'error', text: 'Water urgent • empty ' + relativeTime(animal.lastWateredAt) };
-    if (health === 'treatment') return { icon: 'medical_services', tone: 'tertiary', text: 'Under treatment • small portions' };
-    if (food === 'needs') return { icon: 'restaurant', tone: 'error', text: 'Needs food • empty ' + relativeTime(animal.lastFedAt) };
-    if (water === 'needs') return { icon: 'water_drop', tone: 'tertiary', text: 'Needs water • empty ' + relativeTime(animal.lastWateredAt) };
-    if (health === 'monitor') return { icon: 'visibility', tone: 'tertiary', text: 'Fed ' + relativeTime(animal.lastFedAt) + ' • monitoring' };
-    return { icon: 'check_circle', tone: 'secondary', text: 'Fed ' + relativeTime(animal.lastFedAt) + ' • water ok' };
+    if (health === 'critical') return { icon: 'emergency', tone: 'error', text: tt('status.critical') };
+    if (food === 'urgent') return { icon: 'restaurant', tone: 'error', text: tt('status.food_urgent', { when: relativeTime(animal.lastFedAt) }) };
+    if (water === 'urgent') return { icon: 'water_drop', tone: 'error', text: tt('status.water_urgent', { when: relativeTime(animal.lastWateredAt) }) };
+    if (health === 'treatment') return { icon: 'medical_services', tone: 'tertiary', text: tt('status.treatment') };
+    if (food === 'needs') return { icon: 'restaurant', tone: 'error', text: tt('status.food_needs', { when: relativeTime(animal.lastFedAt) }) };
+    if (water === 'needs') return { icon: 'water_drop', tone: 'tertiary', text: tt('status.water_needs', { when: relativeTime(animal.lastWateredAt) }) };
+    if (health === 'monitor') return { icon: 'visibility', tone: 'tertiary', text: tt('status.monitoring', { when: relativeTime(animal.lastFedAt) }) };
+    if (food === 'ok' && water === 'ok' && !isUnknown(animal.lastWateredAt) && !isUnknown(animal.lastFedAt)) return { icon: 'check_circle', tone: 'secondary', text: tt('status.rested', { when: relativeTime(animal.lastFedAt) }) };
+    return { icon: 'check_circle', tone: 'secondary', text: tt('status.ok', { when: relativeTime(animal.lastFedAt) }) };
   }
+
 
   /* The most useful one-tap action for this animal. */
   function primaryAction(row) {
-    if (row.status.food !== 'ok') return { kind: 'feed', icon: 'restaurant', label: 'Feed ' + row.animal.name, style: 'primary' };
-    if (row.status.water !== 'ok') return { kind: 'water', icon: 'water_drop', label: 'Refill water', style: 'tertiary' };
-    return { kind: 'feed', icon: 'restaurant', label: 'Log a feed', style: 'soft' };
+    if (row.status.food !== 'ok') return { kind: 'feed', icon: 'restaurant', label: tt('drawer.i_fed_name', { name: row.animal.name }), style: 'primary' };
+    if (row.status.water !== 'ok') return { kind: 'water', icon: 'water_drop', label: tt('drawer.gave_water'), style: 'tertiary' };
+    return { kind: 'feed', icon: 'restaurant', label: tt('card.i_fed'), style: 'soft' };
   }
 
   const secondaryAction = (row) => (row.status.water !== 'ok'
-    ? { kind: 'water', icon: 'water_drop', title: 'Log water' }
-    : { kind: 'feed', icon: 'restaurant', title: 'Log food' });
+    ? { kind: 'water', icon: 'water_drop', title: tt('drawer.gave_water') }
+    : { kind: 'feed', icon: 'restaurant', title: tt('card.i_fed') });
 
   /* --------------------------- people avatars ------------------------- */
   /* Deterministic colours + initials so every volunteer gets a stable,
@@ -756,10 +883,10 @@
        is layered BEFORE badgeDot so the status dot always stays on top.
        Without a photo the thumb is a plain div: the emoji fallback has
        nothing to enlarge, so it falls through to the map. */
-    const cardTitle = 'Show ' + animal.name + ' on the map';
+    const cardTitle = tt('card.show_on_map', { name: animal.name });
     const photoTitle = animal.photoUrl
-      ? 'View a big photo of ' + esc(animal.name)
-      : 'No photo of ' + esc(animal.name) + ' has been shared yet';
+      ? tt('card.view_photo', { name: animal.name })
+      : tt('card.no_photo_yet', { name: animal.name });
     const thumbZoom = animal.photoUrl
       ? '<span class="absolute inset-0 flex items-end justify-center pb-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/50 to-transparent pointer-events-none" aria-hidden="true">' +
           '<span class="material-symbols-outlined text-[16px] text-white drop-shadow-sm">zoom_in</span></span>'
@@ -769,13 +896,13 @@
       ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="' + photoTitle + '" aria-label="' + photoTitle + '" class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in">' + thumbInner + '</button>'
       : '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
 
-    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="Show ' + esc(animal.name) + ' on the map" title="' + esc(cardTitle) + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer">' +
+    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="' + esc(cardTitle) + '" title="' + esc(cardTitle) + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer">' +
       '<div class="flex gap-3 items-center">' +
         thumbBox +
         '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center justify-between gap-1">' +
             '<div class="flex items-center gap-1.5 truncate">' +
-              '<h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">' + esc(animal.name) + '</h3>' +
+              '<h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">' + esc(displayText(animal.name, 'card.unnamed')) + '</h3>' +
             '</div>' +
             '<span class="font-label-sm text-xs text-outline shrink-0 flex items-center gap-0.5">' +
               '<span class="material-symbols-outlined text-[13px]">near_me</span> ' + formatDistance(row.status.distance) +
@@ -816,16 +943,16 @@
            already handles every outcome in plain language - nobody has signed
            in yet, sign in first, or it is your own log - so a click is never
            a dead end. */
-        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" title="Message whoever cared for ' + esc(animal.name) + '" aria-label="Message whoever cared for ' + esc(animal.name) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
+        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" title="' + esc(tt('card.message_who', { name: animal.name })) + '" aria-label="' + esc(tt('card.message_who', { name: animal.name })) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">chat</span>' +
         '</button>' +
-        '<button type="button" data-action="' + secondary.kind + '" data-id="' + esc(animal.id) + '" title="' + secondary.title + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
+        '<button type="button" data-action="' + secondary.kind + '" data-id="' + esc(animal.id) + '" title="' + esc(secondary.title) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">' + secondary.icon + '</span>' +
         '</button>' +
-        '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" title="View on map" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
+        '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" title="' + esc(tt('drawer.show_map')) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">navigation</span>' +
         '</button>' +
-        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" title="More details" aria-label="More details for ' + esc(animal.name) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
+        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" title="' + esc(tt('card.more_details')) + '" aria-label="' + esc(tt('card.more_details')) + ' ' + esc(animal.name) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
           '<span class="material-symbols-outlined text-[18px]">info</span>' +
         '</button>' +
       '</div>' +
@@ -848,8 +975,8 @@
         const text = $('#feed-empty-text');
         if (text) {
           text.textContent = nothingAtAll
-            ? 'No animals reported yet. Tap “Report a Stray” to add the first one.'
-            : 'No animal matches that filter or search yet.';
+            ? tt('feed.empty_none')
+            : tt('feed.empty_filter');
         }
         const icon = $('#feed-empty-icon');
         if (icon) icon.textContent = nothingAtAll ? 'pets' : 'search_off';
@@ -942,44 +1069,44 @@
     const foodWidth = row.status.food === 'ok' ? 100 : row.status.food === 'needs' ? 40 : 15;
     const waterWidth = row.status.water === 'ok' ? 100 : row.status.water === 'needs' ? 40 : 15;
     const facts = animal.source === 'report'
-      ? ['Community report', speciesInfo(animal.species).singular].join(' · ')
+      ? [tt('card.community_report'), speciesInfo(animal.species).singular].join(' · ')
       : [animal.sex, animal.ageClass].filter((part) => !isUnknown(part)).join(' · ');
     const note = String(animal.notes || '').trim();
     const hideNote = !note || /^(reported by (the )?community( volunteer)?|reported by a community volunteer - log what you see here)\.?$/i.test(note);
-    const foodLabel = row.status.food === 'ok' ? 'Good' : row.status.food === 'needs' ? 'Needs' : 'Urgent';
-    const waterLabel = row.status.water === 'ok' ? 'Good' : row.status.water === 'needs' ? 'Needs' : 'Urgent';
+    const foodLabel = row.status.food === 'ok' ? tt('card.good') : row.status.food === 'needs' ? tt('card.needs') : tt('card.urgent');
+    const waterLabel = row.status.water === 'ok' ? tt('card.good') : row.status.water === 'needs' ? tt('card.needs') : tt('card.urgent');
 
     return '<div class="fta-popup__card">' +
       '<div class="fta-popup__head">' +
         '<span class="fta-popup__dot ' + (row.status.needsHelp ? 'is-alert' : 'is-ok') + '"></span>' +
-        '<span class="fta-popup__kicker">' + (row.status.needsHelp ? 'Needs attention' : 'Doing fine') + '</span>' +
-        '<span class="fta-popup__distance">' + formatDistance(row.status.distance) + '</span>' +
+        '<span class="fta-popup__kicker">' + esc(row.status.needsHelp ? tt('card.needs_attention') : tt('card.doing_fine')) + '</span>' +
+        '<span class="fta-popup__distance">' + esc(formatDistance(row.status.distance)) + '</span>' +
       '</div>' +
       '<div class="fta-popup__body">' +
         (animal.photoUrl
-          ? '<button type="button" class="fta-popup__thumb" data-action="photo" data-id="' + esc(animal.id) + '" title="View a big photo of ' + esc(animal.name) + '" aria-label="View a big photo of ' + esc(animal.name) + '">' + avatarHtml(animal) + '</button>'
+          ? '<button type="button" class="fta-popup__thumb" data-action="photo" data-id="' + esc(animal.id) + '" title="' + esc(tt('card.view_photo', { name: animal.name })) + '" aria-label="' + esc(tt('card.view_photo', { name: animal.name })) + '">' + avatarHtml(animal) + '</button>'
           : '<div class="fta-popup__thumb">' + avatarHtml(animal) + '</div>') +
         '<div class="fta-popup__id">' +
           '<h4>' + esc(animal.name) + '</h4>' +
           (facts ? '<p>' + esc(facts) + '</p>' : '') +
           '<p class="fta-popup__place"><span class="material-symbols-outlined">pin_drop</span><span class="truncate">' +
-            '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="Open this location in Google Maps">' +
-              esc(animal.location.label || 'View location') + '</a></span></p>' +
+            '<a href="' + esc(mapsSearch) + '" target="_blank" rel="noopener" title="' + esc(tt('card.open_maps')) + '">' +
+              esc(displayLabel(animal.location.label)) + '</a></span></p>' +
         '</div>' +
       '</div>' +
       '<div class="fta-popup__meters">' +
-        '<div class="fta-popup__need"><div class="fta-popup__meter"><span>Food</span><span>' + esc(foodLabel) +
-          '</span></div><div class="fta-popup__time">' + relativeTime(animal.lastFedAt) +
+        '<div class="fta-popup__need"><div class="fta-popup__meter"><span>' + esc(tt('card.food')) + '</span><span>' + esc(foodLabel) +
+          '</span></div><div class="fta-popup__time">' + esc(relativeTime(animal.lastFedAt)) +
           '</div><div class="fta-bar"><i class="' + (row.status.food === 'ok' ? 'is-ok' : 'is-alert') +
           '" style="width:' + foodWidth + '%"></i></div></div>' +
-        '<div class="fta-popup__need"><div class="fta-popup__meter"><span>Water</span><span>' + esc(waterLabel) +
-          '</span></div><div class="fta-popup__time">' + relativeTime(animal.lastWateredAt) +
+        '<div class="fta-popup__need"><div class="fta-popup__meter"><span>' + esc(tt('card.water')) + '</span><span>' + esc(waterLabel) +
+          '</span></div><div class="fta-popup__time">' + esc(relativeTime(animal.lastWateredAt)) +
           '</div><div class="fta-bar"><i class="' + (row.status.water === 'ok' ? 'is-ok' : 'is-water') +
           '" style="width:' + waterWidth + '%"></i></div></div>' +
       '</div>' +
-      (hideNote ? '' : '<p class="fta-popup__notes">' + esc(note) + '</p>') +
-      '<p class="fta-popup__meta">' + esc(station ? station.name : 'No station') + ' · ' + animal.feedCount +
-        ' feeds' + (myCare ? ' · ' + myCare + ' by you' : '') + '</p>' +
+      (hideNote ? '' : '<p class="fta-popup__notes">' + esc(displayText(note, 'card.community_notes')) + '</p>') +
+      '<p class="fta-popup__meta">' + esc(station ? station.name : tt('card.no_station')) + ' · ' + animal.feedCount +
+        ' ' + esc(tt('card.feeds')) + (myCare ? ' · ' + myCare + ' ' + esc(tt('card.by_you')) : '') + '</p>' +
       /* Directions gets its OWN full-width row above the care actions. "Walk to
          this animal" is the reason someone opened the popup, so it should not
          compete with Feed/Water for horizontal space on one row.
@@ -990,48 +1117,48 @@
          the previous stylesheet and see a blue button with unreadable text. An
          inline colour ships with the markup, so the two can never disagree. */
       '<a class="fta-btn fta-btn--go is-block" style="color:#ffffff" target="_blank" rel="noopener" ' +
-        'href="' + esc(directions) + '" title="Walking directions to this animal">' +
-        '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
+        'href="' + esc(directions) + '" title="' + esc(tt('card.walk_to')) + '">' +
+        '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>' + esc(tt('card.directions')) + '</a>' +
       '<div class="fta-popup__actions fta-popup__care">' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--primary">' +
-          '<span class="material-symbols-outlined">restaurant</span>I fed</button>' +
+          '<span class="material-symbols-outlined">restaurant</span>' + esc(tt('card.i_fed')) + '</button>' +
         '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--water">' +
-          '<span class="material-symbols-outlined">water_drop</span>I watered</button>' +
+          '<span class="material-symbols-outlined">water_drop</span>' + esc(tt('card.i_watered')) + '</button>' +
       '</div>' +
       '<div class="fta-popup__secondary">' +
         (canManageReport(animal)
-          ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Edit your report">' +
-            '<span class="material-symbols-outlined">edit</span>Edit</button>'
+          ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="' + esc(tt('card.edit_report')) + '">' +
+            '<span class="material-symbols-outlined">edit</span>' + esc(tt('card.edit')) + '</button>'
           : '') +
-        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="More details">' +
-          '<span class="material-symbols-outlined">info</span>More details</button>' +
+        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="' + esc(tt('card.more_details')) + '">' +
+          '<span class="material-symbols-outlined">info</span>' + esc(tt('card.more_details')) + '</button>' +
         /* Chat mirrors the sidebar card: "is it fed?" is immediately followed
            by "who is looking after it?", and the pin you just clicked IS the
            animal you are looking at - so the thread is one tap away instead of
            two (drawer) plus a scroll. openChat() resolves the poster/caretaker
            and explains every dead end, so the icon is never a trap. */
-        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="Message whoever posted or cared for ' + esc(animal.name) + '" aria-label="Message whoever posted or cared for ' + esc(animal.name) + '">' +
-          '<span class="material-symbols-outlined">chat</span>Message caretaker</button>' +
+        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" class="fta-btn fta-btn--ghost" title="' + esc(tt('card.message_who', { name: animal.name })) + '" aria-label="' + esc(tt('card.message_who', { name: animal.name })) + '">' +
+          '<span class="material-symbols-outlined">chat</span>' + esc(tt('card.message_caretaker')) + '</button>' +
       '</div>' +
     '</div>';
   }
   function stationPopupHtml(station) {
     return '<div class="fta-popup__card">' +
       '<div class="fta-popup__head"><span class="fta-popup__dot is-ok"></span>' +
-        '<span class="fta-popup__kicker">Community feeding station</span>' +
-        '<span class="fta-popup__distance">' + station.capacityPct + '% full</span></div>' +
+        '<span class="fta-popup__kicker">' + esc(tt('station.title')) + '</span>' +
+        '<span class="fta-popup__distance">' + esc(tt('station.full', { pct: station.capacityPct })) + '</span></div>' +
       '<h4 class="fta-popup__title">' + esc(station.name) + '</h4>' +
       '<p class="fta-popup__place"><span class="material-symbols-outlined">roofing</span>' + esc(station.ref) + '</p>' +
       '<p class="fta-popup__issue is-ok"><span class="material-symbols-outlined">inventory_2</span>' +
         esc(station.type) + ' • ' + esc(station.status) + '</p>' +
-      '<div class="fta-popup__meter"><span>Container level</span><span>' + station.capacityPct + '%</span></div>' +
+      '<div class="fta-popup__meter"><span>' + esc(tt('station.container')) + '</span><span>' + station.capacityPct + '%</span></div>' +
       '<div class="fta-bar"><i class="' + (station.capacityPct > 50 ? 'is-ok' : 'is-alert') + '" style="width:' + station.capacityPct + '%"></i></div>' +
       '<p class="fta-popup__notes">' + esc(station.notes) + '</p>' +
-      '<p class="fta-popup__meta">Steward: ' + esc(station.caretaker) + ' • serviced ' + relativeTime(station.lastServicedAt) + '</p>' +
+      '<p class="fta-popup__meta">' + esc(tt('station.steward', { name: station.caretaker, when: relativeTime(station.lastServicedAt) })) + '</p>' +
       /* Station popups get the same prominent, worded Directions button. */
       '<a class="fta-btn fta-btn--go is-block" style="color:#ffffff" target="_blank" rel="noopener" ' +
         'href="https://www.google.com/maps/dir/?api=1&destination=' + station.location.lat + ',' + station.location.lng + '">' +
-        '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
+        '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>' + esc(tt('card.directions')) + '</a>' +
       '<div class="fta-popup__actions">' +
         '<button type="button" data-action="station-check" data-station="' + esc(station.id) + '" class="fta-btn fta-btn--primary">' +
           '<span class="material-symbols-outlined">checklist</span>Log a station check</button>' +
@@ -2744,7 +2871,7 @@
   function countRow(label, count) {
     const n = Number(count) || 0;
     if (n <= 0) return '';
-    return detailRow(label, n + (n === 1 ? ' time' : ' times'));
+    return detailRow(label, n + ' ×');
   }
 
   /* ========================== photo lightbox ========================= */
@@ -2800,6 +2927,7 @@
     const reporterFirstName = String(animal.reporterName || '').trim().split(/\s+/)[0] || 'Community volunteer';
     const host = $('#details-content');
     if (!host) return;
+    try { host.setAttribute('data-animal-id', animal.id); } catch (e) { /* ignore */ }
 
     const historyHtml = history.length
       ? '<ul class="flex flex-col gap-1.5">' + history.map((entry) => '<li class="flex items-start gap-2">' +
@@ -2828,26 +2956,26 @@
          viewer. The heading and subtitle truncate so the bigger thumb can
          never push the close button out of the row. */
     const drawerThumb = animal.photoUrl
-      ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="View a big photo of ' + esc(animal.name) + '" aria-label="View a big photo of ' + esc(animal.name) + '" class="w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40 transition-all">' + avatarHtml(animal) + '</button>'
+      ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="' + esc(tt('card.view_photo', { name: animal.name })) + '" aria-label="' + esc(tt('card.view_photo', { name: animal.name })) + '" class="w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40 transition-all">' + avatarHtml(animal) + '</button>'
       : '<div class="w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + avatarHtml(animal) + '</div>';
     host.innerHTML =
       '<div class="flex items-start gap-3">' +
         drawerThumb +
         '<div class="flex-1 min-w-0 pr-10">' +
-          '<h3 class="font-headline-md text-headline-md text-on-surface truncate">' + esc(animal.name) + '</h3>' +
+          '<h3 class="font-headline-md text-headline-md text-on-surface truncate">' + esc(displayText(animal.name, 'card.unnamed')) + '</h3>' +
           '<p class="font-body-sm text-body-sm text-on-surface-variant truncate">' +
             esc([speciesInfo(animal.species).singular, animal.color].filter((part) => !isUnknown(part)).join(' • ') || animal.species) +
           '</p>' +
           '<p class="font-label-sm text-xs text-outline flex items-center gap-1 mt-1">' +
             '<span class="material-symbols-outlined text-[14px] text-primary shrink-0">pin_drop</span>' +
-            '<span class="truncate">' + esc(animal.location.label) + '</span>' +
-            '<span class="mx-1 shrink-0">•</span><span class="shrink-0">' + formatDistance(row.status.distance) + ' away</span></p>' +
+            '<span class="truncate">' + esc(displayLabel(animal.location.label)) + '</span>' +
+            '<span class="mx-1 shrink-0">•</span><span class="shrink-0">' + esc(formatDistance(row.status.distance)) + ' ' + esc(tt('card.away')) + '</span></p>' +
         '</div>' +
         '<button type="button" data-close-modal="details-modal" ' +
           'class="shrink-0 -mt-1 -mr-1 w-9 h-9 rounded-full flex items-center justify-center ' +
           'border border-surface-container-highest bg-surface-container-low text-on-surface-variant ' +
           'hover:bg-surface-container hover:text-on-surface active:scale-90 transition-all" ' +
-          'title="Close" aria-label="Close details">' +
+          'title="' + esc(tt('card.close')) + '" aria-label="' + esc(tt('card.close_details')) + '">' +
           '<span class="material-symbols-outlined text-[18px] leading-none">close</span></button>' +
       '</div>' +
 
@@ -2858,44 +2986,44 @@
       '<div class="mt-4 grid grid-cols-2 gap-3">' +
         '<div class="p-2.5 rounded-lg bg-surface-container">' +
           '<p class="font-label-sm text-[11px] text-on-surface-variant flex items-center gap-1">' +
-            '<span class="material-symbols-outlined text-[14px] text-error">restaurant</span> Food</p>' +
+            '<span class="material-symbols-outlined text-[14px] text-error">restaurant</span> ' + esc(tt('drawer.food')) + '</p>' +
           '<p class="font-body-sm text-xs font-semibold text-on-surface mt-1">' +
-            esc(row.status.food === 'ok' ? 'Bowl stocked' : row.status.food === 'needs' ? 'Empty - refill needed' : 'Urgent - long empty') + '</p>' +
-          '<p class="font-label-sm text-[11px] text-outline">last fed ' + relativeTime(animal.lastFedAt) + '</p>' +
+            esc(row.status.food === 'ok' ? tt('drawer.bowl_stocked') : row.status.food === 'needs' ? tt('drawer.empty_refill') : tt('drawer.long_empty')) + '</p>' +
+          '<p class="font-label-sm text-[11px] text-outline">' + esc(tt('drawer.last_fed', { when: relativeTime(animal.lastFedAt) })) + '</p>' +
         '</div>' +
         '<div class="p-2.5 rounded-lg bg-surface-container">' +
           '<p class="font-label-sm text-[11px] text-on-surface-variant flex items-center gap-1">' +
-            '<span class="material-symbols-outlined text-[14px] text-tertiary">water_drop</span> Water</p>' +
+            '<span class="material-symbols-outlined text-[14px] text-tertiary">water_drop</span> ' + esc(tt('drawer.water')) + '</p>' +
           '<p class="font-body-sm text-xs font-semibold text-on-surface mt-1">' +
-            esc(row.status.water === 'ok' ? 'Fresh' : row.status.water === 'needs' ? 'Low - top up' : 'Urgent - dry bowl') + '</p>' +
-          '<p class="font-label-sm text-[11px] text-outline">last filled ' + relativeTime(animal.lastWateredAt) + '</p>' +
+            esc(row.status.water === 'ok' ? tt('drawer.fresh') : row.status.water === 'needs' ? tt('drawer.low_topup') : tt('drawer.dry')) + '</p>' +
+          '<p class="font-label-sm text-[11px] text-outline">' + esc(tt('drawer.last_filled', { when: relativeTime(animal.lastWateredAt) })) + '</p>' +
         '</div>' +
       '</div>' +
       '<div class="mt-4">' +
         /* Sex/age and temperament are only meaningful for animals someone has
            actually observed up close; a report never has them. */
-        detailRow('Sex / age', [animal.sex, animal.ageClass].every(isUnknown)
+        detailRow(tt('drawer.sex_age'), [animal.sex, animal.ageClass].every(isUnknown)
           ? '' : (isUnknown(animal.sex) ? '' : animal.sex) + ' • ' + (isUnknown(animal.ageClass) ? '' : animal.ageClass)) +
-        detailRow('Temperament', animal.temperament) +
-        detailRow('Health', animal.health) +
+        detailRow(tt('drawer.temperament'), animal.temperament) +
+        detailRow(tt('drawer.health'), animal.health) +
         /* Care flags only render when affirmative: "No" would claim we checked
            and found nothing, when really nobody was asked. */
-        (animal.sterilized ? detailRow('Neutered', 'Yes') : '') +
-        (animal.vaccinated ? detailRow('Vaccinated', 'Yes') : '') +
-        (animal.microchipped ? detailRow('Microchipped', 'Yes') : '') +
-        detailRow('First reported', relativeTime(animal.reportedAt) + ' (' + clockTime(animal.reportedAt) + ')') +
-        countRow('Feeds logged', animal.feedCount) +
-        countRow('Water refills logged', animal.waterCount) +
-        (animal.source !== 'report' ? detailRow('Caretakers', animal.caretakers.length ? animal.caretakers.join(', ') : '') : '') +
-        detailRow('Feeding station', station ? station.name : '') +
-        (animal.source === 'report' ? detailRow('Reported by', reporterFirstName) : '') +
+        (animal.sterilized ? detailRow(tt('drawer.neutered'), tt('drawer.yes')) : '') +
+        (animal.vaccinated ? detailRow(tt('drawer.vaccinated'), tt('drawer.yes')) : '') +
+        (animal.microchipped ? detailRow(tt('drawer.microchipped'), tt('drawer.yes')) : '') +
+        detailRow(tt('drawer.first_reported'), relativeTime(animal.reportedAt) + ' (' + clockTime(animal.reportedAt) + ')') +
+        countRow(tt('drawer.feeds_logged'), animal.feedCount) +
+        countRow(tt('drawer.water_logged'), animal.waterCount) +
+        (animal.source !== 'report' ? detailRow(tt('drawer.caretakers'), animal.caretakers.length ? animal.caretakers.join(', ') : '') : '') +
+        detailRow(tt('drawer.station'), station ? station.name : '') +
+        (animal.source === 'report' ? detailRow(tt('drawer.reported_by'), reporterFirstName) : '') +
       '</div>' +
 
       /* Exact coordinates are background data - the link opens the pin in
          Google Maps, but the numbers themselves are never printed. */
       '<div class="mt-4 p-2.5 rounded-lg bg-surface-container-low">' +
-        '<p class="font-label-sm text-[11px] text-on-surface-variant">Location</p>' +
-        '<p class="font-body-sm text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">Open this location in Google Maps</a></p>' +
+        '<p class="font-label-sm text-[11px] text-on-surface-variant">' + esc(tt('drawer.location')) + '</p>' +
+        '<p class="font-body-sm text-xs mt-1"><a href="' + esc(mapsUrl2) + '" target="_blank" rel="noopener" style="text-decoration:underline">' + esc(tt('drawer.open_maps_link')) + '</a></p>' +
       '</div>' +
 
       (isUnknown(animal.description) || ['reported by community', 'reported by a community volunteer'].indexOf(
@@ -2912,7 +3040,7 @@
 
       (historyHtml
         ? '<div class="mt-4">' +
-            '<p class="font-label-md text-label-md text-on-surface font-semibold mb-2">Recent care on this device</p>' +
+            '<p class="font-label-md text-label-md text-on-surface font-semibold mb-2">' + esc(tt('drawer.recent_device')) + '</p>' +
             historyHtml +
           '</div>'
         : '') +
@@ -2923,21 +3051,21 @@
          it kept reading as translucent. One class, one colour, everywhere. */
       '<div class="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-surface-container-high">' +
         '<a class="fta-btn fta-btn--go" style="color:#ffffff" target="_blank" rel="noopener" href="' + esc(directions2) + '" ' +
-          'title="Walking directions to this animal">' +
-          '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>Directions</a>' +
+          'title="' + esc(tt('card.walk_to')) + '">' +
+          '<span class="material-symbols-outlined" style="color:#ffffff">directions</span>' + esc(tt('card.directions')) + '</a>' +
         '<button type="button" data-action="feed" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1.5 shadow-sm active:scale-95 transition-all">' +
-          '<span class="material-symbols-outlined text-[18px]">restaurant</span>I fed ' + esc(animal.name) + '</button>' +
+          '<span class="material-symbols-outlined text-[18px]">restaurant</span>' + esc(tt('drawer.i_fed_name', { name: animal.name })) + '</button>' +
         '<button type="button" data-action="water" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">water_drop</span>Gave water</button>' +
+          '<span class="material-symbols-outlined text-[18px]">water_drop</span>' + esc(tt('drawer.gave_water')) + '</button>' +
         '<button type="button" data-action="medicine" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">medical_services</span>Vet visit</button>' +
+          '<span class="material-symbols-outlined text-[18px]">medical_services</span>' + esc(tt('drawer.vet_visit')) + '</button>' +
         '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">my_location</span>Show on map</button>' +
+          '<span class="material-symbols-outlined text-[18px]">my_location</span>' + esc(tt('drawer.show_map')) + '</button>' +
         /* Only the reporter of THIS stray sees the edit control - and even a
            forged button dies at openEditReport()'s canManageReport() check. */
         (canManageReport(animal)
           ? '<button type="button" data-action="edit" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
-            '<span class="material-symbols-outlined text-[18px]">edit</span>Edit report</button>'
+            '<span class="material-symbols-outlined text-[18px]">edit</span>' + esc(tt('drawer.edit_report')) + '</button>'
           : '') +
         /* Phase 5. DMs to whoever most recently cared for this animal. The
            button is always present - openChat() resolves the caretaker and
@@ -2945,7 +3073,7 @@
            first"), so the volunteer is never left guessing why a control
            is missing. */
         '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" class="h-10 px-4 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">chat</span>Message caretaker</button>' +
+          '<span class="material-symbols-outlined text-[18px]">chat</span>' + esc(tt('card.message_caretaker')) + '</button>' +
       '</div>';
 
     openModal('details-modal');
@@ -4288,6 +4416,26 @@
   }
 
   if (typeof document !== 'undefined') {
+    /* Language switch: static chrome is swapped by i18n.js, but every card,
+       popup and the open drawer are rendered JS strings - re-render them so
+       the whole map follows without a reload. */
+    try {
+      window.addEventListener('fta:lang-change', function () {
+        try {
+          renderFeed();
+          renderTicker();
+          renderMarkers();
+          /* Re-open the details drawer in the new language when it is showing:
+             openDetails() re-renders from scratch, and open popups rebuild via
+             the bindPopup() closure on next open (Leaflet caches the node). */
+          try {
+            const host = document.getElementById('details-content');
+            const showing = host && host.getAttribute('data-animal-id');
+            if (showing && typeof openDetails === 'function') openDetails(showing);
+          } catch (e) { /* ignore */ }
+        } catch (e) { /* next render picks it up */ }
+      });
+    } catch (e) { /* ignore */ }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', boot);
     } else {
