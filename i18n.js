@@ -1,7 +1,7 @@
-/* ------------------------------------------------------------------ *
+﻿/* ------------------------------------------------------------------ *
  * FeedAnAnimalMap i18n core.
  *
- * Dictionaries live in lang-en.js / lang-es.js / lang-fr.js and each one
+ * Dictionaries live in lang-en.js / lang-es.js and each one
  * registers itself as window.FTA_LANG = { code: 'es', dict: {...} } via
  * window.FTA_LANGS registry below. English is the default and the
  * fallback for any missing key.
@@ -12,10 +12,10 @@
  *   <button data-i18n-aria="nav.messages" aria-label="Messages">
  *
  * Usage in JS (any script loaded AFTER i18n.js):
- *   window.FTA_I18N.t('nav.map') -> "Mapa" / "Carte" / "Map"
+ *   window.FTA_I18N.t('nav.map') -> "Mapa" / "Map"
  *
  * Language is stored in localStorage ('fta.lang.v1'), defaults to the
- * browser language when it is es/fr, otherwise English. Changing language
+ * browser language when it is es, otherwise English. Changing language
  * fires 'fta:lang-change' so dynamic renderers (nav, map cards, boards)
  * can re-render without a reload.
  * ------------------------------------------------------------------ */
@@ -23,7 +23,7 @@
   'use strict';
 
   var STORE_KEY = 'fta.lang.v1';
-  var SUPPORTED = ['en', 'es', 'fr'];
+  var SUPPORTED = ['en', 'es'];
 
   window.FTA_LANGS = window.FTA_LANGS || {};
 
@@ -40,7 +40,6 @@
     try {
       var nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
       if (nav.indexOf('es') === 0) return 'es';
-      if (nav.indexOf('fr') === 0) return 'fr';
     } catch (e) { /* ignore */ }
     return 'en';
   }

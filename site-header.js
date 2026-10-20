@@ -117,13 +117,13 @@
     '@media (min-width:1024px){#site-top-header .fta-hd-inner{padding:0 32px}}',
     '#site-top-header .fta-hd-left{display:flex;align-items:center;gap:12px;min-width:0}',
     '#site-top-header .fta-hd-brandlink{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none}',
-    '#site-top-header .fta-logo{flex:0 0 auto;width:48px;height:48px;',
+    '#site-top-header .fta-logo{flex:0 0 auto;width:60px;height:60px;',
     'display:flex;align-items:center;justify-content:center;font-size:20px;background:#a03b0e;',
     'box-shadow:0 1px 2px rgba(30,27,26,.15)}',
     '@media (min-width:640px){#site-top-header .fta-logo{width:44px;height:44px}}',
-    '#site-top-header .fta-brand{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
+    '#site-top-header .fta-brand{display:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
     'font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1;color:#1e1b1a}',
-    '@media (min-width:640px){#site-top-header .fta-brand{font-size:24px}}',
+    '@media (min-width:640px){#site-top-header .fta-brand{display:block;font-size:24px}}',
     '#site-top-header .fta-hd-brandlink:hover .fta-brand{color:#a03b0e}',
     '#site-top-header .fta-hd-right{display:flex;align-items:center;gap:10px;flex-shrink:0}',
     '#site-top-header .fta-support{display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;',
@@ -185,10 +185,11 @@
     '#site-top-header .fta-account-signout .material-symbols-outlined{font-size:18px}',
     '#site-top-header #fta-account-error{margin-top:8px;font-size:12px;color:#ba1a1a}',
     '#site-top-header #fta-account-error[hidden]{display:none}',
+    '#site-top-header #fta-lang-wrap{position:relative;display:flex;align-items:center}',
     '#site-top-header #fta-lang-btn{display:flex;align-items:center;gap:6px;height:40px;border:1px solid #e9e1df;background:#fff;border-radius:9999px;padding:0 12px;font-size:13px;font-weight:700;color:#57423b;cursor:pointer;font-family:inherit;white-space:nowrap}',
     '#site-top-header #fta-lang-btn:hover{border-color:#a03b0e;color:#a03b0e}',
-    '#site-top-header #fta-lang-btn .material-symbols-outlined{font-size:17px}',
-    '#site-top-header #fta-lang-pop{position:absolute;top:calc(100% + 8px);right:16px;background:#fff;border:1px solid #e9e1df;border-radius:16px;box-shadow:0 12px 32px rgba(30,27,26,.12);padding:6px;z-index:120;min-width:170px}',
+    '#site-top-header #fta-lang-btn .flg{font-size:18px;line-height:1}',
+    '#site-top-header #fta-lang-pop{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e9e1df;border-radius:16px;box-shadow:0 12px 32px rgba(30,27,26,.12);padding:6px;z-index:120;min-width:170px}',
     '#site-top-header #fta-lang-pop[hidden]{display:none}',
     '#site-top-header #fta-lang-pop button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#1e1b1a;cursor:pointer;font-family:inherit;text-align:left}',
     '#site-top-header #fta-lang-pop button:hover{background:#f5ecea}',
@@ -263,13 +264,27 @@
   }
 
   var LANGS = [
-    { code: 'en', flag: '🇬🇧', name: 'English' },
+    { code: 'en', flag: '🇺🇸', name: 'English' },
     { code: 'es', flag: '🇪🇸', name: 'Español' },
-    { code: 'fr', flag: '🇫🇷', name: 'Français' },
   ];
+
+  function langFlag(code) {
+    for (var i = 0; i < LANGS.length; i++) {
+      if (LANGS[i].code === code) return LANGS[i].flag;
+    }
+    return LANGS[0].flag;
+  }
 
   function currentLang() {
     return window.FTA_I18N ? window.FTA_I18N.get() : 'en';
+  }
+
+  function refreshLangBadge() {
+    var lang = currentLang();
+    var codeEl = document.getElementById('fta-lang-code');
+    if (codeEl) codeEl.textContent = lang.toUpperCase();
+    var flagEl = document.getElementById('fta-lang-flag');
+    if (flagEl) flagEl.textContent = langFlag(lang);
   }
 
   function headerHtml() {
@@ -280,8 +295,8 @@
       + '<div class="fta-hd-inner h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4">'
       + '<div class="fta-hd-left flex items-center gap-3 min-w-0">'
         + '<a href="index.html" class="fta-hd-brandlink flex items-center gap-2.5 group min-w-0">'
-          + '<span class="fta-logo h-20 w-20 sm:h-16 sm:w-16 shrink-0 rounded-full flex items-center justify-center text-xl shadow-sm" style="background:#fff"><img src="logo/logo.png" alt="FeedAnAnimalMap logo" class="h-full w-full object-contain px-1"></span>'
-          + '<span class="fta-brand text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none min-w-0 truncate whitespace-nowrap">FeedAnAnimalMap</span>'
+          + '<span class="fta-logo h-[60px] w-[60px] sm:h-11 sm:w-11 shrink-0 rounded-full flex items-center justify-center text-xl shadow-sm" style="background:#fff"><img src="logo/logo.png" alt="FeedAnAnimalMap logo" class="h-full w-full object-contain px-1"></span>'
+          + '<span class="fta-brand hidden sm:block text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none min-w-0 truncate whitespace-nowrap">FeedAnAnimalMap</span>'
         + '</a>'
       + '</div>'
       + '<nav id="site-nav" class="hidden md:flex items-center gap-1">' + links + '</nav>'
@@ -294,14 +309,16 @@
             + '</div>'
             + '<div class="fta-cp-list" id="fta-chat-list"></div>'
           + '</div>'
+        + '<div id="fta-lang-wrap">'
         + '<button type="button" id="fta-lang-btn" aria-haspopup="true" aria-expanded="false" title="' + esc(t('nav.language', 'Language')) + '">'
-          + '<span class="material-symbols-outlined" aria-hidden="true">translate</span><span id="fta-lang-code">' + esc(currentLang().toUpperCase()) + '</span>'
+          + '<span class="flg" id="fta-lang-flag" aria-hidden="true">' + langFlag(currentLang()) + '</span><span id="fta-lang-code">' + esc(currentLang().toUpperCase()) + '</span>'
         + '</button>'
         + '<div id="fta-lang-pop" hidden role="menu" aria-label="' + esc(t('nav.language', 'Language')) + '">'
           + LANGS.map(function (lg) {
               return '<button type="button" data-lang="' + lg.code + '" role="menuitem" class="' + (lg.code === currentLang() ? 'on' : '') + '">'
                 + '<span class="flg">' + lg.flag + '</span><span>' + esc(lg.name) + '</span></button>';
             }).join('')
+        + '</div>'
         + '</div>'
         + '<a href="support.html" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" style="text-decoration:none" title="Support Animal Relief">'
           + '<span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="fta-support-label hidden sm:inline">' + esc(t('nav.support', 'Support')) + '</span>'
@@ -880,8 +897,7 @@
         if (bot) bot.outerHTML = bottomNavHtml();
         wireLangSwitcher(); wireChatBell(); wireAuthLink(); wireAccountCard();
         refreshActive(); refreshBottom();
-        var codeEl = document.getElementById('fta-lang-code');
-        if (codeEl && window.FTA_I18N) codeEl.textContent = window.FTA_I18N.get().toUpperCase();
+        refreshLangBadge();
       } catch (e) { /* worst case: next navigation shows the new language */ }
     });
     document.addEventListener('click', function (event) {
@@ -891,10 +907,9 @@
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape') close();
     });
-    /* Late i18n load: refresh the code badge once dictionaries arrive. */
+    /* Late i18n load: refresh the flag + code badge once dictionaries arrive. */
     window.addEventListener('fta:lang-change', function () {
-      var codeEl = document.getElementById('fta-lang-code');
-      if (codeEl && window.FTA_I18N) codeEl.textContent = window.FTA_I18N.get().toUpperCase();
+      refreshLangBadge();
     });
   }
 
