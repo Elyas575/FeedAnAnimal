@@ -184,14 +184,16 @@
     '#site-top-header #fta-account-error{margin-top:8px;font-size:12px;color:#ba1a1a}',
     '#site-top-header #fta-account-error[hidden]{display:none}',
     '#site-top-header #fta-lang-wrap{position:relative;display:flex;align-items:center}',
-    '#site-top-header #fta-lang-btn{display:flex;align-items:center;gap:6px;height:40px;border:1px solid #e9e1df;background:#fff;border-radius:9999px;padding:0 12px;font-size:13px;font-weight:700;color:#57423b;cursor:pointer;font-family:inherit;white-space:nowrap}',
-    '#site-top-header #fta-lang-btn:hover{border-color:#a03b0e;color:#a03b0e}',
-    '#site-top-header #fta-lang-btn .flg{font-size:18px;line-height:1}',
+    '#site-top-header #fta-lang-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #e9e1df;background:#fff;border-radius:9999px;padding:0;font-size:18px;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,transform .15s,box-shadow .15s;box-shadow:0 1px 2px rgba(30,27,26,.04)}',
+    '#site-top-header #fta-lang-btn:hover{border-color:#a03b0e;color:#a03b0e;transform:translateY(-1px)}',
+    '#site-top-header #fta-lang-btn:focus-visible{outline:2px solid #a03b0e;outline-offset:2px}',
+    '#site-top-header #fta-lang-btn .flg{font-size:20px;line-height:1}',
     '#site-top-header #fta-lang-pop{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e9e1df;border-radius:16px;box-shadow:0 12px 32px rgba(30,27,26,.12);padding:6px;z-index:120;min-width:170px}',
     '#site-top-header #fta-lang-pop[hidden]{display:none}',
-    '#site-top-header #fta-lang-pop button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#1e1b1a;cursor:pointer;font-family:inherit;text-align:left}',
+    '#site-top-header #fta-lang-pop button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#1e1b1a;cursor:pointer;font-family:inherit;text-align:left;transition:background .12s,color .12s}',
     '#site-top-header #fta-lang-pop button:hover{background:#f5ecea}',
-    '#site-top-header #fta-lang-pop button.on{background:#ffdbcf;color:#a03b0e}',
+    '#site-top-header #fta-lang-pop button:focus-visible{outline:2px solid #a03b0e;outline-offset:-2px}',
+    '#site-top-header #fta-lang-pop button.on{background:#ffdbcf;color:#a03b0e;font-weight:700}',
     '#site-top-header #fta-lang-pop .flg{font-size:16px}',
     /* ---- footer: desktop only (hidden on mobile screens like the mock) ---- */
     '#site-footer{display:none}',
@@ -309,7 +311,7 @@
           + '</div>'
         + '<div id="fta-lang-wrap">'
         + '<button type="button" id="fta-lang-btn" aria-haspopup="true" aria-expanded="false" title="' + esc(t('nav.language', 'Language')) + '">'
-          + '<span class="flg" id="fta-lang-flag" aria-hidden="true">' + langFlag(currentLang()) + '</span><span id="fta-lang-code">' + esc(currentLang().toUpperCase()) + '</span>'
+          + '<span class="flg" id="fta-lang-flag" aria-hidden="true">' + langFlag(currentLang()) + '</span>'
         + '</button>'
         + '<div id="fta-lang-pop" hidden role="menu" aria-label="' + esc(t('nav.language', 'Language')) + '">'
           + LANGS.map(function (lg) {
