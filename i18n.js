@@ -45,6 +45,7 @@
   }
 
   var current = normalize(stored() || browserLang());
+  var obs = null;
 
   function dictFor(code) {
     var entry = window.FTA_LANGS[code];
@@ -86,9 +87,48 @@
     return current;
   }
 
+  /* Build a map from English source strings to the current language's
+     strings. Used to translate unannotated text nodes (static or
+     dynamically rendered) without requiring data-i18n attributes. */
+  function phraseMap() {
+    var en = dictFor('en');
+    var d = dictFor(current);
+    var m = {};
+    Object.keys(en).forEach(function (k) {
+      var src = en[k];
+      var dst = (d && d[k] != null) ? d[k] : en[k];
+      if (src != null && dst != null) {
+        var s = String(src).trim();
+        if (s && String(src) !== String(dst)) m[s] = String(dst);
+      }
+    });
+    return m;
+  }
+
+  /* Walk text nodes under scope and replace any exact English phrase. */
+  function translateTextNodes(scope, map) {
+    if (!scope || !document.createTreeWalker) return;
+    var walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null, false);
+    var node;
+    while ((node = walker.nextNode())) {
+      var parent = node.parentNode;
+      if (parent && (parent.nodeName === 'SCRIPT' || parent.nodeName === 'STYLE' ||
+          parent.nodeName === 'NOSCRIPT')) continue;
+      var original = node.nodeValue;
+      var trimmed = String(original || '').trim();
+      if (!trimmed) continue;
+      if (map[trimmed]) {
+        var leading = (original.match(/^\s*/) || [''])[0];
+        var trailing = (original.match(/\s*$/) || [''])[0];
+        node.nodeValue = leading + map[trimmed] + trailing;
+      }
+    }
+  }
+
   /* Walk the DOM and swap every annotated string. Runs on boot and after
      every language change; dynamic scripts re-render via the event. */
   function apply(root) {
+    if (obs) { try { obs.disconnect(); } catch (e) { /* ignore */ } }
     var scope = root || document;
     if (!scope || !scope.querySelectorAll) return;
     try { document.documentElement.setAttribute('lang', current); } catch (e) { /* ignore */ }
@@ -113,35 +153,28 @@
     for (var h = 0; h < html.length; h++) {
       html[h].innerHTML = t(html[h].getAttribute('data-i18n-html'));
     }
+
+    /* Universal exact-phrase translation for any remaining text nodes. */
+    try { translateTextNodes(scope === document ? document.body : scope, phraseMap()); } catch (e) { /* ignore */ }
+
+    if (obs) {
+      setTimeout(function () {
+        try { obs.observe(document.body, { childList: true, subtree: true }); } catch (e) { /* ignore */ }
+      }, 0);
+    }
   }
 
   /* Keep watching: the header, map cards and forum rows are injected after
      load, so late markup with data-i18n attributes gets translated too. */
   function watch() {
     if (!('MutationObserver' in window) || !document.body) return;
-    var pending = false;
-    var obs = new MutationObserver(function (muts) {
-      if (pending) return;
-      for (var i = 0; i < muts.length; i++) {
-        var added = muts[i].addedNodes;
-        for (var j = 0; j < added.length; j++) {
-          var n = added[j];
-          if (n && n.nodeType === 1) {
-            if (n.hasAttribute && (n.hasAttribute('data-i18n') || n.hasAttribute('data-i18n-ph') ||
-              n.hasAttribute('data-i18n-aria') || n.hasAttribute('data-i18n-title') ||
-              n.hasAttribute('data-i18n-html'))) {
-              pending = true;
-              setTimeout(function () { pending = false; apply(); }, 0);
-              return;
-            }
-            if (n.querySelector && n.querySelector('[data-i18n],[data-i18n-ph],[data-i18n-aria],[data-i18n-title],[data-i18n-html]')) {
-              pending = true;
-              setTimeout(function () { pending = false; apply(); }, 0);
-              return;
-            }
-          }
-        }
-      }
+    var timer = null;
+    obs = new MutationObserver(function () {
+      if (timer) return;
+      timer = setTimeout(function () {
+        timer = null;
+        apply();
+      }, 60);
     });
     obs.observe(document.body, { childList: true, subtree: true });
   }
