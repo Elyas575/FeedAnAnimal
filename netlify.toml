@@ -1,0 +1,25 @@
+# FeedAnAnimalMap — Netlify config
+# Static site: no build step, publish repo root.
+# Your existing _headers file is picked up automatically by Netlify.
+# Your existing 404.html is picked up automatically as the 404 page.
+
+[build]
+  publish = "."
+  command = "node tools/build-data.js"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Always serve the pretty 404 page (keeps header + "Back to the map" button)
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 404
+
+# Force HTTPS (Netlify provides the cert for free)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
