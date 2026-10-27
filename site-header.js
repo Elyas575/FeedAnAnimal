@@ -115,11 +115,11 @@
     '#site-top-header .fta-hd-inner{display:flex;align-items:center;justify-content:space-between;',
     'gap:16px;width:100%;height:68px;padding:0 16px;box-sizing:border-box}',
     '@media (min-width:1024px){#site-top-header .fta-hd-inner{padding:0 32px}}',
-    '#site-top-header .fta-hd-left{display:flex;align-items:center;gap:12px;min-width:0}',
-    '#site-top-header .fta-hd-brandlink{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none}',
+    '#site-top-header .fta-hd-left{display:flex;align-items:center;gap:12px;}',
+    '#site-top-header .fta-hd-brandlink{display:flex;align-items:center;gap:10px;text-decoration:none}',
     '#site-top-header .fta-logo{flex:0 0 auto;height:64px;width:auto;display:block;}',
     '@media (min-width:640px){#site-top-header .fta-logo{height:52px}}',
-    '#site-top-header .fta-brand{display:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
+    '#site-top-header .fta-brand{display:none;min-width:0;white-space:nowrap;',
     'font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1;color:#1e1b1a}',
     '@media (min-width:640px){#site-top-header .fta-brand{display:block;font-size:24px}}',
     '#site-top-header .fta-hd-brandlink:hover .fta-brand{color:#a03b0e}',
@@ -293,10 +293,10 @@
 
     return '<header id="site-top-header" class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-surface-container-highest shadow-sm">'
       + '<div class="fta-hd-inner h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4">'
-      + '<div class="fta-hd-left flex items-center gap-3 min-w-0">'
-        + '<a href="index.html" class="fta-hd-brandlink flex items-center gap-2.5 group min-w-0">'
+      + '<div class="fta-hd-left flex items-center gap-3">'
+        + '<a href="index.html" class="fta-hd-brandlink flex items-center gap-2.5 group">'
           + '<span class="fta-logo h-[64px] sm:h-[52px] shrink-0"><img src="logo/logo.png" alt="StrayFeedingMap logo" class="h-full w-auto object-contain"></span>'
-          + '<span class="fta-brand hidden sm:block text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none min-w-0 truncate whitespace-nowrap">StrayFeedingMap</span>'
+          + '<span class="fta-brand hidden sm:block text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none whitespace-nowrap">StrayFeedingMap</span>'
         + '</a>'
       + '</div>'
       + '<nav id="site-nav" class="hidden md:flex items-center gap-1">' + links + '</nav>'

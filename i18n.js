@@ -44,7 +44,7 @@
     return 'en';
   }
 
-  var current = normalize(stored() || browserLang());
+  var current = normalize(stored() || 'en');
   var obs = null;
 
   function dictFor(code) {
