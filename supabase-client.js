@@ -837,13 +837,13 @@ async function sbLogEvent({ animalId, stationId, kind, note, place }) {
   }
 }
 
-async function sbLoadRecentEvents(limit = 30) {
+async function sbLoadRecentEvents(limit = 30, offset = 0) {
   if (!sb) return [];
   try {
     const { data, error } = await sb.from('events')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
     if (error) throw error;
     return data || [];
   } catch (err) {
@@ -1121,13 +1121,13 @@ function speciesRule(species) {
 
    Returns [] when Supabase is not configured or the table is missing, so the
    app keeps working offline exactly as before. */
-async function sbLoadReports(limit = 200) {
+async function sbLoadReports(limit = 50, offset = 0) {
   if (!sb) return [];
   try {
     const { data, error } = await sb.from('reports')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
     if (error) throw error;
     return (data || []).map(function (row) {
       const lat = Number(row.lat);

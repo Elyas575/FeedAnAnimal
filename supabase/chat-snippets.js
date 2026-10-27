@@ -20,10 +20,17 @@ async function sbOpenDm(otherUserId, animalId, reportId) {
   return cid;
 }
 
-async function sbListMessages(conversationId, limit = 50) {
-  const { data, error } = await sb.from('messages').select('*')
+async function sbListMessages(conversationId, limit = 50, beforeCursor = null) {
+  let query = sb.from('messages').select('*')
     .eq('conversation_id', conversationId).eq('is_deleted', false)
-    .order('created_at', { ascending: true }).limit(limit);
+    .order('created_at', { ascending: true })
+    .limit(limit);
+
+  if (beforeCursor) {
+    query = query.lt('created_at', beforeCursor);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }

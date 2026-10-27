@@ -447,6 +447,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 
   <!-- Scrollable animal feed (rendered from data/animals.json) -->
   <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-[84px] md:pb-space-xl flex flex-col gap-space-sm"></div>
+  <button id="feed-load-more" class="mt-3 px-4 py-2 rounded-xl border border-surface-container-highest bg-white text-on-surface font-medium text-sm hover:bg-surface-container-low transition-colors hidden" onclick="loadMoreReports()">Load more</button>
   <div id="feed-empty" class="hidden px-space-md pb-[84px] md:pb-space-xl flex-col items-center gap-2 text-center">
     <span id="feed-empty-icon" class="material-symbols-outlined text-[32px] text-outline">search_off</span>
     <p id="feed-empty-text" class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>

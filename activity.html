@@ -55,6 +55,7 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;col
 <button class="chip" data-f="local">This device</button>
 </div>
 <div id="list" class="flex flex-col gap-2 mt-3"></div>
+<button id="load-more" class="mt-4 px-4 py-2 rounded-xl border border-surface-container-highest bg-white text-on-surface font-medium text-sm hover:bg-surface-container-low transition-colors hidden" onclick="loadMore()">Load more</button>
 <div id="empty" class="hidden text-center text-sm mt-8">No activity matches. Try clearing search.</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -121,10 +122,11 @@ var o = JSON.parse(raw); var log = o.log||[];
 return log.map(function(e){ return {id:e.id, actor:e.actor||'You', actorAvatar:e.actorAvatar||'', kind:e.kind, note:e.note, place:e.place, at:e.at, animal:e.animalId, src:'local'}; });
 } catch(e){ return []; }
 }
+var activityOffset = 0; var activityHasMore = true;
 async function loadCloud(){
 try {
 if(!window.sbLoadRecentEvents) return [];
-var data = await window.sbLoadRecentEvents(100);
+var data = await window.sbLoadRecentEvents(50, activityOffset);
 return (data||[]).map(function(r){ return {id:r.id, actor:r.actor_name||'Volunteer', actorAvatar:r.actor_avatar||'', kind:r.kind, note:r.note||r.kind, place:r.place||'', at:r.created_at, animal:r.animal_id, station:r.station_id, src:'cloud'}; });
 } catch(e){ return []; }
 }
@@ -156,6 +158,8 @@ return '<div class="row">'+personAvatar(r.actor, r.actorAvatar)
 $('empty').classList.toggle('hidden', n>0);
 var total = filtered.length;
 $('act-sub').textContent = total + ' update' + (total===1?'':'s') + ' - live from Supabase + this device';
+var btn = document.getElementById('load-more');
+if(btn) btn.classList.toggle('hidden', activityHasMore === false || total === 0);
 if(total > 200){ var more = document.createElement('p'); more.className='text-center text-xs text-[#8a6b60] mt-3'; more.textContent='Showing newest 200 of ' + total + ' - narrow the search to see older ones'; list.appendChild(more); }
 }
 async function boot(){
@@ -165,6 +169,15 @@ rows = loadLocal().concat(await loadCloud());
 render();
 if(window.sbLiveTicker) window.sbLiveTicker(function(r){
 rows.unshift({id:r.id, actor:r.actor_name||'Volunteer', actorAvatar:r.actor_avatar||'', kind:r.kind, note:r.note||r.kind, place:r.place||'', at:r.created_at, animal:r.animal_id, station:r.station_id, src:'cloud'});
+render();
+});
+}
+function loadMore(){
+if(!activityHasMore) return;
+loadCloud().then(function(newRows){
+if(!newRows || !newRows.length){ activityHasMore = false; return; }
+rows = rows.concat(newRows);
+activityOffset += newRows.length;
 render();
 });
 }

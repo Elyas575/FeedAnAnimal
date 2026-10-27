@@ -53,13 +53,14 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;col
 <div class="mt-4">
   <input id="q" class="fta-field" placeholder="Search city or country...">
 </div>
-<div id="chips" class="flex gap-2 mt-6 overflow-x-auto pb-1">
+<div id="chips" class="flex gap-2 mt-6 overflow-x-auto pb-2">
   <button class="chip on" data-sort="count">Most strays</button>
   <button class="chip" data-sort="help">Needs help</button>
   <button class="chip" data-sort="near">Near me</button>
   <button class="chip" data-sort="az">A&ndash;Z</button>
 </div>
 <div id="list" class="flex flex-col gap-2 mt-3"></div>
+<button id="load-more" class="mt-4 px-4 py-2 rounded-xl border border-surface-container-highest bg-white text-on-surface font-medium text-sm hover:bg-surface-container-low transition-colors hidden" onclick="loadMore()">Load more</button>
 <div id="empty" class="hidden text-center mt-8">
   <p class="text-4xl mb-2">🐾</p>
   <p class="text-sm font-bold">No cities mapped yet</p>
@@ -157,11 +158,12 @@ function loadLocal(){
     return Array.isArray(overlay.reports) ? overlay.reports : [];
   } catch (e) { return []; }
 }
+var citiesOffset = 0; var citiesHasMore = true;
 async function loadCloud(){
   try {
     if (window.sbEnsureAuth) await window.sbEnsureAuth();
     if (!window.sbLoadReports) return [];
-    return await window.sbLoadReports(200);
+    return await window.sbLoadReports(50, citiesOffset);
   } catch (e) { return []; }
 }
 /* Seeds first, then cloud, then this device: a local copy of a shared
@@ -268,6 +270,8 @@ function render(){
       + '<span class="pill-count">' + g.count + '</span></a>';
   }).join('');
   $('empty').classList.toggle('hidden', cities.length > 0);
+  var btn = document.getElementById('load-more');
+  if(btn) btn.classList.toggle('hidden', citiesHasMore === false || cities.length === 0);
   var note = $('unplaced');
   note.classList.toggle('hidden', unplaced === 0);
   note.textContent = unplaced + ' stray' + (unplaced===1?' is':'s are') + ' on the map without a city label yet (reported before location tagging).';
@@ -277,9 +281,25 @@ function render(){
 async function boot(){
   var seed = await loadSeed();
   var cloud = await loadCloud();
+  window.__citiesCloud = cloud;
   var local = loadLocal();
   group(mergeAll([seed, cloud, local]));
   render();
+}
+function loadMore(){
+  if(!citiesHasMore) return;
+  loadCloud().then(function(newCloud){
+    if(!newCloud || !newCloud.length){ citiesHasMore = false; return; }
+    // Append new cloud reports and re-merge
+    var allCloud = window.__citiesCloud || [];
+    allCloud = allCloud.concat(newCloud);
+    window.__citiesCloud = allCloud;
+    citiesOffset += newCloud.length;
+    var seed = loadSeed();
+    var local = loadLocal();
+    group(mergeAll([seed, allCloud, local]));
+    render();
+  });
 }
 
 /* Near me: measure straight-line distance to each city's pin centroid.

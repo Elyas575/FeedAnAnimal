@@ -381,6 +381,8 @@
     map: null, markerLayer: null, markers: {}, userMarker: null, accuracyCircle: null, pickMarker: null,
     pickMode: false, mobileView: 'map', tickerIndex: 0, tickerHidden: false, cloudWarned: false,
     dataSource: '', saveWarningShown: false,
+    /* Pagination for community reports (offset-based). 50 per page. */
+    reportOffset: 0, reportsHasMore: true,
     /* Ids this device deleted (tombstones from deleteThisReport, persisted via
        the overlay). hydrate() + the boot cloud merge skip them so a cloud row
        that survived deletion can't resurrect the pin on reload. */
@@ -997,6 +999,62 @@
     if (sortSelect) sortSelect.value = state.sort;
 
     highlightSelection();
+    updateLoadMoreBtn();
+  }
+
+  /* Load the next page of community reports (50 at a time). */
+  function loadMoreReports() {
+    const getFn = (name) => {
+      try {
+        if (typeof window !== 'undefined' && typeof window[name] === 'function') return window[name];
+      } catch (e) { /* ignore */ }
+      return null;
+    };
+    const loadReports = getFn('sbLoadReports');
+    if (!loadReports || !state.reportsHasMore) return;
+    loadReports(50, state.reportOffset || 0).then((rows) => {
+      if (!rows || !rows.length) { state.reportsHasMore = false; updateLoadMoreBtn(); return; }
+      const merged = new Map(state.animals.map((a) => [a.id, a]));
+      let added = 0;
+      let changed = false;
+      const gone = new Set(Array.isArray(state.deletedReportIds) ? state.deletedReportIds : []);
+      rows.forEach((raw) => {
+        const animal = normalizeAnimal(raw, 'report');
+        if (gone.has(animal.id)) {
+          if (merged.has(animal.id)) { merged.delete(animal.id); changed = true; }
+          return;
+        }
+        const local = merged.get(animal.id);
+        if (!local) {
+          merged.set(animal.id, animal);
+          added += 1;
+          changed = true;
+          return;
+        }
+        const cloud = Object.assign({}, local, animal);
+        const latest = (a, b) => (Date.parse(a) || 0) >= (Date.parse(b) || 0) ? a : b;
+        cloud.lastFedAt = latest(local.lastFedAt, animal.lastFedAt);
+        cloud.lastWateredAt = latest(local.lastWateredAt, animal.lastWateredAt);
+        cloud.feedCount = Math.max(Number(local.feedCount) || 0, Number(animal.feedCount) || 0);
+        cloud.waterCount = Math.max(Number(local.waterCount) || 0, Number(animal.waterCount) || 0);
+        merged.set(animal.id, cloud);
+        changed = true;
+      });
+      if (!changed) return;
+      state.animals = Array.from(merged.values());
+      state.reportOffset = (state.reportOffset || 0) + rows.length;
+      state.reportsHasMore = rows.length === 50;
+      renderFeed();
+      renderMarkers();
+      if (added) toast(added + ' community report' + (added === 1 ? '' : 's') + ' loaded.', 'info');
+    }).catch(() => {});
+  }
+
+  /* Show/hide the Load more button based on pagination state. */
+  function updateLoadMoreBtn() {
+    const btn = $('#feed-load-more');
+    if (!btn) return;
+    btn.classList.toggle('hidden', !state.reportsHasMore);
   }
 
   /* Mirrors the map selection onto the sidebar card. */
@@ -4321,8 +4379,8 @@
          on this visitor's map. Without this the reports table was written but
          never read, so the map was empty for everyone. */
       if (loadReports) {
-        loadReports().then((rows) => {
-          if (!rows || !rows.length) return;
+        loadReports(50, state.reportOffset || 0).then((rows) => {
+          if (!rows || !rows.length) { state.reportsHasMore = false; return; }
           /* Match the id convention used in hydrate(), so a report this device
              made locally and the same row from the cloud collapse into one
              pin instead of doubling up. Cloud care totals are authoritative,
@@ -4360,6 +4418,8 @@
           if (!changed) return;
           state.animals = Array.from(merged.values());
           state.fitted = true; /* the opening fit already ran; keep the camera */
+          state.reportOffset = (state.reportOffset || 0) + rows.length;
+          state.reportsHasMore = rows.length === 50;
           renderFeed();
           renderMarkers();
           if (added) toast(added + ' community report' + (added === 1 ? '' : 's') + ' on the map.', 'info');
