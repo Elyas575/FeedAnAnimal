@@ -2813,14 +2813,14 @@
      the DB's "reporter delete reports" policy enforces it a third time.
 
      Removes, in order:
-     1. the shared copy via window.sbDeleteReport() — reports row + its photo
+     1. the shared copy via window.sbDeleteReport()  reports row + its photo
         file in `animal-photos` storage (events history is plain text and stays,
         so other volunteers' "Milo was fed" logs don't vanish with the pin),
      2. the local pin + its device feed entries from state, persisted with
         writeOverlay(), then the map re-renders with the pin gone.
 
      A cloud id that is NOT a real report-<uuid> (legacy local pins) skips the
-     shared call — there is no cloud row to delete. When the shared delete
+     shared call  there is no cloud row to delete. When the shared delete
      fails (offline, missing SQL migration) the local pin still goes and the
      toast says so honestly instead of pretending everyone sees the removal. */
   async function deleteThisReport() {
@@ -2881,7 +2881,7 @@
       afterMutation('Deleted - "' + label + '" is off the map.', 'ok');
     }
     /* Phones only: the list owns the screen there, so go back to the map.
-       Desktop keeps its side-by-side split — the menu must NOT vanish from
+       Desktop keeps its side-by-side split  the menu must NOT vanish from
        under the user (same isNarrow() guard as revealAnimal/useMyLocation). */
     if (isNarrow()) switchMobileView('map');
     /* The shared delete above may have failed (offline, or the

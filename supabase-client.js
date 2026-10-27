@@ -1310,15 +1310,15 @@ async function sbUpdateReport(report) {
    migration-report-delete.sql) enforces the same owner-only rule in the DB.
 
    What gets removed:
-   - reports row (id) — the pin itself. events rows are NOT deleted: their
+   - reports row (id)  the pin itself. events rows are NOT deleted: their
      animal_id is plain text history ("Milo was fed"), they don't reference the
      row, and other volunteers' feed logs shouldn't vanish with the pin.
-   - the photo file in `animal-photos` storage — derived from photo_url when it
+   - the photo file in `animal-photos` storage  derived from photo_url when it
      points at our own bucket. External URLs (seed data, old hosts) are left
      alone because there is no file of ours to remove.
 
    Returns { rowDeleted, photoDeleted, photoSkipped } so the caller can toast
-   honestly (e.g. "pin gone, photo already gone"). Never throws — offline or a
+   honestly (e.g. "pin gone, photo already gone"). Never throws  offline or a
    missing policy just reports rowDeleted:false and the caller keeps the local
    copy removal honest about the shared copy. */
 async function sbDeleteReport(id, photoUrl) {
@@ -1339,7 +1339,7 @@ async function sbDeleteReport(id, photoUrl) {
           if (key) {
             out.photoSkipped = false;
             const { error: photoError } = await sb.storage.from('animal-photos').remove([key]);
-            // "not found" just means it was already removed — still a clean end.
+            // "not found" just means it was already removed  still a clean end.
             out.photoDeleted = !photoError ||
               /not found|does not exist|no such/i.test(photoError.message || '');
             if (photoError && !out.photoDeleted) {
@@ -1423,7 +1423,7 @@ const sbAuth = {
     });
     if (error) throw error;
   },
-  // Facebook OAuth — requires one-time setup in Supabase + Facebook Developers (see steps below).
+  // Facebook OAuth  requires one-time setup in Supabase + Facebook Developers (see steps below).
   async signInWithFacebook() {
     if (!sb) throw new Error('Supabase not configured yet.');
     const { error } = await sb.auth.signInWithOAuth({

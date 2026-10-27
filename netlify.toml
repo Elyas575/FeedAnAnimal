@@ -1,4 +1,4 @@
-# StrayFeedingMap — Netlify config
+# StrayFeedingMap  Netlify config
 # Static site: no build step, publish repo root.
 # Your existing _headers file is picked up automatically by Netlify.
 # Your existing 404.html is picked up automatically as the 404 page.
