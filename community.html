@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -6,7 +6,13 @@
 `<title>StrayFeedingMap</title>
 <meta name="description" content="Talk with other volunteers: ask questions, share sightings, coordinate feeding runs.">
 <meta name="robots" content="index,follow">
-<link rel="icon" href="logo/logo.png">
+<link rel="icon" href="logo/logo.png"><!-- favicons for different platforms -->
+<link rel="icon" type="image/x-icon" href="logo/favicon.ico">
+<link rel="apple-touch-icon" href="logo/apple-touch-icon.png">
+<link rel="icon" sizes="96x96" href="logo/favicon-96x96.png">
+<link rel="icon" href="logo/favicon.svg">
+<link rel="manifest" href="logo/site.webmanifest">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="tailwind-theme.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
@@ -82,11 +88,11 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;col
 <body>
 <div id="site-header"></div>
 <div class="wrap">
-  <p><a href="index.html" style="color:#a03b0e">← Back to the map</a></p>
+  <p><a href="index.html" style="color:#a03b0e">? Back to the map</a></p>
 
     <div class="f-composer">
-      <input id="topic-title" type="text" maxlength="140" placeholder="Start a topic   e.g. “Who feeds the market cats on Fridays?”" aria-label="Topic title">
-      <textarea id="topic-body" maxlength="4000" placeholder="Say more… sightings, questions, feeding runs, lost &amp; found." aria-label="Topic details"></textarea>
+      <input id="topic-title" type="text" maxlength="140" placeholder="Start a topic   e.g. Who feeds the market cats on Fridays?" aria-label="Topic title">
+      <textarea id="topic-body" maxlength="4000" placeholder="Say more sightings, questions, feeding runs, lost &amp; found." aria-label="Topic details"></textarea>
       <button type="button" class="f-post" id="topic-post">
         <span class="material-symbols-outlined" style="font-size:18px">post_add</span>Post topic
       </button>
@@ -103,7 +109,7 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;col
     <p id="topics-empty" class="f-none hidden"></p>
 
     <section id="thread" class="f-thread hidden" aria-live="polite">
-      <button type="button" class="f-back" id="thread-close">← All topics</button>
+      <button type="button" class="f-back" id="thread-close">? All topics</button>
       <div class="flex items-start gap-3">
         <span id="thread-face"></span>
         <div class="flex-1 min-w-0">
@@ -114,7 +120,7 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff8f6;col
       <p class="f-body" id="thread-body"></p>
       <div id="thread-replies"></div>
       <div class="f-replyrow">
-        <input id="reply-body" type="text" maxlength="2000" placeholder="Write a reply…" aria-label="Reply">
+        <input id="reply-body" type="text" maxlength="2000" placeholder="Write a reply" aria-label="Reply">
         <button type="button" class="f-send" id="reply-send">Reply</button>
       </div>
       <p class="f-hint hidden" id="reply-hint"></p>
