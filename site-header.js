@@ -152,8 +152,7 @@
     '-webkit-tap-highlight-color:transparent;transition:color .15s ease}',
     '#site-bottom-nav .fta-bn-tab[aria-current="page"]{color:#f4511e}',
     '#site-bottom-nav .fta-bn-tab .material-symbols-outlined{font-size:22px;color:inherit}',
-    '#site-bottom-nav .fta-bn-tab .fta-bn-label{font-size:10px;font-weight:700;letter-spacing:-.01em;',
-    'white-space:nowrap;color:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
+    '#site-bottom-nav .fta-bn-tab .fta-bn-label{font-size:10px;font-weight:700;letter-spacing:-.01em;line-height:1.1;color:inherit;text-align:center}',
     /* Pill sits VERTICALLY CENTRED in the bar (matches the reference), not
        raised above it: no negative margin, centred on the flex cross-axis. */
     '#site-bottom-nav .fta-bn-pill{display:flex;align-items:center;gap:6px;flex-shrink:0;align-self:center;height:44px;',
@@ -184,7 +183,7 @@
     '#site-top-header #fta-account-error{margin-top:8px;font-size:12px;color:#ba1a1a}',
     '#site-top-header #fta-account-error[hidden]{display:none}',
     '#site-top-header #fta-lang-wrap{position:relative;display:flex;align-items:center}',
-    '#site-top-header #fta-lang-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #e9e1df;background:#fff;border-radius:9999px;padding:0;font-size:18px;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,transform .15s,box-shadow .15s;box-shadow:0 1px 2px rgba(30,27,26,.04)}',
+    '#site-top-header #fta-lang-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #e9e1df;background:#fff;border-radius:9999px;padding:0;font-size:18px;cursor:pointer;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Android Emoji",sans-serif;transition:border-color .15s,color .15s,transform .15s,box-shadow .15s;box-shadow:0 1px 2px rgba(30,27,26,.04)}',
     '#site-top-header #fta-lang-btn:hover{border-color:#a03b0e;color:#a03b0e;transform:translateY(-1px)}',
     '#site-top-header #fta-lang-btn:focus-visible{outline:2px solid #a03b0e;outline-offset:2px}',
     '#site-top-header #fta-lang-btn .flg{font-size:20px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Android Emoji",sans-serif}',
