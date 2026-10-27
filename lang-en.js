@@ -221,7 +221,7 @@ window.FTA_LANGS.en = { code: 'en', dict: {
   'about.help_post': 'Post an animal if you spot a stray in your area.',
   'about.help_share': 'Share the map with a friend who loves helping animal.',
   'about.keeping': 'Keeping this running',
-  'about.keeping_copy': 'This platform is completely free to use, but hosting servers, running map services, and storing photos come with monthly costs. It’s built and maintained by just one person so any contribution, big or small, helps keep the map live and free for everyone caring for local strays.',
+  'about.keeping_copy': 'This platform is completely free to use, but hosting servers, running map services, and storing photos come with monthly costs. It’s built and maintained by just one person so any contribution, big or small, helps keep the map live and free for me and I caring for local strays.',
   'about.support_btn': 'Support',
   'about.ps': 'P.S. Questions, feedback, or just want to say hi: lirzqad@gmail.com. I read everything myself.',
 
