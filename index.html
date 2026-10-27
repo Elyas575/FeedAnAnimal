@@ -1,4 +1,17 @@
-<link rel="icon" href="logo/logo.png"><!-- favicons for different platforms -->
+﻿<!DOCTYPE html><html lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type">`<title data-i18n="index.title">StrayFeedingMap</title>
+<meta name="description" content="A community map of stray cats and dogs. See which animals need food or water near you, log a feed, and share it live with other volunteers.">
+<link rel="canonical" href="https://feedanimals.pages.dev/">
+<meta name="theme-color" content="#a03b0e">
+<!-- Open Graph: this is what WhatsApp/iMessage/Slack show when the link is shared -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="StrayFeedingMap">
+<meta property="og:title" content="StrayFeedingMap   find, feed and water local street animals">
+<meta property="og:description" content="A community map of stray cats and dogs. Log a feed and share it live with other volunteers.">
+<meta property="og:url" content="https://feedanimals.pages.dev/">
+<meta property="og:image" content="https://feedanimals.pages.dev/og-image.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="logo/logo.png">
+<!-- favicons for different platforms -->
 <link rel="icon" type="image/x-icon" href="logo/favicon.ico">
 <link rel="apple-touch-icon" href="logo/apple-touch-icon.png">
 <link rel="icon" sizes="96x96" href="logo/favicon-96x96.png">
@@ -440,7 +453,6 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 
   <!-- Scrollable animal feed (rendered from data/animals.json) -->
   <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-[84px] md:pb-space-xl flex flex-col gap-space-sm"></div>
-  <button id="feed-load-more" class="mt-3 px-4 py-2 rounded-xl border border-surface-container-highest bg-white text-on-surface font-medium text-sm hover:bg-surface-container-low transition-colors hidden" onclick="loadMoreReports()">Load more</button>
   <div id="feed-empty" class="hidden px-space-md pb-[84px] md:pb-space-xl flex-col items-center gap-2 text-center">
     <span id="feed-empty-icon" class="material-symbols-outlined text-[32px] text-outline">search_off</span>
     <p id="feed-empty-text" class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>
