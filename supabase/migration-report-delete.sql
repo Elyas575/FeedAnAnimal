@@ -1,4 +1,4 @@
--- Report DELETE for owners (FeedAnAnimalMap)
+-- Report DELETE for owners (StrayFeedingMap)
 -- Run in Supabase Dashboard > SQL Editor AFTER schema-core.sql.
 -- Safe to re-run.
 --

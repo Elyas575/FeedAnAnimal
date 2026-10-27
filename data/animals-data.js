@@ -9,7 +9,7 @@
 window.FEED_THE_ANIMALS_DATA = {
   "meta": {
     "version": 1,
-    "app": "FeedAnAnimalMap",
+    "app": "StrayFeedingMap",
     "city": "Seattle, WA",
     "region": "Oakwood Park & West End",
     "center": {

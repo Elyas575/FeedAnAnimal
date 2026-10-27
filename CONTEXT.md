@@ -1,10 +1,10 @@
-# FeedAnAnimalMap   AI Context
+# StrayFeedingMap   AI Context
 
 > Paste this file (or link it) when asking any AI for help. Source of truth for what the site is, looks like, and how it works.
 
 ## 1. One-liner
 
-`FeedAnAnimalMap` (repo `FeedTheAnimalsMap`, GitHub `Elyas575/FeedAnAnimal`, Supabase `Feed-Animals` in `eu-west-1`, static on Cloudflare Workers) is a **crowdsourced community map for feeding stray animals**.
+`StrayFeedingMap` (repo `FeedTheAnimalsMap`, GitHub `Elyas575/FeedAnAnimal`, Supabase `Feed-Animals` in `eu-west-1`, static on Cloudflare Workers) is a **crowdsourced community map for feeding stray animals**.
 
 Purpose: **No stray should go hungry   find nearby animals and log every meal.** One shared live log of who ate, who needs help, and where.
 

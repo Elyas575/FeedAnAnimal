@@ -1,4 +1,4 @@
-# FeedAnAnimalMap
+# StrayFeedingMap
 
 A working stray-animal feeding map for Oakwood Park & West End (Seattle, WA).
 The site started life as a static design mockup: hardcoded cards, a map that was

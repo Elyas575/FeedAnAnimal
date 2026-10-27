@@ -1,5 +1,5 @@
 /*!
- * FeedAnAnimalMap - application logic
+ * StrayFeedingMap - application logic
  * ---------------------------------------------------------------
  * Loads data/animals.json, renders the volunteer sidebar feed, drives a real
  * Leaflet map (Google Streets / Google Satellite / CARTO Light / OSM Streets)
@@ -346,7 +346,7 @@
         deletedReportIds: Array.isArray(parsed.deletedReportIds) ? parsed.deletedReportIds : []
       };
     } catch (err) {
-      console.warn('[FeedAnAnimalMap] could not read local state', err);
+      console.warn('[StrayFeedingMap] could not read local state', err);
       return empty;
     }
   }
@@ -364,7 +364,7 @@
       }));
       return true;
     } catch (err) {
-      console.warn('[FeedAnAnimalMap] could not save local state', err);
+      console.warn('[StrayFeedingMap] could not save local state', err);
       return false;
     }
   }
@@ -400,7 +400,7 @@
       return { payload: await response.json(), sourceLabel: DATA_URL };
     } catch (err) {
       if (window.FEED_THE_ANIMALS_DATA) {
-        console.warn('[FeedAnAnimalMap] fetch failed, using the embedded snapshot: ' + err.message);
+        console.warn('[StrayFeedingMap] fetch failed, using the embedded snapshot: ' + err.message);
         return { payload: window.FEED_THE_ANIMALS_DATA, sourceLabel: 'embedded snapshot (file:// mode)' };
       }
       throw err;
@@ -1290,7 +1290,7 @@
         }
       })
       : window.L.layerGroup();
-    if (!clusters) console.warn('[FeedAnAnimalMap] leaflet.markercluster missing, falling back to a plain layer group.');
+    if (!clusters) console.warn('[StrayFeedingMap] leaflet.markercluster missing, falling back to a plain layer group.');
 
     state.markers = {};
     const rows = selectAnimals();
@@ -2533,7 +2533,7 @@
           editedPhoto = await window.sbUploadReportPhoto(pendingReportPhoto);
         }
       } catch (err) {
-        console.warn('[FeedAnAnimalMap] photo upload failed', err);
+        console.warn('[StrayFeedingMap] photo upload failed', err);
         toast('Photo could not be processed safely - keeping the previous photo.', 'error');
         editedPhoto = editing.photoUrl || null;
       }
@@ -2656,7 +2656,7 @@
         });
       }
     } catch (err) {
-      console.warn('[FeedAnAnimalMap] report upload failed', err);
+      console.warn('[StrayFeedingMap] report upload failed', err);
       toast('Photo could not be processed safely. The report will be saved on this device without its photo.', 'error');
     }
     setBusy(false);
@@ -4255,7 +4255,7 @@
       const loaded = await loadDataset();
       hydrate(loaded.payload, overlay, loaded.sourceLabel);
     } catch (err) {
-      console.error('[FeedAnAnimalMap] dataset failed to load', err);
+      console.error('[StrayFeedingMap] dataset failed to load', err);
       // Mobile boots straight into the map, so flip back to the list to make
       // the error message (rendered into the feed) visible.
       switchMobileView('list');

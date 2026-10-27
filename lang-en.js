@@ -260,7 +260,7 @@ window.FTA_LANGS.en = { code: 'en', dict: {
   'privacy.back': '← Back to the map',
 
   'terms.updated': 'Last updated: October 2026',
-  'terms.intro': 'FeedAnAnimalMap is a free, volunteer-run map that helps people find and care for stray cats and dogs. By using it you agree to the points below.',
+  'terms.intro': 'StrayFeedingMap is a free, volunteer-run map that helps people find and care for stray cats and dogs. By using it you agree to the points below.',
   'terms.warn': 'This is not an emergency or veterinary service. If an animal is clearly injured, aggressive or in danger, contact a local vet, animal control or rescue organisation instead of relying on this map.',
   'terms.animals': 'Looking after animals',
   'terms.animals_li1': 'Only feed or handle animals you are comfortable with, and never approach an animal that seems frightened or unwell.',

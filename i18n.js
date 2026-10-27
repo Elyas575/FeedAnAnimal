@@ -1,5 +1,5 @@
 ﻿/* ------------------------------------------------------------------ *
- * FeedAnAnimalMap i18n core.
+ * StrayFeedingMap i18n core.
  *
  * Dictionaries live in lang-en.js / lang-es.js and each one
  * registers itself as window.FTA_LANG = { code: 'es', dict: {...} } via

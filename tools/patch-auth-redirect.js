@@ -99,7 +99,7 @@ replace(
     '       are already signed in, so the map is the only sensible next screen. */',
     '    if (isSignedIn(await window.sbAuth.currentUser())) {',
     "      status('Account created! Taking you to the map…', true);",
-    "      toast('Welcome to FeedAnAnimalMap!', 'ok');",
+    "      toast('Welcome to StrayFeedingMap!', 'ok');",
     '      goHome(800);',
     '    } else {',
     "      status('Account created! Check your email for the confirm link, click it, then press Login.', true);",
