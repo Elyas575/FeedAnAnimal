@@ -4335,6 +4335,16 @@
     switchMobileView(isNarrow() ? 'map' : 'list');
     initLocationPrompt();
     wireEvents();
+  // Direct handler for report button (fallback for delegated click issues)
+  const reportBtn = document.querySelector('[data-open-report]');
+  if (reportBtn) {
+    reportBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openReportModal();
+    });
+  }
+  // Expose openReportModal globally for onclick fallback
+  if (typeof window !== 'undefined') window._openReportModal = openReportModal;
     wireReportPhoto();
     wireDisplayNameModal();
     syncProfileFromAuth();
