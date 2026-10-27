@@ -319,7 +319,10 @@
             }).join('')
         + '</div>'
         + '</div>'
-        + '<a href="support.html" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" style="text-decoration:none" title="Support Animal Relief">'
+        + '<a href="about.html" class="md:hidden flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container transition-colors" title="About" aria-label="About" data-nav="about">'
+  + '<span class="material-symbols-outlined text-[20px] text-on-surface-variant">info</span>'
+  + '</a>'
+  + '<a href="support.html" class="fta-support flex h-10 px-3 sm:px-5 rounded-xl sm:rounded-full bg-[#E54848] hover:bg-[#d63c3c] text-white font-medium text-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all" style="text-decoration:none" title="Support Animal Relief">'
           + '<span class="material-symbols-outlined text-[18px] fill-current">favorite</span><span class="fta-support-label hidden sm:inline">' + esc(t('nav.support', 'Support')) + '</span>'
         + '</a>'
         + '<a id="auth-link" href="auth.html" class="fta-signin h-10 px-4 rounded-full border border-surface-container-highest bg-white text-on-surface hover:bg-surface-container font-medium text-sm flex items-center justify-center transition-colors shadow-sm">'

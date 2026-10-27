@@ -738,7 +738,7 @@ check('the map accepts a #city= deep link from cities.html', "params.get('city')
 check('the navbar has a Community link', "label: 'Community'", header);
 check('the navbar keeps the Support button', 'Support Animal Relief', header);
 check('the navbar keeps the brand', 'StrayFeedingMap', header);
-/* The brand mark graduated from a 🐾 glyph to logo/logo.png - assert the
+/* The brand mark graduated from a  glyph to logo/logo.png - assert the
    navbar still RENDERS a logo and that the file actually ships, otherwise
    every page shows a broken image where the paw used to be. */
 check('the navbar keeps the logo image', 'logo/logo.png', header);
