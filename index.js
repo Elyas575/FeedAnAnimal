@@ -724,7 +724,7 @@
     return { kind: 'feed', icon: 'restaurant', label: tt('card.i_fed'), style: 'soft' };
   }
 
-  const secondaryAction = (row) => (row.status.water !== 'ok'
+  const secondaryAction = (row) => (primaryAction(row).kind === 'feed'
     ? { kind: 'water', icon: 'water_drop', title: tt('drawer.gave_water') }
     : { kind: 'feed', icon: 'restaurant', title: tt('card.i_fed') });
 
