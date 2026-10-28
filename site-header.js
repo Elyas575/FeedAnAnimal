@@ -117,7 +117,8 @@
     '@media (min-width:1024px){#site-top-header .fta-hd-inner{padding:0 32px}}',
     '#site-top-header .fta-hd-left{display:flex;align-items:center;gap:12px;}',
     '#site-top-header .fta-hd-brandlink{display:flex;align-items:center;gap:10px;text-decoration:none}',
-    '#site-top-header .fta-logo{flex:0 0 auto;height:64px;width:auto;display:block;}',
+    '#site-top-header .fta-logo{flex:0 0 auto;height:64px;width:auto;display:block;overflow:hidden}',
+    '#site-top-header .fta-logo img{height:100%;width:auto;object-fit:contain;display:block}',
     '@media (min-width:640px){#site-top-header .fta-logo{height:52px}}',
     '#site-top-header .fta-brand{display:none;min-width:0;white-space:nowrap;',
     'font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1;color:#1e1b1a}',
@@ -294,7 +295,7 @@
       + '<div class="fta-hd-inner h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4">'
       + '<div class="fta-hd-left flex items-center gap-3">'
         + '<a href="index.html" class="fta-hd-brandlink flex items-center gap-2.5 group">'
-          + '<span class="fta-logo h-[64px] sm:h-[52px] shrink-0"><img src="logo/logo.png" alt="StrayFeedingMap logo" class="h-full w-auto object-contain"></span>'
+          + '<span class="fta-logo h-[64px] sm:h-[52px] shrink-0"><img src="logo/logo.png" alt="StrayFeedingMap logo" class="h-full w-auto object-contain" style="height:100%;width:auto;object-fit:contain;display:block"></span>'
           + '<span class="fta-brand hidden sm:block text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none whitespace-nowrap">StrayFeedingMap</span>'
         + '</a>'
       + '</div>'
