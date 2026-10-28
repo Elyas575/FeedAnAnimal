@@ -453,7 +453,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   </div>
 
   <!-- Scrollable animal feed (rendered from data/animals.json) -->
-  <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-[84px] md:pb-space-xl flex flex-col gap-space-sm"></div>
+  <div id="animals-feed" class="flex-1 overflow-y-auto px-space-md pb-[84px] md:pb-space-xl flex flex-col gap-2"></div>
   <div id="feed-empty" class="hidden px-space-md pb-[84px] md:pb-space-xl flex-col items-center gap-2 text-center">
     <span id="feed-empty-icon" class="material-symbols-outlined text-[32px] text-outline">search_off</span>
     <p id="feed-empty-text" class="font-body-sm text-body-sm text-on-surface-variant">No animal matches that filter or search yet.</p>
@@ -722,7 +722,7 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
   </div>
 </div>
 
-<div id="display-name-modal" data-modal class="hidden fixed inset-0 z-[95] items-center justify-center p-4 bg-inverse-surface/55 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="display-name-title">
+<div id="display-name-modal" class="hidden fixed inset-0 z-[95] items-center justify-center p-4 bg-inverse-surface/55 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="display-name-title">
   <form id="display-name-form" class="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-2xl">
     <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
       <span class="material-symbols-outlined" aria-hidden="true">badge</span>

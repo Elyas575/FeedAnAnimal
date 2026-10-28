@@ -895,43 +895,30 @@
     const thumbInner = avatarHtml(animal) + thumbZoom + badgeDot(row);
     const thumbBox = animal.photoUrl
       ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="' + photoTitle + '" aria-label="' + photoTitle + '" class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in">' + thumbInner + '</button>'
-      : '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
+      : '<div class="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
 
-    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="' + esc(cardTitle) + '" title="' + esc(cardTitle) + '" class="fta-card p-3.5 rounded-2xl bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer focus:outline-none">' +
-      '<div class="flex gap-3 items-center">' +
-        thumbBox +
-        '<div class="flex-1 min-w-0">' +
-          '<div class="flex items-center justify-between gap-1">' +
-            '<div class="flex items-center gap-1.5 truncate">' +
-              '<h3 class="font-headline-sm text-base text-on-surface font-semibold truncate">' + esc(displayText(animal.name, 'card.unnamed')) + '</h3>' +
-            '</div>' +
-            '<span class="font-label-sm text-xs text-outline shrink-0 flex items-center gap-0.5">' +
-              '<span class="material-symbols-outlined text-[13px]">near_me</span> ' + formatDistance(row.status.distance) +
-            '</span>' +
-          '</div>' +
-          '<p class="font-body-sm text-xs ' + TONE_TEXT[issue.tone] + ' font-medium flex items-center gap-1 mt-0.5">' +
-            '<span class="material-symbols-outlined text-[14px]">' + issue.icon + '</span> ' + esc(issue.text) +
-          '</p>' +
-          '<p class="font-body-sm text-xs text-on-surface-variant truncate mt-0.5 opacity-80">' + esc(animal.description) + '</p>' +
-          (function () {
-            /* City/country line: the "where" for a worldwide map. New reports
-               carry a real city; seed animals only have an area label, so the
-               line degrades gracefully: City, Country → label → nothing (the
-               line is skipped, not rendered empty). */
-            const loc = animal.location || {};
-            const clean = (s) => String(s || '').replace(/,\s*State of\b/gi, '').trim();
-            const place = [clean(loc.city), clean(loc.country)].filter(Boolean).join(', ') || clean(loc.label) || clean(loc.area) || '';
-            if (!place) return '';
-            return '<p class="font-label-sm text-[11px] text-outline truncate mt-0.5 flex items-center gap-1">' +
-              '<span class="material-symbols-outlined text-[12px]">location_on</span>' + esc(place) + '</p>';
-          })() +
-          (station ? '<p class="font-label-sm text-[11px] text-outline truncate mt-0.5 flex items-center gap-1">' +
-            '<span class="material-symbols-outlined text-[12px]">roofing</span>' + esc(station.name) + '</p>' : '') +
+    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="' + esc(cardTitle) + '" title="' + esc(cardTitle) + '" class="fta-card p-2 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex items-center gap-3 group cursor-pointer focus:outline-none">' +
+      thumbBox +
+      '<div class="min-w-0 flex-1">' +
+        '<div class="flex items-center gap-2 mb-0.5">' +
+          '<h3 class="font-headline-sm text-sm text-on-surface font-semibold truncate group-hover:text-[#f06548] transition-colors">' + esc(displayText(animal.name, 'card.unnamed')) + '</h3>' +
+          '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ' + (issue.tone === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-surface-container text-on-surface-variant') + ' text-[10px] font-bold shrink-0">' +
+            '<span class="material-symbols-outlined text-[12px]">' + issue.icon + '</span> ' + esc(issue.text) +
+          '</span>' +
         '</div>' +
+        (function () {
+          const loc = animal.location || {};
+          const clean = (x) => String(x || '').replace(/,\s*State of\b/gi, '').trim();
+          const place = [clean(loc.city), clean(loc.country)].filter(Boolean).join(', ') || clean(loc.label) || clean(loc.area) || '';
+          if (!place) return '';
+          return '<p class="font-label-sm text-[10px] text-outline truncate flex items-center gap-1">' +
+            '<span class="material-symbols-outlined text-[11px]">location_on</span>' + esc(place) + '</p>';
+        })() +
       '</div>' +
-      '<p class="font-label-sm text-[11px] text-outline mt-2 flex items-center gap-1">' +
-        '<span class="material-symbols-outlined text-[12px]">touch_app</span> ' + esc(tt('card.show_on_map', { name: animal.name })) +
-      '</p>' +
+      '<div class="flex items-center gap-2 shrink-0">' +
+        '<span class="text-[10px] font-semibold text-outline bg-surface-container px-2 py-1 rounded-lg border border-surface-container-highest">' + formatDistance(row.status.distance) + '</span>' +
+        '<span class="material-symbols-outlined text-[16px] text-outline group-hover:text-[#f06548] group-hover:translate-x-0.5 transition-all">chevron_right</span>' +
+      '</div>' +
     '</article>';
   }
   function renderFeed() {
@@ -4026,7 +4013,7 @@
       }
 
       const modal = target.closest('[data-modal]');
-      if (modal && target === modal && modal.id !== 'display-name-modal') closeModal(modal.id);
+      if (modal && target === modal) closeModal(modal.id);
     });
 
     /* ---- chat (Phase 5) ------------------------------------------------ *
