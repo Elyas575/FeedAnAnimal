@@ -223,6 +223,7 @@ window.FTA_LANGS.es = { code: 'es', dict: {
   'board.your_rank': 'Tu puesto',
 
   'inbox.title': 'Mensajes',
+  'index.title': 'StrayFeedingMap',
   'inbox.sub': 'Conversaciones con otros voluntarios, las más recientes primero.',
 
   'auth.welcome': 'Bienvenido de nuevo',

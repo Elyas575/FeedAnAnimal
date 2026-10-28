@@ -188,6 +188,7 @@ window.FTA_LANGS.en = { code: 'en', dict: {
   'board.your_rank': 'Your rank',
 
   'inbox.title': 'Messages',
+  'index.title': 'StrayFeedingMap',
   'inbox.sub': 'Conversations with other volunteers, newest first.',
 
   'auth.welcome': 'Welcome Back',
