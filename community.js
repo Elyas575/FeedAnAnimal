@@ -144,9 +144,8 @@
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   function avatarHtml(name, url) {
-    var photo = url ? '<img src="' + esc(url) + '" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()">' : '';
     return '<span class="avatar" style="width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;position:relative;display:inline-flex;align-items:center;justify-content:center;background:' + esc(hueOf(name)) + '" title="' + esc(name || 'Volunteer') + '">'
-      + '<span class="initials">' + esc(initialsOf(name)) + '</span>' + photo + '</span>';
+      + '<span class="initials">' + esc(initialsOf(name)) + '</span></span>';
   }
   function relTime(iso) {
     var t = Date.parse(iso);
