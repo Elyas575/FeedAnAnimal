@@ -157,7 +157,7 @@ One document with four top-level keys.
                   "caretaker": "Priya N.", "notes": "…", "lastServicedMinutesAgo": 180,
                   "location": { "label": …, "area": …, "lat": …, "lng": … } } ],
   "animals": [ { "id": "milo", "name": "Milo", "species": "cat",
-                 "sex": "male", "ageClass": "adult", "color": "Ginger with white mittens",
+                 "sex": "male", "ageClass": "adult", "color": "Orange with white mittens",
                  "description": "…", "temperament": "friendly",
                  "health": "healthy",                    // healthy | monitor | treatment | critical
                  "sterilized": true, "vaccinated": true, "microchipped": false,
