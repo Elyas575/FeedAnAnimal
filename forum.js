@@ -355,11 +355,17 @@ async function openTopic(id) {
     ? replies.map(replyHtml).join('')
     : '<p class="f-none">No replies yet   be the first.</p>';
   $('thread').classList.remove('hidden');
+  const topicsEl = $('topics');
+  if (topicsEl) topicsEl.classList.add('hidden');
+  const emptyEl = $('topics-empty');
+  if (emptyEl) emptyEl.classList.add('hidden');
   $('thread').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function closeTopic() {
   openId = null;
   $('thread').classList.add('hidden');
+  const topicsEl = $('topics');
+  if (topicsEl) topicsEl.classList.remove('hidden');
   if ((location.hash || '').indexOf('#topic=') === 0) {
     history.replaceState(null, '', location.pathname + location.search);
   }

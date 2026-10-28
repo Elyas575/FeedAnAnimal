@@ -4474,6 +4474,8 @@
         });
       }
     } catch (err) { console.warn('[sb] backend init skipped', err.message); }
+    const splash = document.getElementById('boot-splash');
+    if (splash) splash.remove();
   }
 
   if (typeof document !== 'undefined') {
