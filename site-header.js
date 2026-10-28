@@ -295,7 +295,7 @@
       + '<div class="fta-hd-inner h-[68px] w-full px-4 lg:px-8 flex items-center justify-between gap-4">'
       + '<div class="fta-hd-left flex items-center gap-3">'
         + '<a href="index.html" class="fta-hd-brandlink flex items-center gap-2.5 group">'
-          + '<span class="fta-logo h-[64px] sm:h-[52px] shrink-0"><img src="logo/logo.png" alt="StrayFeedingMap logo" class="h-full w-auto object-contain" style="height:100%;width:auto;object-fit:contain;display:block"></span>'
+          + '<span class="fta-logo h-[64px] sm:h-[52px] shrink-0"><img src="logo/logo.png?v=2" alt="StrayFeedingMap logo" class="h-full w-auto object-contain" style="height:100%;width:auto;object-fit:contain;display:block"></span>'
           + '<span class="fta-brand hidden sm:block text-lg sm:text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-none whitespace-nowrap">StrayFeedingMap</span>'
         + '</a>'
       + '</div>'
