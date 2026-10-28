@@ -896,7 +896,7 @@
     const thumbInner = avatarHtml(animal) + thumbZoom + badgeDot(row);
     const thumbBox = animal.photoUrl
       ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="' + photoTitle + '" aria-label="' + photoTitle + '" class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in">' + thumbInner + '</button>'
-      : '<div class="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
+      : '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
 
     return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="' + esc(cardTitle) + '" title="' + esc(cardTitle) + '" class="fta-card p-2 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex items-center gap-3 group cursor-pointer focus:outline-none">' +
       thumbBox +
@@ -1711,11 +1711,7 @@
 
     const hint = $('#report-pick-hint');
     if (hint) {
-      if (opts.accuracy && isFinite(opts.accuracy)) {
-        hint.textContent = 'Location pinned - accurate to about ' + formatDistance(opts.accuracy) + '.';
-      } else {
-        hint.textContent = 'Location pinned.';
-      }
+      hint.textContent = 'Location pinned.';
     }
     const modal = $('#report-modal');
     if (modal) modal.classList.remove('fta-picking');
