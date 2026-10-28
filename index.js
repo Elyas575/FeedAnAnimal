@@ -4056,7 +4056,7 @@
       }
 
       const modal = target.closest('[data-modal]');
-      if (modal && target === modal) closeModal(modal.id);
+      if (modal && target === modal && modal.id !== 'display-name-modal') closeModal(modal.id);
     });
 
     /* ---- chat (Phase 5) ------------------------------------------------ *
