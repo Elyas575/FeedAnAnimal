@@ -675,9 +675,14 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
         <input id="report-lng" type="hidden">
 
         <div class="fta-report-section">
-          <label class="fta-label" for="report-description">Notes <span class="fta-label-hint">· optional</span></label>
-          <textarea id="report-description" class="fta-field" rows="2"
-            placeholder="Colour, temperament, injuries, exact spot…"></textarea>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <label class="fta-label" for="report-description">Notes <span class="fta-label-hint">· optional</span></label>
+            <button type="button" id="report-reset-guide" class="text-xs text-primary underline">Restore template</button>
+          </div>
+          <textarea id="report-description" class="fta-field" rows="4"
+            placeholder="Landmark / Spot: 
+Appearance / Color: 
+Health / Condition: "></textarea>
         </div>
 
         <input id="report-place" type="hidden">

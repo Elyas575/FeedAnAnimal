@@ -1754,6 +1754,7 @@
   function useMyLocationForReport() {
     const useMyLocationButton = $('#report-use-location');
     if (!useMyLocationButton) return;
+    useMyLocationButton.classList.remove('hidden');
     if (!navigator.geolocation) {
       toast('Geolocation is unavailable in this browser - reporting a location needs device GPS.', 'error');
       return;
@@ -2128,6 +2129,8 @@
     const known = state.userLocation;
     const latInput = $('#report-lat');
     const lngInput = $('#report-lng');
+    const useBtn = $('#report-use-location');
+    if (useBtn) useBtn.classList.toggle('hidden', !!known);
     if (known) {
       if (latInput) latInput.value = Number(known.lat).toFixed(6);
       if (lngInput) lngInput.value = Number(known.lng).toFixed(6);
@@ -4171,6 +4174,14 @@
 
     const reportCancel = $('#report-cancel');
     if (reportCancel) reportCancel.addEventListener('click', () => closeModal('report-modal'));
+    const resetGuide = $('#report-reset-guide');
+    if (resetGuide) resetGuide.addEventListener('click', () => {
+      const ta = $('#report-description');
+      if (ta) {
+        ta.value = 'Landmark / Spot: \nAppearance / Color: \nHealth / Condition: ';
+        ta.focus();
+      }
+    });
 
     const reportDelete = $('#report-delete');
     if (reportDelete) reportDelete.addEventListener('click', deleteThisReport);
