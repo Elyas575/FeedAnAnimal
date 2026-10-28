@@ -2113,7 +2113,7 @@
     const subtitle = $('#report-subtitle');
     if (subtitle) subtitle.textContent = 'Adds a pin on the map right away. Shared with other volunteers when you’re signed in.';
     const submit = $('#report-submit');
-    if (submit) submit.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span>Save to map';
+    if (submit) submit.innerHTML = '  Save to map';
 
     /* Creating, not editing: no report to delete, so the owner-only Delete
        button stays hidden until openEditReport() reveals it. */
