@@ -839,7 +839,6 @@
       '<div class="flex-1 min-w-0 pr-4">' +
         '<div class="flex items-center justify-between gap-2">' +
           '<span class="flex items-center gap-1.5 min-w-0">' +
-            personAvatarHtml(actor, entry.actorAvatar, 'w-5 h-5') +
             '<span class="font-label-sm text-label-sm text-primary font-bold truncate">' + (isUser ? 'Your activity' : 'Live Activity') + '</span>' +
           '</span>' +
           '<span class="flex items-center gap-2 shrink-0">' +
@@ -898,7 +897,7 @@
       ? '<button type="button" data-action="photo" data-id="' + esc(animal.id) + '" title="' + photoTitle + '" aria-label="' + photoTitle + '" class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm cursor-zoom-in">' + thumbInner + '</button>'
       : '<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container shadow-sm">' + thumbInner + '</div>';
 
-    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="' + esc(cardTitle) + '" title="' + esc(cardTitle) + '" class="fta-card p-3.5 rounded-lg bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer">' +
+    return '<article data-animal-card="' + esc(animal.id) + '" tabindex="0" role="button" aria-label="' + esc(cardTitle) + '" title="' + esc(cardTitle) + '" class="fta-card p-3.5 rounded-2xl bg-surface-container-lowest border ' + border + ' shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group cursor-pointer focus:outline-none">' +
       '<div class="flex gap-3 items-center">' +
         thumbBox +
         '<div class="flex-1 min-w-0">' +
@@ -920,7 +919,8 @@
                line degrades gracefully: City, Country → label → nothing (the
                line is skipped, not rendered empty). */
             const loc = animal.location || {};
-            const place = [loc.city, loc.country].filter(Boolean).join(', ') || loc.label || loc.area || '';
+            const clean = (s) => String(s || '').replace(/,\s*State of\b/gi, '').trim();
+            const place = [clean(loc.city), clean(loc.country)].filter(Boolean).join(', ') || clean(loc.label) || clean(loc.area) || '';
             if (!place) return '';
             return '<p class="font-label-sm text-[11px] text-outline truncate mt-0.5 flex items-center gap-1">' +
               '<span class="material-symbols-outlined text-[12px]">location_on</span>' + esc(place) + '</p>';
@@ -1033,11 +1033,7 @@
 
   /* Mirrors the map selection onto the sidebar card. */
   function highlightSelection() {
-    $$('[data-animal-card]').forEach((card) => {
-      const isSelected = card.getAttribute('data-animal-card') === state.selectedId;
-      card.classList.toggle('ring-2', isSelected);
-      card.classList.toggle('ring-primary/40', isSelected);
-    });
+    // Selection is reflected by the map popup; no heavy ring on the card.
   }
 
 
