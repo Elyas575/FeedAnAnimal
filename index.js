@@ -839,6 +839,7 @@
       '<div class="flex-1 min-w-0 pr-4">' +
         '<div class="flex items-center justify-between gap-2">' +
           '<span class="flex items-center gap-1.5 min-w-0">' +
+            personAvatarHtml(actor, entry.actorAvatar, 'w-5 h-5') +
             '<span class="font-label-sm text-label-sm text-primary font-bold truncate">' + (isUser ? 'Your activity' : 'Live Activity') + '</span>' +
           '</span>' +
           '<span class="flex items-center gap-2 shrink-0">' +
@@ -909,7 +910,9 @@
         (function () {
           const loc = animal.location || {};
           const clean = (x) => String(x || '').replace(/,\s*State of\b/gi, '').trim();
+          // loc.city, loc.country
           const place = [clean(loc.city), clean(loc.country)].filter(Boolean).join(', ') || clean(loc.label) || clean(loc.area) || '';
+          // loc.label || loc.area
           if (!place) return '';
           return '<p class="font-label-sm text-[10px] text-outline truncate flex items-center gap-1">' +
             '<span class="material-symbols-outlined text-[11px]">location_on</span>' + esc(place) + '</p>';
@@ -2122,6 +2125,11 @@
     const error = $('#report-error');
     if (error) { error.textContent = ''; error.classList.add('hidden'); }
 
+    const desc = $('#report-description');
+    if (desc && !desc.value) {
+      desc.value = 'Landmark / Spot: \nAppearance / Color: \nHealth / Condition: ';
+    }
+
     /* GPS ONLY: the pin comes from the device location, never from the map
        viewport and never from a typed field - the lat/lng inputs are hidden
        and are only ever written here. A fix we already know (from the
@@ -2197,6 +2205,15 @@
     const offeredSpecies = ['cat', 'dog', 'other'];
     setValue('report-species', offeredSpecies.indexOf(animal.species) === -1 ? 'other' : animal.species);
     setValue('report-description', animal.description || '');
+    // Split a saved description back into the structured fields when possible.
+    const desc = animal.description || '';
+    const grab = (label) => {
+      const m = desc.match(new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\\\s*:?\\\\s*(.*)', 'i'));
+      return m ? m[1].trim() : '';
+    };
+    setValue('report-landmark', grab('Landmark / Spot'));
+    setValue('report-appearance', grab('Appearance / Color'));
+    setValue('report-condition', grab('Health / Condition'));
     setValue('report-lat', Number(animal.location.lat).toFixed(6));
     setValue('report-lng', Number(animal.location.lng).toFixed(6));
     setValue('report-place', animal.location.label || '');
@@ -4174,6 +4191,21 @@
 
     const reportCancel = $('#report-cancel');
     if (reportCancel) reportCancel.addEventListener('click', () => closeModal('report-modal'));
+    const syncReportNotes = () => {
+      const landmark = ($('#report-landmark') || {}).value || '';
+      const appearance = ($('#report-appearance') || {}).value || '';
+      const condition = ($('#report-condition') || {}).value || '';
+      const parts = [];
+      if (landmark.trim()) parts.push('Landmark / Spot: ' + landmark.trim());
+      if (appearance.trim()) parts.push('Appearance / Color: ' + appearance.trim());
+      if (condition.trim()) parts.push('Health / Condition: ' + condition.trim());
+      const desc = $('#report-description');
+      if (desc) desc.value = parts.join('\n');
+    };
+    ['report-landmark','report-appearance','report-condition'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', syncReportNotes);
+    });
     const resetGuide = $('#report-reset-guide');
     if (resetGuide) resetGuide.addEventListener('click', () => {
       const ta = $('#report-description');
