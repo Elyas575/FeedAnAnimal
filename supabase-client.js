@@ -1377,16 +1377,34 @@ const sbAuth = {
   // Email + password (requires Supabase Auth > Providers > Email > Confirm OFF for instant login,
   // or user clicks confirm link if Confirm ON)
   async signUpWithPassword(email, password, displayName) {
+    const clean = String(email || '').trim();
+    const pw = String(password || '');
+    if (!clean) throw new Error('Enter your email address.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) throw new Error('Enter a valid email address.');
+    if (!pw) throw new Error('Enter a password.');
+    if (pw.length < 6) throw new Error('Password must be at least 6 characters.');
     const { data, error } = await sb.auth.signUp({
-      email: String(email).trim(),
-      password: String(password),
-      options: { data: { display_name: displayName || String(email).split('@')[0] } },
+      email: clean,
+      password: pw,
+      options: { data: { display_name: displayName || clean.split('@')[0] } },
     });
     if (error) throw error;
+    // Supabase obfuscates duplicate sign-ups: when the email already belongs to
+    // an account it returns a user with an empty `identities` array instead of
+    // an error. Treat that as "already registered" so the volunteer is sent to
+    // Sign In instead of being told a confirmation email is on its way again.
+    if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Please sign in instead.');
+    }
     return data.user;
   },
   async signInWithPassword(email, password) {
-    const { data, error } = await sb.auth.signInWithPassword({ email: String(email).trim(), password: String(password) });
+    const clean = String(email || '').trim();
+    const pw = String(password || '');
+    if (!clean) throw new Error('Enter your email address.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) throw new Error('Enter a valid email address.');
+    if (!pw) throw new Error('Enter your password.');
+    const { data, error } = await sb.auth.signInWithPassword({ email: clean, password: pw });
     if (error) throw error;
     return data.user;
   },

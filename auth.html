@@ -161,6 +161,12 @@ body.has-site-header main { margin-top: 12px; margin-bottom: 12px; }
 <body class="min-h-screen flex items-center justify-center p-4 has-site-header">
 <div id="site-header"></div>
 <div id="toast-wrap"></div>
+<div id="auth-loading" class="hidden fixed inset-0 z-[1000] flex items-center justify-center bg-white/70 backdrop-blur-sm">
+  <div class="flex flex-col items-center gap-3">
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-[#f06548]/30 border-t-[#f06548]"></div>
+    <p class="text-sm font-semibold text-[#786f6a]">Please wait…</p>
+  </div>
+</div>
 
 <main class="w-full max-w-[440px] bg-white rounded-[28px] border border-[#ede7e3] shadow-xl p-6 sm:p-8">
   
@@ -207,17 +213,17 @@ body.has-site-header main { margin-top: 12px; margin-bottom: 12px; }
       
       <!-- Display Name (Sign Up only) -->
       <div id="group-name" class="hidden fa-input-group">
-        <input id="auth-name" class="fa-field" type="text" placeholder="Full name / Alias">
+        <input id="auth-name" class="fa-field" type="text" placeholder="Full name / Alias" autocomplete="name">
       </div>
 
       <!-- Email Field -->
       <div class="fa-input-group">
-        <input id="auth-email" class="fa-field" type="email" placeholder="Enter your email">
+        <input id="auth-email" class="fa-field" type="email" placeholder="Enter your email" required autocomplete="email">
       </div>
 
       <!-- Password Field (Sign In & Sign Up) -->
       <div id="group-password" class="fa-input-group">
-        <input id="auth-password" class="fa-field" type="password" placeholder="••••••••">
+        <input id="auth-password" class="fa-field" type="password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
       </div>
 
       <!-- New Password (only after clicking a reset link in email) -->
@@ -226,7 +232,7 @@ body.has-site-header main { margin-top: 12px; margin-bottom: 12px; }
           Your reset link was verified. Choose a new password for your account.
         </p>
         <div class="fa-input-group">
-          <input id="auth-new-password" class="fa-field" type="password" placeholder="New password (min 6 characters)">
+          <input id="auth-new-password" class="fa-field" type="password" placeholder="New password (min 6 characters)" required minlength="6" autocomplete="new-password">
         </div>
         <button id="btn-save-password" class="fa-btn-primary">Save new password →</button>
       </div>
@@ -321,7 +327,8 @@ function setBusy(b){
   ['btn-google','btn-login','btn-register','btn-save-password'].forEach(function(id){
     var el = $(id); if (el) el.disabled = !!b;
   });
-  if (b) toast('Processing request...', 'info');
+  var overlay = $('auth-loading');
+  if (overlay) overlay.classList.toggle('hidden', !b);
 }
 
 function friendlyError(e){
@@ -360,15 +367,20 @@ async function showUser(){
 
 $('btn-google').onclick = async function(){
   setBusy(true);
-  try { toast('Connecting to Google...', 'info'); await window.sbAuth.signInWithGoogle(); }
+  try { await window.sbAuth.signInWithGoogle(); }
   catch(e){ var m = friendlyError(e); status('Google Auth Error: ' + m, false); toast(m, 'err'); }
   setBusy(false);
 };
 
 $('btn-register').onclick = async function(){
+  var mail = email();
+  var pw = $('auth-password').value;
+  if (!mail) { status('Enter your email address.', false); toast('Email required', 'err'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { status('Enter a valid email address.', false); toast('Invalid email', 'err'); return; }
+  if (!pw) { status('Enter a password.', false); toast('Password required', 'err'); return; }
+  if (pw.length < 6) { status('Password must be at least 6 characters.', false); toast('Password too short', 'err'); return; }
   setBusy(true);
   try {
-    toast('Registering account...', 'info');
     await window.sbAuth.signUpWithPassword(email(), $('auth-password').value, $('auth-name').value);
     if (isSignedIn(await window.sbAuth.currentUser())) {
       status('Account active! Redirecting to map…', true);
@@ -383,9 +395,13 @@ $('btn-register').onclick = async function(){
 };
 
 $('btn-login').onclick = async function(){
+  var mail = email();
+  var pw = $('auth-password').value;
+  if (!mail) { status('Enter your email address.', false); toast('Email required', 'err'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { status('Enter a valid email address.', false); toast('Invalid email', 'err'); return; }
+  if (!pw) { status('Enter your password.', false); toast('Password required', 'err'); return; }
   setBusy(true);
   try {
-    toast('Authenticating...', 'info');
     await window.sbAuth.signInWithPassword(email(), $('auth-password').value);
     status('Authenticated! Returning to map…', true);
     toast('Welcome back!', 'ok');
@@ -400,7 +416,6 @@ $('link-forgot').onclick = async function(e){
   if (!mail) { status('Enter your email address above first, then tap "Forgot password?".', false); toast('Email needed', 'err'); return; }
   setBusy(true);
   try {
-    toast('Sending reset link...', 'info');
     await window.sbAuth.resetPassword(mail);
     status('If that address has an account, a reset link is on its way. Check your inbox (and spam).', true);
     toast('Reset link sent!', 'ok');
@@ -409,10 +424,12 @@ $('link-forgot').onclick = async function(e){
 };
 
 $('btn-save-password').onclick = async function(){
+  var npw = $('auth-new-password').value;
+  if (!npw) { status('Enter a new password.', false); toast('Password required', 'err'); return; }
+  if (npw.length < 6) { status('Password must be at least 6 characters.', false); toast('Password too short', 'err'); return; }
   setBusy(true);
   try {
-    toast('Saving new password...', 'info');
-    await window.sbAuth.updatePassword($('auth-new-password').value);
+    await window.sbAuth.updatePassword(npw);
     status('Password updated! Returning to map…', true);
     toast('Password updated!', 'ok');
     recoveryMode = false;
