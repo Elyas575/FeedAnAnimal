@@ -2125,11 +2125,6 @@
     const error = $('#report-error');
     if (error) { error.textContent = ''; error.classList.add('hidden'); }
 
-    const desc = $('#report-description');
-    if (desc && !desc.value) {
-      desc.value = 'Landmark / Spot: \nAppearance / Color: \nHealth / Condition: ';
-    }
-
     /* GPS ONLY: the pin comes from the device location, never from the map
        viewport and never from a typed field - the lat/lng inputs are hidden
        and are only ever written here. A fix we already know (from the
