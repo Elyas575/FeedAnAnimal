@@ -929,35 +929,9 @@
             '<span class="material-symbols-outlined text-[12px]">roofing</span>' + esc(station.name) + '</p>' : '') +
         '</div>' +
       '</div>' +
-      '<div class="flex items-center gap-2 pt-2 border-t border-surface-container-high/60">' +
-        '<button type="button" data-action="' + action.kind + '" data-id="' + esc(animal.id) + '" class="flex-1 h-9 rounded-full ' + ACTION_STYLES[action.style] + ' font-label-sm text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">' +
-          '<span class="material-symbols-outlined text-[16px]">' + action.icon + '</span><span>' + esc(action.label) + '</span>' +
-        '</button>' +
-        /* Chat sits next to the primary action because "who looked after this
-           last?" is the next question after "is it fed?", and the answer is
-           only reachable from the details drawer otherwise - two taps and a
-           scroll for what is a one-tap conversation.
-
-           The button is always rendered rather than conditionally: whether a
-           caretaker EXISTS is a per-animal database question (only volunteers
-           with a real account leave an actor_id), and answering it for all 48
-           cards up front would mean 48 queries on every render. openChat()
-           already handles every outcome in plain language - nobody has signed
-           in yet, sign in first, or it is your own log - so a click is never
-           a dead end. */
-        '<button type="button" data-action="message" data-id="' + esc(animal.id) + '" title="' + esc(tt('card.message_who', { name: animal.name })) + '" aria-label="' + esc(tt('card.message_who', { name: animal.name })) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">chat</span>' +
-        '</button>' +
-        '<button type="button" data-action="' + secondary.kind + '" data-id="' + esc(animal.id) + '" title="' + esc(secondary.title) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">' + secondary.icon + '</span>' +
-        '</button>' +
-        '<button type="button" data-action="locate" data-id="' + esc(animal.id) + '" title="' + esc(tt('drawer.show_map')) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">navigation</span>' +
-        '</button>' +
-        '<button type="button" data-action="details" data-id="' + esc(animal.id) + '" title="' + esc(tt('card.more_details')) + '" aria-label="' + esc(tt('card.more_details')) + ' ' + esc(animal.name) + '" class="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors">' +
-          '<span class="material-symbols-outlined text-[18px]">info</span>' +
-        '</button>' +
-      '</div>' +
+      '<p class="font-label-sm text-[11px] text-outline mt-2 flex items-center gap-1">' +
+        '<span class="material-symbols-outlined text-[12px]">touch_app</span> ' + esc(tt('card.show_on_map', { name: animal.name })) +
+      '</p>' +
     '</article>';
   }
   function renderFeed() {
