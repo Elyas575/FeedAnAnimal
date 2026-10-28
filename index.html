@@ -341,7 +341,7 @@ body .material-symbols-outlined {
 .shopee-box { border: 1.5px solid #decbc0; border-radius: 14px; background: #fff; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
 .shopee-box:focus-within { border-color: #9e3d12; box-shadow: 0 0 0 3px rgba(158,61,18,0.12); }
 .shopee-row { display: flex; align-items: baseline; gap: 6px; font-size: 14px; line-height: 1.5; }
-.shopee-label { font-weight: 600; color: #9e9895; white-space: nowrap; user-select: none; pointer-events: none; }
+.shopee-label { font-weight: 600; color: #52433d; white-space: nowrap; user-select: none; pointer-events: none; }
 .shopee-input { flex: 1; border: none; outline: none; background: transparent; padding: 0; font-size: 14px; color: #2c211b; }
 .shopee-input::placeholder { color: #bfaea5; }
 .fta-report-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -682,10 +682,11 @@ textarea.fta-field { height: auto; padding: 10px 12px; resize: vertical; }
 
         <div class="fta-report-section">
           <label class="fta-label" for="report-description">Notes <span class="fta-label-hint">· optional</span></label>
-          <textarea id="report-description" class="fta-field" rows="4"
-            placeholder="Landmark / Spot: 
-Appearance / Color: 
-Health / Condition: "></textarea>
+          <textarea id="report-description" class="fta-field" rows="5"
+            placeholder="Landmark / Spot:      e.g. In front of the bakery, under the silver sedan
+Cat Appearance:       e.g. Calico / tricolor, bobtail
+Health / Urgency:     e.g. Limping on front leg, needs medication
+Additional Notes:     Write any extra details or stories here..."></textarea>
         </div>
 
         <input id="report-place" type="hidden">
