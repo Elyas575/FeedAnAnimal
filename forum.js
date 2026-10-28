@@ -172,6 +172,7 @@ function faceHtml(name, avatarUrl, size) {
   var px = size || 40;
   var photo = avatarUrl
     ? '<img src="' + esc(avatarUrl) + '" alt="" loading="lazy"'
+      + ' style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"'
       + ' onerror="this.remove()">'
     : '';
   return '<span class="f-avatar" style="width:' + px + 'px;height:' + px + 'px;'
