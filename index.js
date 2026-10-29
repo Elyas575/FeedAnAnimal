@@ -1123,7 +1123,7 @@
           '" style="width:' + waterWidth + '%"></i></div></div>' +
       '</div>' +
       (hideNote ? '' : '<p class="fta-popup__notes">' + esc(displayText(note, 'card.community_notes')) + '</p>') +
-      '<p class="fta-popup__meta">' + esc(station ? station.name : tt('card.no_station')) + ' · ' + animal.feedCount +
+      '<p class="fta-popup__meta">' + (station ? esc(station.name) + ' · ' : '') + animal.feedCount +
         ' ' + esc(tt('card.feeds')) + (myCare ? ' · ' + myCare + ' ' + esc(tt('card.by_you')) : '') + '</p>' +
       /* Directions gets its OWN full-width row above the care actions. "Walk to
          this animal" is the reason someone opened the popup, so it should not
