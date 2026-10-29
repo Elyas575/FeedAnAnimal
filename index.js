@@ -3927,6 +3927,36 @@
     const action = button.getAttribute('data-action');
     const id = button.getAttribute('data-id');
     if (action === 'feed' || action === 'water' || action === 'medicine') {
+      if (action === 'feed') {
+        const animal = animalById(id);
+        if (!animal) return;
+        const userLoc = state.userLocation;
+        const animalLoc = animal.location;
+        let ok = true;
+        if (userLoc && animalLoc) {
+          const dist = haversine(userLoc, animalLoc);
+          ok = dist <= 100;
+        }
+        if (!ok) {
+          toast('You can only feed animals within 100 meters of your location.', 'error');
+          return;
+        }
+      }
+      if (action === 'water') {
+        const animal = animalById(id);
+        if (!animal) return;
+        const userLoc = state.userLocation;
+        const animalLoc = animal.location;
+        let ok = true;
+        if (userLoc && animalLoc) {
+          const dist = haversine(userLoc, animalLoc);
+          ok = dist <= 100;
+        }
+        if (!ok) {
+          toast('You can only water animals within 100 meters of your location.', 'error');
+          return;
+        }
+      }
       if (state.map) state.map.closePopup();
       logCare(id, action);
       return;
